@@ -41,15 +41,14 @@ export default function HomePage() {
             style={{ animationDelay: '150ms' }}
           >
             Hi, I&apos;m{' '}
-            <span className="text-accent">ThinkTankTom.</span>
+            <span className="text-accent">Thomas Cyriac.</span>
           </h1>
 
           <p
             className="font-sans text-lg sm:text-xl text-muted leading-relaxed mb-10 max-w-[560px] animate-fade-up"
             style={{ animationDelay: '300ms' }}
           >
-            I write about technology, software, and ideas
-            that are worth thinking about.
+            I'm an engineer. A blacksmith. My keyboard a hammer and my laptop an anvil.
           </p>
 
           <div
