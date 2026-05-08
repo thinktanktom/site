@@ -65,6 +65,10 @@ export default function AboutPage() {
               research at LambdaClass. On Upwork I&apos;m Top Rated Plus with a 100% Job
               Success Score across $100K+ in earnings.
             </p>
+            <p>
+              When I'm not at my laptop I'm usually doing something that involves a ball, a wave or a poorly packed bag. 
+              Sometimes all three if the weekend is going particularly well.
+            </p>
           </div>
         </div>
 
