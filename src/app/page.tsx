@@ -48,7 +48,7 @@ export default function HomePage() {
             className="font-sans text-lg sm:text-xl text-muted leading-relaxed mb-10 max-w-[560px] animate-fade-up"
             style={{ animationDelay: '300ms' }}
           >
-            I'm an engineer. A blacksmith. My keyboard a hammer and my laptop an anvil.
+            A modern day engineer with a penchant for dry humour.
           </p>
 
           <div
