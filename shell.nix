@@ -5,5 +5,6 @@ pkgs.mkShell {
     pkgs.git
     pkgs.go        # some themes want it; harmless to include
     pkgs.claude-code
+    pkgs.tree
   ];
 }
