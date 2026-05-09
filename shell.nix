@@ -6,5 +6,6 @@ pkgs.mkShell {
     pkgs.go        # some themes want it; harmless to include
     pkgs.claude-code
     pkgs.tree
+    pkgs.nodejs
   ];
 }
