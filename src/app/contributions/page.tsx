@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ExternalLink, GitPullRequest, GitMerge, GitPullRequestClosed } from 'lucide-react'
+import { ExternalLink, GitPullRequest, GitMerge, GitPullRequestClosed, type LucideIcon } from 'lucide-react'
 import { getOpenSourcePRs, getPRStatus, type PullRequest, type PRStatus } from '@lib/github'
 
 function formatDate(dateStr: string) {
@@ -38,7 +38,7 @@ const statusConfig: Record<
   {
     label: string
     className: string
-    Icon: React.ComponentType<{ size?: number; className?: string }>
+    Icon: LucideIcon
   }
 > = {
   merged: {
