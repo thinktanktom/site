@@ -12,6 +12,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   return [
     { url: 'https://thinktanktom.com', lastModified: new Date() },
     { url: 'https://thinktanktom.com/writing', lastModified: new Date() },
+    { url: 'https://thinktanktom.com/contributions', lastModified: new Date() },
     { url: 'https://thinktanktom.com/about', lastModified: new Date() },
     ...postUrls,
   ]
