@@ -2,18 +2,22 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 <url>
 <loc>https://thinktanktom.com</loc>
-<lastmod>2026-05-08T14:47:49.005Z</lastmod>
+<lastmod>2026-05-09T05:34:31.790Z</lastmod>
 </url>
 <url>
 <loc>https://thinktanktom.com/writing</loc>
-<lastmod>2026-05-08T14:47:49.005Z</lastmod>
+<lastmod>2026-05-09T05:34:31.790Z</lastmod>
 </url>
 <url>
 <loc>https://thinktanktom.com/about</loc>
-<lastmod>2026-05-08T14:47:49.005Z</lastmod>
+<lastmod>2026-05-09T05:34:31.790Z</lastmod>
 </url>
 <url>
 <loc>https://thinktanktom.com/writing/hello-world</loc>
 <lastmod>2025-04-27</lastmod>
+</url>
+<url>
+<loc>https://thinktanktom.com/writing/BlenderChugging</loc>
+<lastmod>2025-04-05</lastmod>
 </url>
 </urlset>
