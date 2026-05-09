@@ -50,6 +50,14 @@ const components = {
       className="font-sans text-base text-text leading-[1.75] mb-5 pl-6 list-decimal space-y-1"
     />
   ),
+  img: (props: React.ImgHTMLAttributes<HTMLImageElement>) => (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      {...props}
+      alt={props.alt ?? ''}
+      className="w-full rounded-sm border border-border my-8 block"
+    />
+  ),
 }
 
 export default function MDXContent({ source }: { source: string }) {
