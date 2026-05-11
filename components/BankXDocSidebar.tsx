@@ -98,7 +98,7 @@ export default function BankXDocSidebar() {
       )}
 
       {/* Desktop sidebar */}
-      <aside className="hidden lg:block w-60 shrink-0 border-r border-border min-h-[calc(100vh-4rem)] overflow-y-auto sticky top-16 self-start max-h-[calc(100vh-4rem)]">
+      <aside className="hidden lg:block w-60 shrink-0 border-r border-border min-h-[calc(100vh-4rem)] overflow-y-auto sticky top-[7rem] self-start max-h-[calc(100vh-7rem)]">
         <SidebarContent />
       </aside>
     </>

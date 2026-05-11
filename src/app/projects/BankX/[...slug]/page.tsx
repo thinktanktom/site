@@ -43,42 +43,44 @@ export default function BankXDocPage({ params }: Props) {
         <MDXContent source={doc.content} />
       </article>
 
-      {/* Prev / Next navigation */}
-      <nav className="mt-16 pt-8 border-t border-border flex items-center justify-between gap-4">
-        {prev ? (
-          <Link
-            href={`/projects/BankX/${prev.slug.join('/')}`}
-            className="group flex items-center gap-2 font-mono text-sm text-muted hover:text-accent transition-colors duration-200"
-          >
-            <ChevronLeft size={14} className="shrink-0" />
-            <span className="text-left">
-              <span className="block text-[10px] tracking-widest uppercase text-muted/50 mb-0.5">
-                Previous
+      {/* Prev / Next navigation — hidden on the first page */}
+      {!(params.slug.length === 1 && params.slug[0] === 'introduction') && (
+        <nav className="mt-16 pt-8 border-t border-border flex items-center justify-between gap-4">
+          {prev ? (
+            <Link
+              href={`/projects/BankX/${prev.slug.join('/')}`}
+              className="group flex items-center gap-2 font-mono text-sm text-muted hover:text-accent transition-colors duration-200"
+            >
+              <ChevronLeft size={14} className="shrink-0" />
+              <span className="text-left">
+                <span className="block text-[10px] tracking-widest uppercase text-muted/50 mb-0.5">
+                  Previous
+                </span>
+                {prev.title}
               </span>
-              {prev.title}
-            </span>
-          </Link>
-        ) : (
-          <div />
-        )}
+            </Link>
+          ) : (
+            <div />
+          )}
 
-        {next ? (
-          <Link
-            href={`/projects/BankX/${next.slug.join('/')}`}
-            className="group flex items-center gap-2 font-mono text-sm text-muted hover:text-accent transition-colors duration-200 text-right"
-          >
-            <span className="text-right">
-              <span className="block text-[10px] tracking-widest uppercase text-muted/50 mb-0.5">
-                Next
+          {next ? (
+            <Link
+              href={`/projects/BankX/${next.slug.join('/')}`}
+              className="group flex items-center gap-2 font-mono text-sm text-muted hover:text-accent transition-colors duration-200 text-right"
+            >
+              <span className="text-right">
+                <span className="block text-[10px] tracking-widest uppercase text-muted/50 mb-0.5">
+                  Next
+                </span>
+                {next.title}
               </span>
-              {next.title}
-            </span>
-            <ChevronRight size={14} className="shrink-0" />
-          </Link>
-        ) : (
-          <div />
-        )}
-      </nav>
+              <ChevronRight size={14} className="shrink-0" />
+            </Link>
+          ) : (
+            <div />
+          )}
+        </nav>
+      )}
     </>
   )
 }
