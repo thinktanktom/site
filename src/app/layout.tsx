@@ -19,8 +19,13 @@ const dmSans = DM_Sans({
 
 export const metadata: Metadata = {
   title: {
-    default: 'ThinkTankTom',
-    template: '%s — ThinkTankTom',
+    default: 'thinktanktom',
+    template: '%s — thinktanktom',
+  },
+  icons: {
+    icon: '/thinktanktom_logo.svg',
+    shortcut: '/thinktanktom_logo.svg',
+    apple: '/thinktanktom_logo.svg',
   },
   description:
     'Thomas Cyriac — DeFi Protocol Developer, Smart Contract Architect. Writing about technology, software, and ideas worth thinking about.',
