@@ -10,10 +10,7 @@ interface Props {
 }
 
 export function generateStaticParams() {
-  // BankX has its own dedicated /projects/BankX doc site route
-  return getAllProjects()
-    .filter((p) => p.slug !== 'BankX')
-    .map((p) => ({ slug: p.slug }))
+  return getAllProjects().map((p) => ({ slug: p.slug }))
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
