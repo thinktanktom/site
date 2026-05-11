@@ -10,7 +10,10 @@ interface Props {
 }
 
 export function generateStaticParams() {
-  return getAllProjects().map((p) => ({ slug: p.slug }))
+  // BankX has its own dedicated /projects/BankX doc site route
+  return getAllProjects()
+    .filter((p) => p.slug !== 'BankX')
+    .map((p) => ({ slug: p.slug }))
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -62,8 +65,6 @@ export default function ProjectPage({ params }: Props) {
               {formatDate(project.date)}
             </time>
             <span className="text-border">·</span>
-            <span className="font-mono text-xs text-muted">{project.readTime}</span>
-            <span className="text-border">·</span>
             <span
               className={`font-mono text-xs px-2 py-0.5 border rounded-sm tracking-wider ${statusStyles[project.status]}`}
             >
@@ -113,7 +114,7 @@ export default function ProjectPage({ params }: Props) {
                   className="font-mono text-sm text-muted hover:text-accent flex items-center gap-2 transition-colors duration-200"
                 >
                   <ExternalLink size={14} />
-                  Live demo
+                  Live site
                 </a>
               )}
             </div>
