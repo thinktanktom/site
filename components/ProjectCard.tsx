@@ -73,10 +73,10 @@ export default function ProjectCard({ project }: { project: ProjectMeta }) {
             {project.demo && (
               <span
                 className="font-mono text-xs text-muted flex items-center gap-1"
-                aria-label="Live demo"
+                aria-label="Live site"
               >
                 <ExternalLink size={12} />
-                Demo
+                Live site
               </span>
             )}
           </div>
