@@ -1,4 +1,52 @@
 User-Agent: *
 Allow: /
 
+User-Agent: GPTBot
+Allow: /
+
+User-Agent: ChatGPT-User
+Allow: /
+
+User-Agent: OAI-SearchBot
+Allow: /
+
+User-Agent: ClaudeBot
+Allow: /
+
+User-Agent: Claude-User
+Allow: /
+
+User-Agent: anthropic-ai
+Allow: /
+
+User-Agent: Google-Extended
+Allow: /
+
+User-Agent: PerplexityBot
+Allow: /
+
+User-Agent: Meta-ExternalAgent
+Allow: /
+
+User-Agent: Meta-ExternalFetcher
+Allow: /
+
+User-Agent: Applebot
+Allow: /
+
+User-Agent: Applebot-Extended
+Allow: /
+
+User-Agent: CCBot
+Allow: /
+
+User-Agent: cohere-ai
+Allow: /
+
+User-Agent: Diffbot
+Allow: /
+
+User-Agent: Bytespider
+Allow: /
+
 Sitemap: https://thinktanktom.com/sitemap.xml
