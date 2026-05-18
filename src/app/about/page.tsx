@@ -1,22 +1,11 @@
 import type { Metadata } from 'next'
 import Image from 'next/image'
-import { Github, Linkedin, ExternalLink } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'About',
   description:
     'Thomas Cyriac — DeFi Protocol Developer, Smart Contract Architect, Open Source Contributor.',
 }
-
-const socialLinks = [
-  { href: 'https://github.com/thinktanktom', label: 'GitHub', Icon: Github },
-  { href: 'https://linkedin.com/in/thinktanktom', label: 'LinkedIn', Icon: Linkedin },
-  {
-    href: 'https://www.upwork.com/freelancers/thinktanktom',
-    label: 'Upwork',
-    Icon: ExternalLink,
-  },
-]
 
 export default function AboutPage() {
   return (
@@ -88,26 +77,6 @@ export default function AboutPage() {
           </ul>
         </div>
 
-        {/* Links */}
-        <div>
-          <h2 className="font-mono text-xs tracking-widest uppercase text-muted mb-6">
-            Find me
-          </h2>
-          <div className="flex flex-col gap-5">
-            {socialLinks.map(({ href, label, Icon }) => (
-              <a
-                key={href}
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-4 font-mono text-lg text-muted hover:text-accent transition-colors duration-200 tracking-wide w-fit"
-              >
-                <Icon size={18} className="shrink-0" />
-                {label}
-              </a>
-            ))}
-          </div>
-        </div>
       </div>
     </main>
   )
