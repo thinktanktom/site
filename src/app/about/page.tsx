@@ -29,10 +29,10 @@ export default function AboutPage() {
         {/* Bio */}
         <div className="flex flex-col sm:flex-row gap-10 mb-16 items-start">
           <Image
-            src="/thinktanktom_logo.svg"
+            src="/ttt_logo_full.svg"
             alt="ThinkTankTom"
-            width={120}
-            height={120}
+            width={320}
+            height={180}
             className="shrink-0 object-contain"
             unoptimized
           />

@@ -26,7 +26,7 @@ export default function HomePage() {
         <div className="relative z-10 flex flex-col items-center text-center max-w-article mx-auto">
           <div className="animate-fade-up" style={{ animationDelay: '0ms' }}>
             <Image
-              src="/thinktanktom_logo.svg"
+              src="/ttt_icon.svg"
               alt="ThinkTankTom"
               width={96}
               height={96}

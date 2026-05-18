@@ -23,9 +23,9 @@ export const metadata: Metadata = {
     template: '%s — thinktanktom',
   },
   icons: {
-    icon: '/thinktanktom_logo.svg',
-    shortcut: '/thinktanktom_logo.svg',
-    apple: '/thinktanktom_logo.svg',
+    icon: '/ttt_icon.svg',
+    shortcut: '/ttt_icon.svg',
+    apple: '/ttt_icon.svg',
   },
   description:
     'Thomas Cyriac — DeFi Protocol Developer, Smart Contract Architect. Writing about technology, software, and ideas worth thinking about.',
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     title: 'ThinkTankTom',
     description:
       'Thomas Cyriac — DeFi Protocol Developer & Smart Contract Architect.',
-    images: ['/thinktanktom_logo.svg'],
+    images: ['/ttt_logo_notag.svg'],
     type: 'website',
   },
   twitter: {
@@ -42,7 +42,7 @@ export const metadata: Metadata = {
     title: 'ThinkTankTom',
     description:
       'Thomas Cyriac — DeFi Protocol Developer & Smart Contract Architect.',
-    images: ['/thinktanktom_logo.svg'],
+    images: ['/ttt_logo_notag.svg'],
   },
 }
 
