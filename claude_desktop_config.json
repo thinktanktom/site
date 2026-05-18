@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "ruflo": {
+      "type": "sse",
+      "url": "https://thinktanktom.duckdns.org/mcp-bridge/mcp",
+      "requestHeaders": {
+        "Authorization": "Bearer 2ce4bf6c6788d4968c262aaadee5c6790c44f96aa009e2f4a0cf282465c01257"
+      }
+    }
+  }
+}
