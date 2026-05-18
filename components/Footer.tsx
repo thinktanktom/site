@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import { Github, Linkedin, ExternalLink } from 'lucide-react'
 
 const links = [
@@ -22,9 +23,19 @@ export default function Footer() {
   return (
     <footer className="border-t border-border">
       <div className="max-w-chrome mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <p className="font-mono text-sm text-muted tracking-wider">
-          © 2025 ThinkTankTom
-        </p>
+        <div className="flex items-center gap-3">
+          <Image
+            src="/ttt_icon.svg"
+            alt="ThinkTankTom"
+            width={24}
+            height={24}
+            className="object-contain"
+            unoptimized
+          />
+          <p className="font-mono text-sm text-muted tracking-wider">
+            © 2025 ThinkTankTom
+          </p>
+        </div>
         <div className="flex items-center gap-6">
           {links.map(({ href, label, Icon }) => (
             <a

@@ -1,18 +1,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
-import { Github, Linkedin, ExternalLink } from 'lucide-react'
 import { getAllPosts } from '@lib/posts'
 import PostCard from '@components/PostCard'
-
-const socialLinks = [
-  { href: 'https://github.com/thinktanktom', label: 'GitHub', Icon: Github },
-  { href: 'https://linkedin.com/in/thinktanktom', label: 'LinkedIn', Icon: Linkedin },
-  {
-    href: 'https://www.upwork.com/freelancers/thinktanktom',
-    label: 'Upwork',
-    Icon: ExternalLink,
-  },
-]
 
 export default function HomePage() {
   const posts = getAllPosts().slice(0, 3)
@@ -102,28 +91,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Find me */}
-      <section className="py-24 px-6 border-t border-border">
-        <div className="max-w-chrome mx-auto">
-          <h2 className="font-mono text-2xl sm:text-3xl tracking-wide mb-12 text-text">
-            Find me.
-          </h2>
-          <div className="flex flex-col gap-5">
-            {socialLinks.map(({ href, label, Icon }) => (
-              <a
-                key={href}
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-4 font-mono text-lg text-muted hover:text-accent transition-colors duration-200 tracking-wide w-fit"
-              >
-                <Icon size={18} className="shrink-0" />
-                {label}
-              </a>
-            ))}
-          </div>
-        </div>
-      </section>
     </>
   )
 }
