@@ -87,9 +87,9 @@ export default function AboutPage() {
             <li>Setting up AI supplemented environments to ship code more efficiently</li>
             <li>Building CollabGraph, A GitHub App and AT Protocol AppView that turns your pull request and review history into a verifiable, portable collaboration graph you own.</li>
             <li>
-              Writing about DeFi. I don't believe in magic money or novel new get rich schemes. Finance will always be about practicality and smart decisions. Decentralized or not.
+              Writing aboutand contributing to DeFi. I don't believe in magic money or novel new get rich schemes. Finance will always be about practicality and smart decisions. Decentralized or not.
             </li>
-            <li>Constantly worrying about identity and data and trying to not have an existential crisis over the limited control I have over mine.</li>
+            <li>Constantly worrying about identity and data ownership.</li>
           </ul>
         </div>
 
