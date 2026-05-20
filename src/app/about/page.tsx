@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Image from 'next/image'
 
 export const metadata: Metadata = {
-  title: 'About',
+  title: 'On the Peculiar Virtue of the Concerned Reader',
   description:
     'Thomas Cyriac — DeFi Protocol Developer, Smart Contract Architect, Open Source Contributor.',
 }
@@ -19,7 +19,7 @@ export default function AboutPage() {
         <div className="flex flex-col sm:flex-row gap-10 mb-16 items-start">
           <Image
             src="/ttt_logo_full.svg"
-            alt="ThinkTankTom"
+            alt="thinktanktom"
             width={320}
             height={180}
             className="shrink-0 object-contain"
@@ -27,36 +27,53 @@ export default function AboutPage() {
           />
           <div className="font-sans text-base text-text leading-[1.75] space-y-5">
             <p>
-              I&apos;m Thomas Cyriac — a DeFi protocol developer and smart contract
-              architect based in Coimbatore, India. I&apos;ve spent the past few years
-              building financial primitives on open, permissionless infrastructure
-              across Ethereum, Arbitrum, Polygon, Optimism, Avalanche, BNB Chain,
-              and Stellar.
+              In my experience, I only visit the About page when
+              I&apos;m genuinely interested in a website. Concerningly interested.
             </p>
             <p>
-              My flagship project is{' '}
-              <a
-                href="https://bankx.io"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline decoration-accent underline-offset-2 hover:text-accent transition-colors duration-200"
-              >
-                BankX
-              </a>{' '}
-              — a dual-token, silver-pegged algorithmic stablecoin. I&apos;ve been lead
-              developer since November 2021, through CoinFabrik and Immunefi audits,
-              multi-chain deployments, and the kind of adversarial conditions that
-              teach you more about system design than any textbook.
+              I&apos;m honoured. In an age where everything and everyone is competing for your attention,
+              you took a chance on me. As thanks, I&apos;d like to let you in on a small secret.
             </p>
             <p>
-              I contribute to open source: OpenZeppelin&apos;s Soroban helpers, Chainlink
-              CCIP tooling, Ethereum Optimism CI actions, and post-quantum consensus
-              research at LambdaClass. On Upwork I&apos;m Top Rated Plus with a 100% Job
-              Success Score across $100K+ in earnings.
+              Engineering isn&apos;t my one true love. There — I&apos;ve said it.
             </p>
             <p>
-              When I'm not at my laptop I'm usually doing something that involves a ball, a wave or a poorly packed bag. 
-              Sometimes all three if the weekend is going particularly well.
+              The origins of that admission are, tip my hat to Freud, paternal. My father had a
+              stubborn, almost Socratic commitment to dislodging me from whatever fixed position I
+              currently occupied. When I retreated inward, he demanded I look out. When I sought the
+              world, he pointed me back toward the interior. It was, at the time, profoundly irritating
+              — which is, of course, precisely the condition under which genuine education tends to occur.
+            </p>
+            <p>
+              What I came to understand, slowly, was this: competence accumulated across different
+              domains doesn&apos;t just broaden you. It clarifies you. It shows you the underlying
+              structure of things.
+            </p>
+            <p>
+              Consider the football pitch. A ninety-minute match is not ninety minutes of equivalent
+              consequence. It is the painstaking construction of conditions — the pressing, the
+              positioning, the thankless tracking back that no highlights package will ever dignify —
+              in service of three or four moments that actually matter. A misplaced step. A run
+              correctly read. A decision made in the half-second before the ball arrives. The rest is
+              infrastructure. One does the work not from certainty that it will prove decisive, but
+              from the humility of knowing one cannot tell which part won&apos;t.
+            </p>
+            <p>
+              This is not a philosophy of football. It is a philosophy.
+            </p>
+            <p>
+              I appear to lack whatever it is that lets certain people dismiss a moment as
+              inconsequential. I&apos;m either fully in the room, or I&apos;m not there at all. When I say I
+              surf, I mean I have stood on a beach at six in the morning studying a break I&apos;ve surfed
+              a hundred times, looking for something I hadn&apos;t yet understood about it. When I say I
+              play football, I mean I have replayed a single misplaced pass in my head longer than
+              most of my failed deployments. These aren&apos;t hobbies. They&apos;re the same obsession,
+              wearing different clothes.
+            </p>
+            <p>
+              It doesn&apos;t feel fair that none of it would ever show up on a git commit history or an
+              AI-generated LinkedIn post. But it&apos;ll show up here. So if you find yourself concerningly
+              interested — Don&apos;t be a stranger. The door is always on the latch.
             </p>
           </div>
         </div>
@@ -67,13 +84,12 @@ export default function AboutPage() {
             Currently
           </h2>
           <ul className="font-sans text-base text-text leading-[1.75] space-y-2 list-disc pl-4">
-            <li>Maintaining and extending BankX across six EVM chains</li>
-            <li>Building Soroban (Rust/WASM) smart contracts on Stellar</li>
+            <li>Setting up AI supplemented environments to ship code more efficiently</li>
+            <li>Building CollabGraph, A GitHub App and AT Protocol AppView that turns your pull request and review history into a verifiable, portable collaboration graph you own.</li>
             <li>
-              Writing about DeFi protocol design, security, and multi-chain
-              architecture
+              Writing about DeFi. I don't believe in magic money or novel new get rich schemes. Finance will always be about practicality and smart decisions. Decentralized or not.
             </li>
-            <li>Open to protocol engineering engagements via Upwork</li>
+            <li>Constantly worrying about identity and data and trying to not have an existential crisis over the limited control I have over mine.</li>
           </ul>
         </div>
 
