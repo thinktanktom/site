@@ -46,10 +46,10 @@ export default function Nav() {
         <nav className="max-w-chrome mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center shrink-0">
             <Image
-              src="/ttt_logo_wordmark.svg"
+              src="/ttt_side_no_byline_logo.svg"
               alt="thinktanktom"
-              width={160}
-              height={43}
+              width={224}
+              height={32}
               className="object-contain"
               unoptimized
               priority
@@ -96,10 +96,10 @@ export default function Nav() {
           <div className="flex items-center justify-between px-6 h-16">
             <Link href="/" onClick={() => setMobileOpen(false)}>
               <Image
-                src="/ttt_logo_wordmark.svg"
+                src="/ttt_side_no_byline_logo.svg"
                 alt="thinktanktom"
-                width={160}
-                height={43}
+                width={224}
+                height={32}
                 className="object-contain"
                 unoptimized
               />
