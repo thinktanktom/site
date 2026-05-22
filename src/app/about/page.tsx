@@ -10,21 +10,22 @@ export const metadata: Metadata = {
 export default function AboutPage() {
   return (
     <main className="pt-32 pb-24 px-6">
-      <div className="max-w-article mx-auto">
-        <h1 className="font-mono text-4xl sm:text-5xl tracking-tight mb-12 text-text">
-          About.
-        </h1>
-
-        {/* Bio */}
-        <div className="flex flex-col sm:flex-row gap-10 mb-16 items-start">
+      <div className="max-w-chrome mx-auto">
+        {/* Logo as title */}
+        <div className="mb-16 flex justify-center">
           <Image
             src="/ttt_logo_full.svg"
             alt="thinktanktom"
-            width={320}
-            height={180}
-            className="shrink-0 object-contain"
+            width={400}
+            height={225}
+            className="object-contain"
             unoptimized
+            priority
           />
+        </div>
+
+        {/* Bio */}
+        <div className="mb-16">
           <div className="font-sans text-base text-text leading-[1.75] space-y-5">
             <p>
               In my experience, I only visit the About page when
