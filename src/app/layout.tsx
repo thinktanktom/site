@@ -23,26 +23,26 @@ export const metadata: Metadata = {
     template: '%s — thinktanktom',
   },
   icons: {
-    icon: '/favicon_icon.jpg',
-    shortcut: '/favicon_icon.jpg',
-    apple: '/favicon_icon.jpg',
+    icon: '/ttt_icon.svg',
+    shortcut: '/ttt_icon.svg',
+    apple: '/ttt_icon.svg',
   },
   description:
     'Thomas Cyriac — DeFi Protocol Developer, Smart Contract Architect. Writing about technology, software, and ideas worth thinking about.',
   metadataBase: new URL('https://thinktanktom.com'),
   openGraph: {
-    title: 'ThinkTankTom',
+    title: 'thinktanktom',
     description:
       'Thomas Cyriac — DeFi Protocol Developer & Smart Contract Architect.',
-    images: ['/og_image.jpg'],
+    images: ['/ttt_logo_notag.svg'],
     type: 'website',
   },
   twitter: {
-    card: 'summary_large_image',
-    title: 'ThinkTankTom',
+    card: 'summary',
+    title: 'thinktanktom',
     description:
       'Thomas Cyriac — DeFi Protocol Developer & Smart Contract Architect.',
-    images: ['/og_image.jpg'],
+    images: ['/ttt_logo_notag.svg'],
   },
 }
 

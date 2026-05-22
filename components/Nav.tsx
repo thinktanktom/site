@@ -47,7 +47,7 @@ export default function Nav() {
           <Link href="/" className="flex items-center shrink-0">
             <Image
               src="/ttt_logo_side.svg"
-              alt="ThinkTankTom"
+              alt="thinktanktom"
               width={160}
               height={43}
               className="object-contain"
@@ -97,7 +97,7 @@ export default function Nav() {
             <Link href="/" onClick={() => setMobileOpen(false)}>
               <Image
                 src="/ttt_logo_side.svg"
-                alt="ThinkTankTom"
+                alt="thinktanktom"
                 width={160}
                 height={43}
                 className="object-contain"
