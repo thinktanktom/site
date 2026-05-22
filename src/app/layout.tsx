@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     title: 'ThinkTankTom',
     description:
       'Thomas Cyriac — DeFi Protocol Developer & Smart Contract Architect.',
-    images: ['/ttt_logo_notag.svg'],
+    images: ['/ttt_logo.png'],
     type: 'website',
   },
   twitter: {
@@ -42,7 +42,7 @@ export const metadata: Metadata = {
     title: 'ThinkTankTom',
     description:
       'Thomas Cyriac — DeFi Protocol Developer & Smart Contract Architect.',
-    images: ['/ttt_logo_notag.svg'],
+    images: ['/ttt_logo.png'],
   },
 }
 
