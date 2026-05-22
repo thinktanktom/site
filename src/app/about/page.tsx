@@ -47,34 +47,42 @@ export default function AboutPage() {
             </p>
             <p>
               What I came to understand, slowly, was this: competence accumulated across different
-              domains doesn&apos;t just broaden you. It clarifies you. It shows you the underlying
-              structure of things.
+              domains doesn&apos;t just broaden you. It shows you the underlying
+              structure of complexity as a whole.
             </p>
             <p>
-              Consider the football pitch. A ninety-minute match is not ninety minutes of equivalent
-              consequence. It is the painstaking construction of conditions — the pressing, the
-              positioning, the thankless tracking back that no highlights package will ever dignify —
-              in service of three or four moments that actually matter. A misplaced step. A run
-              correctly read. A decision made in the half-second before the ball arrives. The rest is
-              infrastructure. One does the work not from certainty that it will prove decisive, but
-              from the humility of knowing one cannot tell which part won&apos;t.
+              Consider football. A game I was once abysmally bad at. At school, I got picked for teams
+              because I had "pace," which I later discovered was a generous euphemism for
+              *can run fast and do little else*. And there I might have stayed—a useful
+              sprinter, an ornamental presence—had I not, one day, decided in earnest to get
+              *good*.
+            </p>
+            <p>That decision unfolded into a world. Ball control gave way to team composition,
+            which gave way to positional play, until the game I had thought so simple
+            revealed itself as gloriously, dizzyingly complicated. And it would not stay on
+            the pitch. It crept into my diet, my sleep, my fitness, until eventually I
+            realised my whole life had quietly rearranged itself around the thing. Today I
+            can read an opponent's quality from the way they warm up. I can sync with a
+            teammate I've never spoken to through nothing more than a head nod or a
+            purposeful glance. What I arrive at, in those moments, is a kind of
+            familiarity—a quiet belonging. And it is that feeling, more than the game
+            itself, that I've come to chase into everything I pick up.</p>
+            <p>
+              The truth is that nothing I've learned has ever stayed where I first found it.
+              Every hobby I pick up bleeds into the next like ink through a wet page, and I've
+              stopped trying to keep them in their lanes. I think that's just how I'm built:
+              I don't take things up so much as fall into them, and I tend to keep falling
+              until the simple thing has revealed itself as a whole, complicated world worth
+              living inside. I'm nowhere near comprehending all of it, and I've found a
+              strange peace in knowing I never will—the bottom isn't really the point.
             </p>
             <p>
-              This is not a philosophy of football. It is a philosophy.
-            </p>
-            <p>
-              I appear to lack whatever it is that lets certain people dismiss a moment as
-              inconsequential. I&apos;m either fully in the room, or I&apos;m not there at all. When I say I
-              surf, I mean I have stood on a beach at six in the morning studying a break I&apos;ve surfed
-              a hundred times, looking for something I hadn&apos;t yet understood about it. When I say I
-              play football, I mean I have replayed a single misplaced pass in my head longer than
-              most of my failed deployments. These aren&apos;t hobbies. They&apos;re the same obsession,
-              wearing different clothes.
-            </p>
-            <p>
-              It doesn&apos;t feel fair that none of it would ever show up on a git commit history or an
-              AI-generated LinkedIn post. But it&apos;ll show up here. So if you find yourself concerningly
-              interested — Don&apos;t be a stranger. The door is always on the latch.
+              So if you find yourself concerningly interested in how drawing nude charcoal
+              sketches of small French men taught me about ZK proofs and private payments on
+              Stellar, or how being comfortably the worst player in a college football league
+              nudged me into freelancing, then you already understand the only thing this page
+              was ever trying to say. Stay a while. You're evidently as concerningly interested
+              in all this as I am—which makes us rather good company. 
             </p>
           </div>
         </div>
@@ -88,7 +96,7 @@ export default function AboutPage() {
             <li>Setting up AI supplemented environments to ship code more efficiently</li>
             <li>Building CollabGraph, A GitHub App and AT Protocol AppView that turns your pull request and review history into a verifiable, portable collaboration graph you own.</li>
             <li>
-              Writing aboutand contributing to DeFi. I don't believe in magic money or novel new get rich schemes. Finance will always be about practicality and smart decisions. Decentralized or not.
+              Writing about and contributing to DeFi. I don't believe in magic money or novel new get rich schemes. Finance will always be about practicality and smart decisions. Decentralized or not.
             </li>
             <li>Constantly worrying about identity and data ownership.</li>
           </ul>
