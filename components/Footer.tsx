@@ -26,14 +26,14 @@ export default function Footer() {
         <div className="flex items-center gap-3">
           <Image
             src="/ttt_icon.svg"
-            alt="ThinkTankTom"
+            alt="thinktanktom"
             width={24}
             height={24}
             className="object-contain"
             unoptimized
           />
           <p className="font-mono text-sm text-muted tracking-wider">
-            © 2025 ThinkTankTom
+            © 2025 thinktanktom
           </p>
         </div>
         <div className="flex items-center gap-6">

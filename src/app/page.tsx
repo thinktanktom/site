@@ -16,7 +16,7 @@ export default function HomePage() {
           <div className="animate-fade-up" style={{ animationDelay: '0ms' }}>
             <Image
               src="/ttt_icon.svg"
-              alt="ThinkTankTom"
+              alt="thinktanktom"
               width={96}
               height={96}
               className="mx-auto mb-8 object-contain"
