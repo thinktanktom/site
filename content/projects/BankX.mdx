@@ -36,20 +36,3 @@ The system is built around five core contracts that coordinate through a shared 
 **Block-delay as flash-loan defence.** Rather than relying purely on reentrancy guards, I implemented a cross-contract block-delay: every mint, redeem, and swap requires a `priceCheck()` call recorded at least 2 blocks prior. This makes same-transaction flash-loan attacks structurally impossible for fractional operations.
 
 **Deficit-driven liquidity.** AMM pool depth and collateral levels are monitored every time `systemCalculations()` is called. When a threshold is breached, a deficit bucket opens and the protocol pays elevated, tiered rewards (denominated in USD, paid in BankX + XSD) to community members who fill the gap.
-
-## Documentation
-
-Full technical documentation is available covering every contract, all core concepts, integration guides, and security analysis.
-
-| Section | Contents |
-|---|---|
-| [Introduction](/projects/BankX/introduction) | Protocol overview, token summary, precision reference |
-| [Silver Peg](/projects/BankX/concepts/silver-peg) | Why XAG/1000, oracle mechanics |
-| [Collateral Ratio](/projects/BankX/concepts/collateral-ratio) | CR adjustment, mint modes, interest rate derivation |
-| [ICDC](/projects/BankX/concepts/icdc) | Individual Created Digital Currency concept |
-| [Interest Accrual](/projects/BankX/concepts/interest-accrual) | Weighted-average formula, math walk-through |
-| [Protocol-Owned Liquidity](/projects/BankX/concepts/protocol-owned-liquidity) | Deficit buckets, tiered reward system |
-| [Contract References](/projects/BankX/contracts/xsd-stablecoin) | XSDStablecoin, BankXToken, CollateralPool, PIDController, RewardManager, Router, Pools, Oracles |
-| [Guides](/projects/BankX/guides/minting-xsd) | Minting XSD, Redeeming XSD, Adding Collateral, Buyback & Burn, Staking Rewards |
-| [Security](/projects/BankX/security/access-control) | Access Control, Reentrancy Protection, Arbitrage Restrictions |
-| [Deployments](/projects/BankX/deployments) | Oracle addresses, deployment order, initial parameters |
