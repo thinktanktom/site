@@ -1,0 +1,105 @@
+---
+title: "Connected, but Not Authenticated: When a Valid Bearer Token Gets 401'd at the Wrong Door"
+date: "2026-05-25"
+excerpt: "Claude Code reported my MCP server 'connected but not authenticated' — TLS fine, token valid, zero tools. The culprit wasn't the token. It was a 401 from a route that never wanted a Bearer in the first place, and what that 401 set in motion."
+tags: ["mcp", "debugging", "devops", "ai-tooling", "self-hosted"]
+---
+
+*Part II — wiring my own Claude Code CLI to the same self-hosted VM that served the Chat UI from Part I.*
+
+---
+
+Part I was the pretty part: a Chat UI, the bit people actually look at. This part is the one nobody sees — getting Claude Code, running in my own terminal on a NixOS box, to talk to the VM's tooling. Less a launch, more a private rehearsal.
+
+## The setup
+
+The VM was already up on a cloud droplet — Ubuntu, reachable over SSH. Caddy terminates HTTPS out front. Under PM2 it runs two things: the chat UI on `:3000` (that was Part I) and the **MCP bridge** on `:3001` — a couple hundred tools across several backends.
+
+One detail about the bridge matters for what follows: it exposed two auth routes. A Bearer-token path for API clients, and a catch-all basic-auth path guarding everything else. Hold that thought.
+
+The job: register that bridge in Claude Code so I could drive those tools from the local terminal. Should be five minutes. It was not.
+
+## "Connected but not authenticated"
+
+I registered the bridge over Claude Code's HTTP MCP transport and got back the most annoying status a daemon can emit: **connected**, and in the same breath, **not authenticated**.
+
+TCP fine. TLS fine. Server reachable. Every layer green — and still zero tools in the session. The connection had shown up to the party, shaken every hand, and somehow remained a complete stranger to everyone in the room.
+
+> One honest caveat before the diagnosis: I didn't capture the wire trace live. What follows is reconstructed from the transport's documented behavior plus the symptom I actually saw — not from a saved log. It holds up, but I'd rather you know which parts are observed and which are inferred.
+
+## Why
+
+A static Bearer token is *not* inherently the problem. The HTTP transport is perfectly happy with one — **as long as the authenticated request comes back `200`.** The trouble starts the moment something returns a `401`.
+
+**Culprit 1 — the request landed on the wrong route.** Here's the part that makes this specific rather than generic. My token was valid, but the request never reached the Bearer path that would have honored it. It hit the *catch-all basic-auth route* instead — and basic auth, handed an `Authorization: Bearer …` header where it expected Basic credentials, did the only thing it knows how to do: it rejected it with a `401` and `WWW-Authenticate: Basic`. The token was never even evaluated. It got 401'd at the wrong door.
+
+That 401 is what set everything else in motion. Claude Code reads a 401 as "this server wants authentication," and tries to begin a flow to satisfy it. But the server had no flow to offer — the basic-auth challenge points at nothing the client can negotiate against — so the client started a conversation the server could never finish. That dead-ended exchange is exactly what `connected but not authenticated` *is*: the transport is up, the auth step started, and it never completed.
+
+**Culprit 2 — discovery metadata you didn't mean to expose** *(a related trap, not mine).* If a server returns a `WWW-Authenticate` header pointing at an authorization server, or exposes `/.well-known/oauth-*` metadata, the client will pre-emptively trip into full OAuth discovery. My bridge exposed none of that, so this wasn't my failure mode — but it's worth flagging, because on a setup that *does* publish discovery metadata, the client will dutifully chase it and strand you the same way.
+
+You don't have to guess. Exercise the path you actually care about — the authenticated one — and dump the headers:
+
+```bash
+curl -sD - -o /dev/null https://<your-bridge-domain>/mcp \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"initialize","params":{},"id":1}'
+```
+
+`-D -` dumps the response headers (including any `WWW-Authenticate`); `-o /dev/null` hides the body, so you get a clean read of the status line. A `200` means your token reached the route that honors it — auth is fine, look elsewhere. A `401`/`403` — especially `WWW-Authenticate: Basic` — means your Bearer request is being judged by something that never wanted a Bearer in the first place.
+
+There's a second, sneakier trap underneath all of this: MCP's HTTP transport rides on **SSE streaming**. Put a naïve proxy in front that doesn't carry Server-Sent Events and it'll connect, then die silently — the streamed responses never make it back. Worst kind of bug: the status check says healthy while nothing works.
+
+## The fix: stop arguing, dig a tunnel
+
+The whole auth dance lives on the public, Caddy-fronted path. So don't use that path. Let Claude Code speak plain HTTP to a local port, and **SSH-tunnel** that straight to the bridge — no public route, no 401 to misread, no discovery to chase, because the layer that was forcing the negotiation is no longer in the way.
+
+**1. Confirm the bridge is listening:**
+
+```bash
+ssh <vm-user>@<vm-ip> 'ss -tlnp | grep 3001'
+# expect 0.0.0.0:3001
+```
+
+**2. Add a persistent tunnel to `~/.ssh/config`:**
+
+```
+Host mcp-tunnel
+  HostName <vm-ip>
+  User <vm-user>
+  LocalForward 13001 127.0.0.1:3001
+```
+
+**3. Bring it up, and register Claude Code against `127.0.0.1:13001`** — the local forward, not the public domain.
+
+This isn't a hack. The bridge was *meant* to be private to the internal network. The tunnel respects that boundary instead of punching a new public route through Caddy — and it deletes the entire "connected-but-not-authenticated" failure class by removing the transport that was demanding an auth flow the bridge never offered.
+
+## Verify end to end
+
+```bash
+echo '{"jsonrpc":"2.0","id":"1","method":"tools/list"}' | node <bridge-kernel>.mjs
+```
+
+A clean `tools/list` returns the full tool set instantly; a follow-up `tools/call` proves the path is live end to end.
+
+## The working shape
+
+```
+NixOS workstation                          Cloud VM
+─────────────────                          ────────
+Claude Code (CLI)
+  └─ MCP server → http://127.0.0.1:13001
+        │
+        │  SSH tunnel (LocalForward 13001 → 127.0.0.1:3001)
+        ▼
+                                           MCP bridge :3001  (private to internal net)
+                                              └─ ~200 tools → Claude swarm
+
+                                           Caddy :443 ──► chat UI :3000   (untouched)
+```
+
+## Takeaway
+
+When a system swears everything's fine but nothing works, don't trust the status badge — go read what the protocol is actually doing at the wire. A valid token got 401'd at the wrong door — judged by a basic-auth catch-all that never wanted a Bearer — and that 401 kicked off an auth flow the bridge couldn't finish. Point the connection straight at the private port over SSH and the mismatch doesn't get solved — it stops existing.
+
+*Part III pending, for whenever the next thing refuses to connect.*
