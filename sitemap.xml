@@ -2,19 +2,23 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 <url>
 <loc>https://thinktanktom.com</loc>
-<lastmod>2026-05-25T07:22:54.269Z</lastmod>
+<lastmod>2026-05-25T10:59:51.901Z</lastmod>
 </url>
 <url>
 <loc>https://thinktanktom.com/writing</loc>
-<lastmod>2026-05-25T07:22:54.269Z</lastmod>
+<lastmod>2026-05-25T10:59:51.901Z</lastmod>
 </url>
 <url>
 <loc>https://thinktanktom.com/contributions</loc>
-<lastmod>2026-05-25T07:22:54.269Z</lastmod>
+<lastmod>2026-05-25T10:59:51.901Z</lastmod>
 </url>
 <url>
 <loc>https://thinktanktom.com/about</loc>
-<lastmod>2026-05-25T07:22:54.269Z</lastmod>
+<lastmod>2026-05-25T10:59:51.901Z</lastmod>
+</url>
+<url>
+<loc>https://thinktanktom.com/writing/mcp-connected-no-tools</loc>
+<lastmod>2026-05-25</lastmod>
 </url>
 <url>
 <loc>https://thinktanktom.com/writing/self-hosted-ai-orchestration-ruflo-vm</loc>
