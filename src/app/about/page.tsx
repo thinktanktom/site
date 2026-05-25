@@ -28,63 +28,62 @@ export default function AboutPage() {
         <div className="mb-16">
           <div className="font-sans text-base text-text leading-[1.75] space-y-5">
             <p>
-              In my experience, I only visit the About page when
-              I&apos;m genuinely interested in a website. Concerningly interested.
+              &ldquo;What do you actually do?&rdquo; People have asked me this for years, my relations most of all,
+              and my answer never quite lands, no matter how I phrase it. The trouble is not that I lack an answer.
+              It is that the honest one sounds absurd: I am an engineer who refused, on principle, to become any
+              particular kind of engineer.
             </p>
             <p>
-              I&apos;m honoured. In an age where everything and everyone is competing for your attention,
-              you took a chance on me. As thanks, I&apos;d like to let you in on a small secret.
+              That refusal was deliberate. To specialise seemed to me a small tragedy, like marrying young and
+              forever wondering about all the marvellous problems you never courted. So I turned down the corporate
+              label, and the pretentious posture that tends to come stapled to it, and gave myself instead to the
+              one thing I genuinely enjoyed: solving puzzles.
             </p>
             <p>
-              Engineering isn&apos;t my one true love. There — I&apos;ve said it.
+              The first puzzle found me at university, where I tumbled by happy accident into image processing.
+              I read the papers. I redid the mathematics by hand* and then helped developers at a string of startups turn that arithmetic
+              into something that actually ran, in Python and in C++. They were splendid years, and they left me
+              with one article of faith I came to hold rather fanatically: that anything a human mind had dreamt
+              up, my mind could learn. Nothing lay beyond the reach of learning.
             </p>
             <p>
-              The origins of that admission are, tip my hat to Freud, paternal. My father had a
-              stubborn, almost Socratic commitment to dislodging me from whatever fixed position I
-              currently occupied. When I retreated inward, he demanded I look out. When I sought the
-              world, he pointed me back toward the interior. It was, at the time, profoundly irritating
-              — which is, of course, precisely the condition under which genuine education tends to occur.
+              That certainty was promptly put to the test. Fortified by it, I strode into a blockchain department
+              — and was fired by the end of the week.
             </p>
             <p>
-              What I came to understand, slowly, was this: competence accumulated across different
-              domains doesn&apos;t just broaden you. It shows you the underlying
-              structure of complexity as a whole.
+              I declined to take the hint; one cannot, after all, fire a belief. So in 2021 I joined Nord Finance
+              and spent three months learning to build, test, break, and deploy. They offered me a full-time post,
+              a flattering gesture, but my freelancing had by then grown plump enough to feed itself, and I let it.
             </p>
             <p>
-              Consider football. A game I was once abysmally bad at. At school, I got picked for teams
-              because I had "pace," which I later discovered was a generous euphemism for
-              *can run fast and do little else*. And there I might have stayed—a useful
-              sprinter, an ornamental presence—had I not, one day, decided in earnest to get
-              *good*.
-            </p>
-            <p>That decision unfolded into a world. Ball control gave way to team composition,
-            which gave way to positional play, until the game I had thought so simple
-            revealed itself as gloriously, dizzyingly complicated. And it would not stay on
-            the pitch. It crept into my diet, my sleep, my fitness, until eventually I
-            realised my whole life had quietly rearranged itself around the thing. Today I
-            can read an opponent's quality from the way they warm up. I can sync with a
-            teammate I've never spoken to through nothing more than a head nod or a
-            purposeful glance. What I arrive at, in those moments, is a kind of
-            familiarity—a quiet belonging. And it is that feeling, more than the game
-            itself, that I've come to chase into everything I pick up.</p>
-            <p>
-              The truth is that nothing I've learned has ever stayed where I first found it.
-              Every hobby I pick up bleeds into the next like ink through a wet page, and I've
-              stopped trying to keep them in their lanes. I think that's just how I'm built:
-              I don't take things up so much as fall into them, and I tend to keep falling
-              until the simple thing has revealed itself as a whole, complicated world worth
-              living inside. I'm nowhere near comprehending all of it, and I've found a
-              strange peace in knowing I never will—the bottom isn't really the point.
+              That same year brought the{' '}
+              <a href="https://bankx.io" target="_blank" rel="noopener noreferrer" className="text-accent underline underline-offset-4 hover:text-accent-dim transition-colors">BankX</a>
+              {' '}contract, and I have scarcely looked over my shoulder since. Its mathematics, its tokenomics,
+              its architecture were all gratifyingly complicated, more than enough to occupy a restless mind for
+              several years.
             </p>
             <p>
-              So if you find yourself concerningly interested in how drawing nude charcoal
-              sketches of small French men taught me about ZK proofs and private payments on
-              Stellar, or how being comfortably the worst player in a college football league
-              nudged me into freelancing, then you already understand the only thing this page
-              was ever trying to say. Stay a while. You're evidently as concerningly interested
-              in all this as I am—which makes us rather good company. 
+              But restless minds outlast their puzzles. By 2025 the major work had drawn to a close; we had tested
+              and deployed very nearly everything. So, after a &ldquo;break&rdquo; (by which I mean a stretch of intense
+              restlessness), I joined a family friend to build{' '}
+              <a href="https://ctrlbit.com" target="_blank" rel="noopener noreferrer" className="text-accent underline underline-offset-4 hover:text-accent-dim transition-colors">Ctrlbit</a>,
+              an SDWAN product for Mikrotik hardware here in India. It let me learn the magic behind the internet
+              and bend it to my own ends, which was a quiet thrill.
+            </p>
+            <p>
+              All of which brings me, at last, to the point of this page. Solving a hard problem means outwitting
+              it. Explaining it means something stranger and better: you give the answer away, and somehow you keep
+              it too. That second thing is rarer, harder, and the only kind of work that has ever held me. It is,
+              in the end, what I actually do.
             </p>
           </div>
+        </div>
+
+        {/* Footnotes */}
+        <div className="mb-16 pt-6 border-t border-border">
+          <p className="font-mono text-xs text-muted leading-relaxed">
+            * for I have never believed an equation simply because it asked nicely
+          </p>
         </div>
 
         {/* Currently */}
@@ -101,6 +100,7 @@ export default function AboutPage() {
             <li>Constantly worrying about identity and data ownership.</li>
           </ul>
         </div>
+
 
       </div>
     </main>
