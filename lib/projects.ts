@@ -14,6 +14,7 @@ export interface ProjectMeta {
   status: 'active' | 'completed' | 'archived'
   github?: string
   demo?: string
+  link?: string
   readTime: string
 }
 
@@ -43,6 +44,7 @@ export function getAllProjects(): ProjectMeta[] {
         status: (data.status as ProjectMeta['status']) ?? 'completed',
         github: data.github as string | undefined,
         demo: data.demo as string | undefined,
+        link: data.link as string | undefined,
         readTime: stats.text,
       }
     })
@@ -66,6 +68,7 @@ export function getProjectBySlug(slug: string): Project | null {
     status: (data.status as ProjectMeta['status']) ?? 'completed',
     github: data.github as string | undefined,
     demo: data.demo as string | undefined,
+    link: data.link as string | undefined,
     readTime: stats.text,
     content,
   }
