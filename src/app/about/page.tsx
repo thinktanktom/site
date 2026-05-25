@@ -41,7 +41,7 @@ export default function AboutPage() {
             </p>
             <p>
               The first puzzle found me at university, where I tumbled by happy accident into image processing.
-              I read the papers. I redid the mathematics by hand* and then helped developers at a string of startups turn that arithmetic
+              I read the papers. I redid the mathematics by hand<span className="text-accent">¹</span> and then helped developers at a string of startups turn that arithmetic
               into something that actually ran, in Python and in C++. They were splendid years, and they left me
               with one article of faith I came to hold rather fanatically: that anything a human mind had dreamt
               up, my mind could learn. Nothing lay beyond the reach of learning.
@@ -64,8 +64,7 @@ export default function AboutPage() {
             </p>
             <p>
               But restless minds outlast their puzzles. By 2025 the major work had drawn to a close; we had tested
-              and deployed very nearly everything. So, after a &ldquo;break&rdquo; (by which I mean a stretch of intense
-              restlessness), I joined a family friend to build{' '}
+              and deployed very nearly everything. So, after a break<span className="text-accent">²</span> I joined a family friend to build{' '}
               <a href="https://ctrlbit.com" target="_blank" rel="noopener noreferrer" className="text-accent underline underline-offset-4 hover:text-accent-dim transition-colors">Ctrlbit</a>,
               an SDWAN product for Mikrotik hardware here in India. It let me learn the magic behind the internet
               and bend it to my own ends, which was a quiet thrill.
@@ -81,9 +80,10 @@ export default function AboutPage() {
 
         {/* Footnotes */}
         <div className="mb-16 pt-6 border-t border-border">
-          <p className="font-mono text-xs text-muted leading-relaxed">
-            * for I have never believed an equation simply because it asked nicely
-          </p>
+          <div className="font-mono text-xs leading-relaxed space-y-1">
+            <p><span className="text-accent">1.</span><span className="text-muted"> for I have never believed an equation simply because it asked nicely</span></p>
+            <p><span className="text-accent">2.</span><span className="text-muted"> by which I mean a stretch of intense restlessness</span></p>
+          </div>
         </div>
 
         {/* Currently */}
