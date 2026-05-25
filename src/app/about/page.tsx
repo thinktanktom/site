@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Image from 'next/image'
 
 export const metadata: Metadata = {
-  title: 'On the Peculiar Virtue of the Concerned Reader',
+  title: 'About',
   description:
     'Thomas Cyriac — DeFi Protocol Developer, Smart Contract Architect, Open Source Contributor.',
 }
