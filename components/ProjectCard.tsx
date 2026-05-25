@@ -23,7 +23,7 @@ const statusLabel: Record<ProjectMeta['status'], string> = {
 
 export default function ProjectCard({ project }: { project: ProjectMeta }) {
   return (
-    <Link href={`/projects/${project.slug}`} className="block group">
+    <Link href={project.link ?? `/projects/${project.slug}`} className="block group">
       <article className="border border-border rounded-sm p-6 bg-surface/20 hover:border-accent/40 hover:-translate-y-1 transition-all duration-300">
         <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
           <div className="flex items-center gap-3">
