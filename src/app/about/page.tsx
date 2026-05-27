@@ -92,11 +92,11 @@ export default function AboutPage() {
             Currently
           </h2>
           <ul className="font-sans text-base text-text leading-[1.75] space-y-2 list-disc pl-4">
-            <li>Setting up AI supplemented environments to ship code more efficiently</li>
             <li>Building CollabGraph, A GitHub App and AT Protocol AppView that turns your pull request and review history into a verifiable, portable collaboration graph you own.</li>
             <li>
-              Writing about and contributing to DeFi. I don't believe in magic money or novel new get rich schemes. Finance will always be about practicality and smart decisions. Decentralized or not.
+              Building LockBox: a fork of IOTA HORNET v2.0.2 written in Go — a private IOTA fullnode with added asset-locking primitives (encrypted shards, ZKP ownership proofs, multi-sig, LockScript VM, tiered capabilities).
             </li>
+            <li>Setting up AI supplemented environments to ship code more efficiently</li>
             <li>Constantly worrying about identity and data ownership.</li>
           </ul>
         </div>
