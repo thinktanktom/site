@@ -1,0 +1,36 @@
+---
+title: "LockBox"
+date: "2025-06-05"
+excerpt: "A private IOTA node and programmable asset-locking sidecar — combining ChaCha20-Poly1305 encrypted shards, zero-knowledge ownership proofs, and a custom scripting language to lock any IOTA output under arbitrarily complex conditions."
+stack: ["Go", "IOTA / HORNET v2", "gRPC", "Protocol Buffers", "ChaCha20-Poly1305", "HKDF-SHA256", "Groth16 ZKP", "Ed25519", "Prometheus"]
+status: "active"
+link: "/projects/LockBox/introduction"
+---
+
+## What is LockBox?
+
+LockBox is a private IOTA node and asset-custody sidecar built on top of **IOTA HORNET v2.0.2**. It allows any IOTA address to lock a native token output under a time, signature, or programmatic condition — and prove ownership of that output without revealing sensitive data to the storage layer.
+
+The node runs on an isolated devnet (`lockbox-devnet`, native token: **LockCoin / LOCK**). Layered on top is the LockBox service — a Go sidecar exposing a **gRPC + REST API** for creating, querying, and releasing locked assets.
+
+My involvement in LockBox was focused on **security testing, AI workspace tooling, and developer infrastructure** around the project — building the testing harnesses, audit scaffolding, and AI-assisted development environments that the team used during active development.
+
+## Architecture
+
+The system divides into five layers:
+
+- **Node layer** — HORNET fork running the IOTA protocol on an isolated devnet. All UTXO state lives here.
+- **Service layer** (`internal/service`) — `LockAsset`, `UnlockAsset`, `EmergencyUnlock`, `GetAssetStatus`, `ListAssets`. Coordinates all sub-systems and enforces tier-gated capabilities.
+- **Crypto layer** (`internal/crypto`) — HKDF-SHA256 key derivation, ChaCha20-Poly1305 shard encryption, Groth16 zero-knowledge ownership proofs, and a decoy-shard system for storage indistinguishability.
+- **LockScript layer** (`internal/lockscript`) — A purpose-built scripting DSL with a lexer, parser, AST, bytecode compiler, and stack-based VM. Nine built-in functions including `after()`, `verify_sig()`, and `require_sigs()` for m-of-n Ed25519 multi-sig.
+- **B2B layer** (`internal/b2b`) — Partner-facing gRPC + REST server handling revenue sharing, public token sales, and security token offerings; integrated with a tiering manager.
+
+## Notable Design Decisions
+
+**Shard indistinguishability.** Asset data is encrypted and split into shards. Decoy shards — cryptographically identical in size and entropy to real shards — are mixed in at ratios determined by the service tier. The storage layer cannot distinguish real from decoy without the master key. Trial-decryption recovery eliminates the need to persist a shard-type map, which would defeat the indistinguishability guarantee.
+
+**HKDF purpose separation.** Every shard key is derived via HKDF-SHA256 with a domain-separated context string (`LockBox:shard:{bundleID}:{position}`). Real and decoy shards share the same derivation format intentionally — no type marker in the context — so the key stream is indistinguishable at rest.
+
+**ZKP ownership proofs.** Each `LockAsset` call generates a Groth16 proof binding the asset commitment to the owner's address and a random challenge. `UnlockAsset` verifies this proof before evaluating the LockScript, making ownership checks non-interactive and zero-knowledge.
+
+**LockScript.** Rather than a fixed set of unlock conditions, LockBox ships a small scripting language. A lock script is a string stored with the asset; at unlock time the service compiles it to bytecode and executes it in a sandboxed VM with the unlock context (current time, supplied signatures, etc.) injected as variables.
