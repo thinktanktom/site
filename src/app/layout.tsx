@@ -34,15 +34,17 @@ export const metadata: Metadata = {
     title: 'thinktanktom',
     description:
       'Thomas Cyriac — DeFi Protocol Developer & Smart Contract Architect.',
-    images: ['/ttt_logo_notag.svg'],
+    images: ['/ttt_logo.png'],
     type: 'website',
+    url: 'https://thinktanktom.com',
+    siteName: 'thinktanktom',
   },
   twitter: {
-    card: 'summary',
+    card: 'summary_large_image',
     title: 'thinktanktom',
     description:
       'Thomas Cyriac — DeFi Protocol Developer & Smart Contract Architect.',
-    images: ['/ttt_logo_notag.svg'],
+    images: ['/ttt_logo.png'],
   },
 }
 
@@ -54,6 +56,30 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${spaceMono.variable} ${dmSans.variable}`}>
       <body className="bg-bg text-text antialiased">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify([
+              {
+                '@context': 'https://schema.org',
+                '@type': 'WebSite',
+                name: 'thinktanktom',
+                url: 'https://thinktanktom.com',
+              },
+              {
+                '@context': 'https://schema.org',
+                '@type': 'Person',
+                name: 'Thomas Cyriac',
+                url: 'https://thinktanktom.com',
+                jobTitle: 'DeFi Protocol Developer & Smart Contract Architect',
+                sameAs: [
+                  'https://github.com/thinktanktom',
+                  'https://www.upwork.com/freelancers/thinktanktom',
+                ],
+              },
+            ]),
+          }}
+        />
         <Nav />
         {children}
         <Footer />

@@ -16,9 +16,25 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const doc = getDocBySlug(params.slug)
   if (!doc) return {}
+  const title = `${doc.title} — BankX Protocol`
+  const description = `BankX Protocol documentation: ${doc.title}`
   return {
-    title: `${doc.title} — BankX Protocol`,
-    description: `BankX Protocol documentation: ${doc.title}`,
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: 'article',
+      url: `https://thinktanktom.com/projects/BankX/${params.slug.join('/')}`,
+      siteName: 'thinktanktom',
+      images: ['/ttt_logo.png'],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: ['/ttt_logo.png'],
+    },
   }
 }
 

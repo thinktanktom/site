@@ -16,9 +16,25 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const doc = getDocBySlug(params.slug)
   if (!doc) return {}
+  const title = `${doc.title} — LockBox`
+  const description = `LockBox documentation: ${doc.title}`
   return {
-    title: `${doc.title} — LockBox`,
-    description: `LockBox documentation: ${doc.title}`,
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: 'article',
+      url: `https://thinktanktom.com/projects/LockBox/${params.slug.join('/')}`,
+      siteName: 'thinktanktom',
+      images: ['/ttt_logo.png'],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: ['/ttt_logo.png'],
+    },
   }
 }
 

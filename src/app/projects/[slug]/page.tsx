@@ -19,6 +19,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: project.title,
     description: project.excerpt,
+    openGraph: {
+      title: project.title,
+      description: project.excerpt,
+      type: 'article',
+      publishedTime: project.date,
+      url: `https://thinktanktom.com/projects/${params.slug}`,
+      siteName: 'thinktanktom',
+      images: ['/ttt_logo.png'],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: project.title,
+      description: project.excerpt,
+      images: ['/ttt_logo.png'],
+    },
   }
 }
 
@@ -46,8 +61,28 @@ export default function ProjectPage({ params }: Props) {
   const project = getProjectBySlug(params.slug)
   if (!project) notFound()
 
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'TechArticle',
+    headline: project.title,
+    description: project.excerpt,
+    datePublished: project.date,
+    keywords: project.stack.join(', '),
+    author: {
+      '@type': 'Person',
+      name: 'Thomas Cyriac',
+      url: 'https://thinktanktom.com',
+    },
+    url: `https://thinktanktom.com/projects/${params.slug}`,
+    image: 'https://thinktanktom.com/ttt_logo.png',
+  }
+
   return (
     <main className="pt-32 pb-24 px-6">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <div className="max-w-article mx-auto">
         <Link
           href="/projects"
@@ -58,7 +93,7 @@ export default function ProjectPage({ params }: Props) {
 
         <header className="mt-6 mb-12">
           <div className="flex flex-wrap items-center gap-3 mb-5">
-            <time className="font-mono text-xs text-muted tracking-wider">
+            <time dateTime={project.date} className="font-mono text-xs text-muted tracking-wider">
               {formatDate(project.date)}
             </time>
             <span className="text-border">·</span>
