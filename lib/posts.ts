@@ -12,6 +12,7 @@ export interface PostMeta {
   excerpt: string
   tags: string[]
   readTime: string
+  aiGenerated: boolean
 }
 
 export interface Post extends PostMeta {
@@ -38,6 +39,7 @@ export function getAllPosts(): PostMeta[] {
         excerpt: data.excerpt as string,
         tags: (data.tags as string[]) ?? [],
         readTime: stats.text,
+        aiGenerated: (data.aiGenerated as boolean) ?? false,
       }
     })
     .sort((a, b) => (a.date < b.date ? 1 : -1))
@@ -58,6 +60,7 @@ export function getPostBySlug(slug: string): Post | null {
     excerpt: data.excerpt as string,
     tags: (data.tags as string[]) ?? [],
     readTime: stats.text,
+    aiGenerated: (data.aiGenerated as boolean) ?? false,
     content,
   }
 }
