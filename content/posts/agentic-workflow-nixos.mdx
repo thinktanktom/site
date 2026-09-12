@@ -1,0 +1,390 @@
+---
+title: "My Agentic Dev Workflow on NixOS: How It's Built"
+date: "2026-09-12"
+excerpt: "A personal reference for the five-layer, language-agnostic workflow I run for agent-assisted development on NixOS: planning, tooling reuse, worktree isolation, a real-time devlog, and a local validation gate backed by GitHub branch protection."
+tags: ["nixos", "ai-tooling", "devops", "workflow", "claude-code"]
+aiGenerated: true
+---
+
+My own reference for the layered workflow I run for agent assisted development on this NixOS machine. The layers themselves are language agnostic. Only two things carry stack specifics: the Layer 1 domain skills, and each repo's own gate config.
+
+| Layer | Tool | What it gives me | Stack specific? |
+|---|---|---|---|
+| 1. Context | memory files + `npx skills` | Instructions reloaded every session | domain skills only |
+| 2. Planning | `lavish-axi` | Browser reviewable HTML plan artifacts I annotate | no |
+| 2a. Tooling | `~/dev/agent-library` | Reuse or generate skills and sub agents, cached across projects | entries tagged by stack |
+| 3. Isolation | `treehouse` | Pool of reusable git worktrees for parallel agents | no |
+| 3.5. Devlog | settings hook | Real time per project markdown log of edits, commands, and notes | no |
+| 4. Validation | `no-mistakes` | Local git proxy gating pushes behind review, test, lint, PR | yes, per repo config |
+
+Layer 5 (autonomy: `gnhf`, `firstmate`) is deliberately not installed.
+
+## Enforcement model, read this first
+
+The local gate is honor system. `git push origin <branch>` bypasses it completely, and so does `git push -o no-mistakes.skip=<stages>`. `no-mistakes` is a fast pre-flight plus an AI review I run on myself. It is not an enforced quality bar.
+
+The enforced bar is GitHub branch protection with required status checks. Set once per repo, under Settings, Branches, Add branch ruleset on `main`:
+
+- Require a pull request before merging
+- Require status checks to pass, selecting the CI job (`build-test`)
+- Require branches to be up to date before merging
+- Optionally include administrators, no bypass
+
+Or via the API:
+
+```
+gh api -X POST repos/{owner}/{repo}/rulesets --input ruleset.json
+```
+
+with a ruleset requiring `pull_request` and `required_status_checks` for `~DEFAULT_BRANCH`. With that in place the gate gives fast local signal and review, and CI is what actually blocks a bad merge even if I push straight to `origin`.
+
+## Layer 1: Context
+
+Entirely passive, nothing to invoke.
+
+**Global memory**: `~/.claude/CLAUDE.md` holds my stack, standing preferences, and a `## Skill-specific restrictions` section. Loaded every session. Backups at `~/.claude/CLAUDE.md.bak-*`.
+
+**Project memory templates**: `~/dev/templates/AGENTS.{generic,solidity,rust}.md`. Copy one into a repo as `AGENTS.md`, fill in build and test commands, layout, and the off limits list. Keep those commands identical to the repo's `.no-mistakes.yaml`.
+
+**Skills**: installed globally with `npx -y skills add <src> -g`, living in `~/.agents/skills/<name>` and symlinked into `~/.claude/skills/`. They self activate on trigger match.
+
+| Skill | Source | Blast radius | Notes |
+|---|---|---|---|
+| `claude-api` | `anthropics/skills` | none, reference only | |
+| `setup-solidity-contracts` | `openzeppelin/openzeppelin-skills` | none, advisory | |
+| `web3-testing` | `wshobson/agents` | none, advisory | |
+| `hardhat` | `nomicfoundation/hardhat-skills` | none, advisory | Assumes Hardhat 3 plus a companion toolbox skill that isn't installed. Confirm the repo's major version before trusting it. |
+| `solidity-auditor` | `pashov/skills` | real: auto fetches URLs, models exploits, self activates in any repo including client work | Contained by a CLAUDE.md rule (own contracts only, no URL fetch). If that feels thin, reinstall per repo instead of `-g`. |
+
+List with `npx -y skills list -g`, remove with `npx -y skills remove <name> -g`. Skills carry no version field, so record source and install date if reproducibility matters. Re-run `skills add` to update, fork the skill repo to pin.
+
+## Layer 2: Planning (lavish-axi)
+
+**Install**: skill only, at `~/.agents/skills/lavish`. The CLI runs ephemerally, and the version is pinned: `npx -y lavish-axi@0.1.67 <cmd>`, not bare `@latest`, since it's pre 1.0 and moves fast.
+
+**Config**: `LAVISH_AXI_HOST=127.0.0.1` in the `env` block of `~/.claude/settings.json`. This pins the server to loopback. Without it, it also binds the Tailscale IP. A non empty value additionally disables the Tailscale auto detect branch entirely. State dir `~/.lavish-axi/`, port 4387 via `LAVISH_AXI_PORT`.
+
+**Use**: the agent runs `npx -y lavish-axi@0.1.67 <file.html>` and hands back `http://127.0.0.1:4387/session/<id>`. I click elements in the browser and type notes onto them, the agent runs `poll <file>` to pull them back and revise, then `end <file>` to close the loop (`--reopen` to resume). The server self stops when idle. Plain chat for yes or no questions, Lavish is for things I'd rather review as a page.
+
+**Hard rules**, also written into CLAUDE.md: never run `lavish-axi share` (it publishes to the third party `ht-ml.app` host, and there is no mechanical block on this). Never point Lavish at client identifying content.
+
+**Uninstall**: `rm -rf ~/.agents/skills/lavish ~/.claude/skills/lavish ~/.lavish-axi`, then drop the `LAVISH_AXI_HOST` line from `settings.json`.
+
+## Layer 2a: Reuse or generate tooling lookup
+
+`~/dev/agent-library/` is a cache of reusable skills and sub agents. Before a build, the planning session works out what specialist tooling the build needs, reuses a library entry where one fits, and generates plus keeps a new entry where none does. Entries are copied into the target repo's `.claude/skills/` or `.claude/agents/`, never installed globally, because a global skill's `description` costs context every turn in every repo.
+
+Every Lavish build plan carries an "Execution tooling, reuse or generate" table, signed off before anything is written or copied.
+
+**The procedure the planning agent follows:**
+
+1. **Capability profile.** List what the build needs as `(need, stack, recurring?, one-off or durable, notes)`.
+2. **Cheaper tiers first, the ROI gate.** For each need, in order: base model plus already installed global skills cover it, so no library action; or it's repo specific convention rather than a reusable capability, so propose an `AGENTS.md` section instead; or it's a genuine one off, so keep it as an inline `Agent` spawn prompt. Only needs surviving all three continue.
+3. **Read `~/dev/agent-library/INDEX.md`.**
+4. **Match.** Semantic judgement on `capability` plus tags, then a hard check of the entry's `assumptions` against this repo (build tool, framework major version, std vs no_std). Classify as STRONG REUSE, REUSE+IMPROVE with the delta recorded, ASSUMPTION MISMATCH (treat as none, the Hardhat 2 vs 3 misfire class, but record the near miss), or NONE, meaning generate.
+5. **Decision table in the artifact**: `need | decision | entry or new name | version | assumptions to verify | frontmatter_grants | rationale`. Each GENERATE row gets a short spec. Nothing is written to the library or the repo until I sign off.
+6. **On approval, provision and stop.** Generate entries from `~/dev/agent-library/templates/`, human review the full draft in a follow up Lavish artifact, then `agent-lib reindex` and `agent-lib install <entry> <repo>` for each, and commit `.claude/**` on the feature branch the build will use. The build is a separate session.
+
+**Session boundary**, which is why step 6 stops there: a `SKILL.md` or agent file written now only loads at the next session start. So provision at plan time, `treehouse get` a worktree from the feature branch carrying the tooling commit rather than bare `main`, and the fresh build session picks it up at startup. If plan and build are the same session, use the drafted prompt as an inline `Agent` spawn for that run. The entry is still saved for next time.
+
+**Reuse mechanism**: `agent-lib install <entry> <repo>` copies the entry, never symlinks, since a worktree is a different path and the gate and CI check out fresh. It writes a `.library-ref` version stamp and bumps the entry's `used_by` and `last_used`, then prints the git commands for the planning agent to run.
+
+**Client repos**: never commit vendored tooling into one. If a client repo genuinely needs a library entry, that's an explicit per case call, as an uncommitted local copy in a personal worktree, never pushed.
+
+**When to skip all this**: if I'm concentrated in one repo and stack, the global skills plus one `AGENTS.md` already cover it. The library is the middle tier between an inline spawn and a global skill, and only earns its keep once it holds several entries. It starts empty.
+
+```
+agent-lib reindex                             # regenerate INDEX.md from every entry.yaml
+agent-lib lint                                # name, dir, vocab, activation vs description checks
+agent-lib install <entry> <repo> [--update]   # copy into <repo>/.claude/, stamp, print git cmds
+```
+
+No `--yes` or `--force`, and `install` refuses to overwrite without `--update`.
+
+## Layer 3: Isolation (treehouse)
+
+**Do I actually need this?** Its value is isolation: two or more agents on one repo without colliding, plus cache surviving across sessions. If I'm running one agent at a time, `git worktree add ../wt-$(date +%s) -b <branch>` in a shell function does the same job with no daemon. Treehouse is for genuine parallelism.
+
+**Install**: ephemeral flake, `nix run github:kunchenguid/treehouse -- <cmd>`. The built store path isn't pinned by any profile, so `nix store gc` reclaims it.
+
+**Config** at `~/.config/treehouse/config.toml`: `max_trees = 6`. Size this to real maximum concurrent agents, not aspirationally. `pre_destroy` is unset deliberately, because destruction should go through treehouse's own `prune` and `destroy`, which are dry run by default. A `pre_destroy` hook would be a second, silent code path for deleting worktrees.
+
+**The `post_create` hook** at `~/.config/treehouse/hooks/post_create.sh` is the piece I wrote myself, and it's now multi ecosystem. It detects `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `Cargo.lock`, or `go.{mod,sum}` and warms each with `npm ci`, `pnpm i --frozen-lockfile`, `yarn install --immutable`, `cargo fetch`, or `go mod download`. Nothing recognised means a clean no-op.
+
+The important part: it self verifies every ecosystem independently of the installer's exit code, because treehouse logs hook failures but doesn't fail acquisition. Without that, a broken `npm ci` hands back a worktree that looks acquired but has no `node_modules`, with nothing surfaced. Verification is `npm ls`, `cargo verify-project`, `go mod verify` and similar, and on failure it writes loudly to stderr and exits 1.
+
+The success sentinel is written outside the worktree, at `~/.cache/treehouse/post_create/<sha256(path)[:16]>.ok`, because a sentinel inside the worktree disqualifies that slot from pool reuse (treehouse's dirty check counts ignored and untracked files too). The sentinel is diagnostic output only: it's deleted at hook start and never read as an input, so a stale one at a recreated path cannot cause a skipped verification. Backup of the Node only original at `post_create.sh.bak-2026-09-10`.
+
+Pool storage lives at `~/.treehouse/<repo>-<hash>/` with a `treehouse-state.json`.
+
+```
+nix run github:kunchenguid/treehouse -- get           # interactive subshell in a pooled worktree
+nix run github:kunchenguid/treehouse -- get --lease   # scripts: prints the path to stdout
+nix run github:kunchenguid/treehouse -- return <path>
+nix run github:kunchenguid/treehouse -- status --json
+nix run github:kunchenguid/treehouse -- prune         # dry run, re-run with --yes to act
+```
+
+**Benchmark caveat**: the roughly 460ms pooled versus 770ms cold figure was measured on a toy repo with about 26 deps. It proves the cache skip path works, not that the speedup matters. On a real Hardhat or Cargo repo both the absolute numbers and the gap are much larger. Measure on the actual repo if the number matters.
+
+**Uninstall**: `nix store gc`, then `rm -rf ~/.config/treehouse ~/.cache/treehouse ~/.treehouse`.
+
+## Layer 3.5: Devlog
+
+The newest layer, and the only one that produces a record rather than consuming one. It exists so I don't have to ask an agent to summarise a session afterwards, which is the worst possible time to ask: the reconstruction is post hoc, partial, and flattering.
+
+**Mechanism**: a hook registered in `~/.claude/settings.json`. Nothing to invoke and nothing to remember, so on the automatic end of the scale alongside Layer 1.
+
+**What it writes**: one line per event to a per project markdown file, appended as the session runs. Two kinds of content interleaved:
+
+- *Mechanical events*, written by the hook itself: every file edit, every command run. This is the ledger, and it's complete by construction because the hook fires on the event rather than relying on the agent to report it.
+- *Narrative notes*, written by the agent, which is nudged to add a short line at natural pauses. This is what makes the ledger readable later: a list of forty edits tells you nothing about why, and one sentence every so often turns it into a story.
+
+The split matters. The mechanical half can't be forgotten or editorialised, and the narrative half can't drown you, since the agent only writes at pauses rather than per action.
+
+**Edit coalescing**: repeated edits to the same file collapse into a single entry rather than producing forty near identical lines. This is why the format is strictly one line per event: the coalescing logic reads the log's last line to decide whether the incoming event extends it. See the corresponding bug below, which is exactly what happens when an input violates that assumption.
+
+**Where the log lives**: outside the repo it describes, not inside it. This is the same constraint that shaped the treehouse sentinel file: a worktree's dirty check counts untracked and ignored files too, so a log file written into a repo would disqualify that worktree from pool reuse, and would also show up in every `git status` and every gate run's diff. Second time that rule has bitten in this stack, so treat it as general: anything this workflow generates about a repo goes beside the repo, never in it.
+
+**How it relates to the other memory surfaces**: `CLAUDE.md` is standing instruction, loaded every session and costing context every turn, so it stays short. `AGENTS.md` is per repo convention, committed, and read by anything working in that repo. The devlog is neither. It's a write mostly record of what happened, not an instruction to anyone, and it isn't loaded into context by default. Keeping that boundary clear is what stops it turning into a third instruction file that quietly competes with the other two.
+
+## Layer 4: Validation (no-mistakes)
+
+**Install**: `~/go/bin/no-mistakes` v1.71.0, static cgo free build, on PATH for interactive use via `/etc/nixos/configuration.nix:121`.
+
+**Two PATH mechanisms, independent, don't conflate them:**
+
+1. The daemon's PATH comes from the systemd drop-in at `~/.config/systemd/user/no-mistakes-daemon-<id>.service.d/override.conf`. Self contained, nothing else needed. This is what fixed the "`ps` not found" bug.
+2. My shell's PATH gets `~/go/bin` from `configuration.nix:121` purely so I can type `no-mistakes` interactively. The daemon does not depend on this at all. That line could move to `~/.profile` or home-manager with zero effect on the daemon.
+
+**Auth**: `agent: claude` drives my logged in `claude` CLI, so subscription quota rather than an API key. `no-mistakes doctor` should show `✓ claude` and `✓ gate validation`.
+
+**Quota contention**: the `review`, `intent`, and `document` stages spend the same rate limit quota as the agent writing my code, so on a heavy day they compete. Mitigations are running the slim gate (below), or `-o no-mistakes.skip=review` while iterating and saving the full gate for the branch I actually intend to ship. Worth watching headroom on a normal push day before relying on this for client work.
+
+### Per repo setup
+
+Per repo, so `no-mistakes init` in each one. It adds a `no-mistakes` remote pointing at `~/.no-mistakes/repos/<hash>.git`, leaves `origin` untouched, starts the daemon, and installs the `/no-mistakes` skill.
+
+`.no-mistakes.yaml` is language specific, so start from a template:
+
+| Stack | Gate config | CI workflow |
+|---|---|---|
+| Node / TypeScript | `~/dev/templates/no-mistakes/nodejs.yaml` | `~/dev/templates/ci/nodejs.yml` |
+| Solidity (Hardhat) | `…/no-mistakes/solidity-hardhat.yaml` | `…/ci/solidity-hardhat.yml` |
+| Solidity (Foundry) | `…/no-mistakes/solidity-foundry.yaml` | `…/ci/solidity-foundry.yml` |
+| Rust / Cargo | `…/no-mistakes/rust.yaml` | `…/ci/rust.yml` |
+| Go | `…/no-mistakes/go.yaml` | `…/ci/go.yml` |
+| anything else | `…/no-mistakes/generic.yaml` | none |
+
+Only the Node template is battle tested, since it's the one running on `research-harness`. The Solidity, Rust, and Go templates are written from the docs but have not been pushed through a live gate run. When I first gate one of those repos, push a trivial branch and note which stages fail versus park, then adjust.
+
+Every template already sets:
+
+- **`commands.{prepare,test,lint}`** mapped to that stack's real tools. Config is honored only from the default branch at a pinned SHA, so every tuning change needs a commit to `main` before it takes effect. Slow by design, budget for it.
+- **`auto_fix: {review: 0, test: 0}`** so a failing test or blocking finding parks for my decision instead of being silently rewritten.
+- **`protected_paths`**, the enforced form of an `AGENTS.md` off limits list: secrets (`**/.env*`, `*.pem`, `*.key`), lockfiles, deployment records (`deployments/**`, `broadcast/**`), and `.claude/**`. Rules that aren't path expressible, like "a contract already verified on chain", stay as `AGENTS.md` prose.
+- **`review.path_instructions`** with stack appropriate focus: storage layout and access control for Solidity, `unsafe` and `unwrap` for Rust, ignored errors for Go.
+
+**The `document` stage** runs the agent on every in scope change, so decide what it means for the repo rather than discovering it mid run. Either give it a contract via `document.instructions` (for example, changed public API must update its doc comment, NatSpec, or rustdoc), or skip it per push with `-o no-mistakes.skip=document`. There is no standing `document: off` key.
+
+**CI: hand write it.** `no-mistakes ci-workflow` emits a Go shaped `.github/workflows/ci.yml` for every language. Copy the CI template for the stack instead, and keep its `run:` lines in sync with `.no-mistakes.yaml`.
+
+### Full gate versus slim gate
+
+**Full gate** means `commands.test` and `commands.lint` are set, and the gate runs them locally in its worktree before pushing, so failure is fast without waiting on a CI queue. The cost is re-running serially what CI will run again, and spending quota.
+
+**Slim gate** means leaving `test` and `lint` unset, or always skipping them. The gate then does only `review`, which is the thing CI can't do, plus rebase, push, and PR. CI enforced by branch protection is the test and lint bar.
+
+Recommendation: slim gate plus branch protection for any repo that has CI, full gate for repos without CI or when I specifically want pre-push signal on a slow test suite.
+
+### gh and the PR/CI stages
+
+Currently a classic token with `repo`, `read:org`, `gist` scopes, plaintext in `~/.config/gh/hosts.yml` because the daemon can't reach the OS keyring. `repo` is broad and `gist` is unused. The better setup is a fine grained PAT scoped to just the gated repos, with Contents read/write and Pull requests read/write:
+
+```
+# create at github.com/settings/personal-access-tokens
+printf '%s' "$TOKEN" | gh auth login --with-token   # writes to hosts.yml, daemon readable
+gh auth status
+```
+
+Or skip `gh` entirely, since `pr` and `ci` auto skip without it and I can open PRs by hand.
+
+### Use
+
+```
+git push no-mistakes <branch>                                   # run the gate
+git push -o no-mistakes.skip=document,ci no-mistakes <branch>   # skip stages for one push
+/no-mistakes                        # Claude Code: validate committed work on current branch
+/no-mistakes <task>                 # Claude Code: do the task, commit on a branch, then validate
+no-mistakes axi status              # where is the run parked?
+no-mistakes axi respond --action approve | --action fix --findings <id> | --action skip
+no-mistakes axi logs --step review --full
+no-mistakes axi abort               # discard the active run
+no-mistakes rerun --intent "..."    # re-run the pipeline from the gate branch
+no-mistakes doctor
+```
+
+A run never advances past a gate on its own, I always respond.
+
+### Daemon recovery
+
+The unit has `Restart=always` and `RestartSec=2`, so a crashed daemon comes back on its own within seconds.
+
+```
+systemctl --user status no-mistakes-daemon-<id>.service
+systemctl --user restart no-mistakes-daemon-<id>.service
+no-mistakes daemon status | start | restart
+```
+
+If it died mid run, `no-mistakes axi status` after restart shows the run's last persisted state, since steps are checkpointed in SQLite. A run that can't resume gets cleared with `no-mistakes axi abort`, which leaves the branch and its commits untouched, then re-push for a fresh run. `no-mistakes doctor` flags a wedged daemon or stale lock.
+
+### Bypass and uninstall
+
+Emergency bypass is `git push origin <branch>`. Dropping the gate from one repo is `no-mistakes eject`. Full teardown:
+
+```
+cd <repo> && no-mistakes eject
+systemctl --user disable --now no-mistakes-daemon-<id>.service
+rm -rf ~/.config/systemd/user/no-mistakes-daemon-<id>.service*
+systemctl --user daemon-reload
+rm -rf ~/.no-mistakes ~/.agents/skills/no-mistakes ~/.claude/skills/no-mistakes
+rm -rf ~/go                       # binary plus Go module cache
+nix profile remove gh             # if not wanted otherwise
+```
+
+Then drop `configuration.nix:121` and rebuild if desired.
+
+## The daily loop
+
+1. **Plan**: ask for a plan, comparison, or architecture sketch. The agent writes a Lavish artifact, I annotate in the browser, it polls my notes back. Plain chat for yes or no. For a build task the plan also carries the Layer 2a reuse or generate tooling table, and on approval the approved skills and agents are vendored into the repo and committed on the feature branch.
+2. **Isolate**: `treehouse get` for a pooled worktree with warm deps, from the feature branch so vendored tooling is present. Skip this if only ever running one agent at a time.
+3. **Build**: the agent works in that worktree on a feature branch. The devlog hook records every edit and command as this happens, with the agent adding narrative lines at pauses. Nothing to do here, it's passive.
+4. **Gate**: `git push no-mistakes <branch>` or `/no-mistakes` in Claude Code. Broken code parks, green code forwards to `origin` and opens a PR.
+5. **Merge**: review the PR on GitHub, merge, `treehouse return <path>`. The devlog is the thing to read if I need to reconstruct what the session actually did.
+
+Minimum viable version of all this: develop normally, and when a branch is ready to ship, type `/no-mistakes`. That one habit buys the review, test, lint, and PR gate. Reach for Lavish and treehouse only when the task is big enough.
+
+## Using it: what I actually type
+
+Most of this needs no special incantation. Skills self activate on trigger match, so the planning and domain layers respond to plain English. Treehouse is a terminal command, the gate is a slash command or a push, and the devlog is passive. There are only two places where wording genuinely changes the outcome, both in the planning session, and they're marked below.
+
+### 1. Opening a task: the planning session
+
+Run this in a normal session, not inside a worktree, since nothing is being built yet.
+
+> I want to `<goal>` in `<repo>`. Plan it as a Lavish artifact, with the options laid out side by side. Include the execution tooling reuse or generate table.
+
+Two things in that prompt are load bearing:
+
+- **"as a Lavish artifact"**, because the skill triggers on planning language but a bare "how should I do X" reliably gets chat prose instead. Naming the artifact is the reliable trigger.
+- **"include the execution tooling reuse or generate table"**, because the Layer 2a procedure is a convention, not a mechanism. Nothing enforces it. Without the ask, the agent goes straight to a build plan and the library never gets consulted or grown.
+
+If the artifact comes back without the tooling table, ask for it rather than proceeding. That table is the only point where the library is read, and skipping it is how a library stays permanently empty.
+
+### 2. Annotating the artifact
+
+Open the loopback URL, click an element, type the note. What works: decisions and constraints, not reactions. "Use the second approach, but the retry budget is wrong, make it 3" is actionable. "Not sure about this" produces another round trip. Then:
+
+> Poll the artifact and revise.
+
+Repeat until the plan is right, then:
+
+> End the session.
+
+### 3. Provisioning tooling, then stopping
+
+If the table has GENERATE rows, approve them explicitly, and expect the session to stop after provisioning rather than continuing into the build:
+
+> Approved. Generate those entries, show me the drafts for review, then reindex, install into the repo, and commit the tooling on the feature branch. Don't start the build.
+
+The stop is deliberate. A `SKILL.md` written now only loads at the next session start, so the build has to be a fresh session or the new tooling is invisible to it. If I want the build in this same session anyway, the way to get the capability is an inline spawn instead:
+
+> Use that drafted spec as an `Agent` prompt for this run, and save the entry to the library for next time.
+
+### 4. Getting a worktree
+
+Terminal, not the agent, since `get` drops you into a subshell and the agent's working directory won't follow it:
+
+```
+nix run github:kunchenguid/treehouse -- get
+```
+
+Then start the agent from inside that worktree. Check the branch is the feature branch carrying the tooling commit, not bare `main`, or the vendored skills aren't there. Skip this step entirely when only one agent is running.
+
+### 5. The build session
+
+Open with the constraints rather than the task, because the first message is the one that sets the frame:
+
+> Working in this worktree on branch `<branch>`. Read `AGENTS.md` first. Implement `<the approved plan>`. Commit in logical chunks.
+
+"Read `AGENTS.md` first" is worth saying even though the file is meant to load on its own, since it costs nothing and makes the off limits list explicit before any edit happens.
+
+For the devlog, nothing is needed, the hook runs on its own. The one thing worth doing manually is asking for a narrative line when something non obvious happens, because the automatic nudge fires at pauses and won't know a given decision mattered:
+
+> Log a note about why we went with `<X>` over `<Y>`.
+
+### 6. Gating
+
+Either form works:
+
+```
+git push no-mistakes <branch>
+```
+
+> /no-mistakes
+
+Then respond to whatever parks. `no-mistakes axi logs --step review --full` for the detail, then approve, fix a specific finding, or skip. Resist the urge to approve a parked review without reading it, since `auto_fix` was set to zero precisely so a human looks at these.
+
+### 7. Merging
+
+Review the PR on GitHub, merge, then release the worktree:
+
+```
+nix run github:kunchenguid/treehouse -- return <path>
+```
+
+### Prompts worth keeping around
+
+- **Plan**: "Plan `<goal>` as a Lavish artifact with options side by side. Include the execution tooling reuse or generate table."
+- **Revise**: "Poll the artifact and revise."
+- **Provision only**: "Generate and install the approved tooling, commit it on the feature branch, then stop. Don't start the build."
+- **Build**: "Working in this worktree on `<branch>`. Read `AGENTS.md` first. Implement `<plan>`. Commit in logical chunks."
+- **Note**: "Log a note about why we went with `<X>` over `<Y>`."
+- **Ship**: "/no-mistakes"
+
+### Things that don't work
+
+- **Asking the build session to also plan.** The tooling it needs won't be loaded, because provisioning and loading are separated by a session boundary.
+- **Running `treehouse get` through the agent.** It's an interactive subshell. Use `--lease` if something really does need the path programmatically.
+- **Editing `settings.json` mid session and expecting it to apply.** Environment is read at session start. Pass the variable inline until the next fresh session.
+- **Assuming the gate blocks anything.** It parks for me. A plain `git push origin` walks straight past it, which is why branch protection is the real bar.
+
+## Version control
+
+`~/dev/` is a git repo now, backed up to a private GitHub remote at `git@github.com:thinktanktom/NixOSAgenticWorkflow.git`. Repo local config sets my name and email, `commit.gpgsign=true` and the existing signing key, so commits are GPG signed, sole author, no co-author or agent trailers. `agent-library/` was its own single commit repo and got absorbed so everything lives under one remote.
+
+`.gitignore` covers OS and editor cruft, `*.bak-*` (my config backup convention), and dependency and build output in case a template is ever exercised in place. `agent-library/INDEX.md` is tracked on purpose: it's generated, but the checked in copy is what the planning agent reads.
+
+Not tracked here, because it lives elsewhere on the machine: `~/.claude/CLAUDE.md`, `~/.claude/settings.json`, `~/.config/treehouse/`, `~/.config/systemd/user/no-mistakes-daemon-*`, and each gated repo's own `.no-mistakes.yaml` and `.github/workflows/ci.yml`. This repo is docs, reusable templates, and the library.
+
+## Bugs to watch for if rebuilding this
+
+1. **Gate push refused with `exec: "ps": executable file not found in $PATH`.** The generated systemd unit ships an FHS only PATH, which doesn't exist on NixOS. Fix with a drop-in at `~/.config/systemd/user/no-mistakes-daemon-<id>.service.d/override.conf` setting `Environment="PATH=/run/wrappers/bin:/home/thinktanktom/.nix-profile/bin:/etc/profiles/per-user/thinktanktom/bin:/nix/var/nix/profiles/default/bin:/run/current-system/sw/bin:/home/thinktanktom/go/bin"`, then `systemctl --user daemon-reload && systemctl --user restart`. Recreate after any `no-mistakes update` or re-`init` that regenerates the unit.
+2. **`no-mistakes ci-workflow` emits a Go workflow** regardless of language. Don't run it, use `~/dev/templates/ci/<stack>.yml`.
+3. **Gate "passes" a broken test by auto repairing it.** Default is `auto_fix.test: 3`. All templates set `auto_fix: {review: 0, test: 0}` so breakage parks. Test the block before trusting the pass.
+4. **`tsc --noEmit` fails `TS5097` on `.ts` import extensions.** Test files import `./x.ts` explicitly, needed by `node --import tsx --test`. Add `--allowImportingTsExtensions`.
+5. **`ci` stage hangs with "no CI checks reported yet".** Repo has no `.github/workflows`. Add the CI template, or `no_ci: true`, or skip `ci`, or `axi abort` once the PR is open.
+6. **`go install` fails with `cgo: C compiler "gcc" not found`.** Prefix `CGO_ENABLED=0`, since no-mistakes ships pure Go SQLite.
+7. **`git push origin main` rejected with `(fetch first)` after a PR merge.** `git fetch origin && git rebase origin/main`, then push.
+8. **`settings.json` `env` not taking effect.** It applies at session start, a running session doesn't inherit edits. Pass the var inline until the next fresh session.
+9. **treehouse hook "succeeded" but deps are missing.** Non-zero hook exit is logged, not fatal. Check the sentinel or just run `npm ls` in the worktree rather than trusting that `get` returned a path.
+10. **`destroy --yes` or `prune --yes` blocked mid session.** Claude Code's auto mode classifier refuses `--yes` and `--force`. Run those manually in a terminal.
+11. **Daemon crashed mid run.** It auto restarts. Then `axi status` for resumable state, `axi abort` plus re-push if it can't resume.
+12. **Devlog entries mangled after a multi-line shell command.** A command spanning several lines breaks the one line per event format, and with it the edit coalescing, which reads the log's last line and assumes it really is one line. Fix is collapsing embedded newlines into a visible separator before the line is written. If coalescing ever starts misbehaving, check whether something wrote a raw newline into the ledger.
+
+## Still outstanding
+
+- Branch protection and required status checks on `research-harness` and any future gated repo. This is the actual enforcement layer, and it's one time per repo.
+- Replacing the broad classic `gh` token with a fine grained PAT.
+- Live testing the Solidity, Rust, and Go gate templates, which needs a repo of that stack I own and can push through the gate.
+- Optionally moving `configuration.nix:121` to `~/.profile`, which is cosmetic since the daemon doesn't care.
