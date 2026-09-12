@@ -3,6 +3,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { getAllPosts, getPostBySlug } from '@lib/posts'
 import MDXContent from '@components/MDXContent'
+import AiNotesNotice from '@components/AiNotesNotice'
 
 interface Props {
   params: { slug: string }
@@ -108,6 +109,8 @@ export default function PostPage({ params }: Props) {
             ))}
           </div>
         </header>
+
+        {post.aiGenerated && <AiNotesNotice />}
 
         <article>
           <MDXContent source={post.content} />

@@ -3,6 +3,7 @@ title: "Connected, but Not Authenticated"
 date: "2026-05-25"
 excerpt: "Claude Code reported my MCP server 'connected but not authenticated' — TLS fine, token valid, zero tools. The culprit wasn't the token. It was a 401 from a route that never wanted a Bearer in the first place, and what that 401 set in motion."
 tags: ["mcp", "debugging", "devops", "ai-tooling", "self-hosted"]
+aiGenerated: true
 ---
 
 ### *Part II — wiring my own Claude Code CLI to the same self-hosted VM that served the Chat UI from Part I.*

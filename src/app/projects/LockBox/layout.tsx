@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import LockBoxDocSidebar from '@components/LockBoxDocSidebar'
+import AiDocNotice from '@components/AiDocNotice'
 
 export default function LockBoxDocLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -22,6 +23,9 @@ export default function LockBoxDocLayout({ children }: { children: React.ReactNo
           </Link>
           <span className="text-border font-mono text-xs">/</span>
           <span className="font-mono text-xs text-accent tracking-wider">Docs</span>
+          <div className="ml-auto">
+            <AiDocNotice />
+          </div>
         </div>
       </div>
 

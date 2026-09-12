@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import BankXDocSidebar from '@components/BankXDocSidebar'
+import AiDocNotice from '@components/AiDocNotice'
 
 export default function BankXDocLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -22,6 +23,9 @@ export default function BankXDocLayout({ children }: { children: React.ReactNode
           </Link>
           <span className="text-border font-mono text-xs">/</span>
           <span className="font-mono text-xs text-accent tracking-wider">Docs</span>
+          <div className="ml-auto">
+            <AiDocNotice />
+          </div>
         </div>
       </div>
 
