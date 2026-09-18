@@ -31,7 +31,7 @@ The logo (`thinktanktom_logo.png`) is a **pixel-art retro computer** with a city
   --surface:    #111111;   /* slightly lighter for cards/sections */
   --border:     #222222;   /* subtle dividers */
   --text:       #f0f0f0;   /* off-white body text */
-  --muted:      #666666;   /* secondary / metadata text */
+  --muted:      #808080;   /* secondary / metadata text — updated from #666666 for WCAG AA contrast (2026-09-18 audit) */
   --accent:     #e8ff00;   /* electric yellow — single pop of colour */
   --accent-dim: #b8cc00;   /* hover state for accent */
 }
@@ -286,3 +286,18 @@ Replace placeholders before first deploy:
 - [ ] `next build` passes with zero errors
 - [ ] Lighthouse performance score ≥ 90 on mobile
 - [ ] No placeholder "Lorem ipsum" text left in the final build
+
+---
+
+## Site Audit — 2026-09-18
+
+A full performance/accessibility/SEO/code-quality pass was run across the site (4 parallel agents, each isolated in its own git worktree, then squash-merged). No visual regressions — verified against baseline screenshots at desktop/tablet/mobile for all key pages. Highlights, since they change facts stated elsewhere in this file:
+
+- **Linting is now real**: `npm run lint` previously had no ESLint installed (the script existed but errored). `eslint` + `eslint-config-next@14.2.35` are now devDependencies with a `.eslintrc.json` extending `next/core-web-vitals`. Both `npm run lint` and `npx tsc --noEmit` pass clean.
+- **`--muted` changed from `#666666` to `#808080`** (see Color Palette above) — the old value failed WCAG AA contrast (~3.3–3.45:1) against `--bg`/`--surface` for the body-sized text it's used at everywhere (metadata, excerpts, tags). `#808080` gives ~4.7–5.0:1. No other palette values changed.
+- **Reduced motion**: all CSS animations (hero fade-up, nav underline-draw, card hover-lift) now respect `prefers-reduced-motion: reduce` in `globals.css`.
+- **Focus states**: added a global `:focus-visible` outline (dark themes tend to accidentally suppress the browser default) plus proper `aria-expanded`/`aria-controls`/dialog semantics + Escape-to-close on both mobile nav overlays (`Nav.tsx`, `BankXDocSidebar.tsx`, `FractalWebhookDocSidebar.tsx`).
+- **SEO**: every route now has a canonical URL, dedicated OG/Twitter metadata (previously several pages silently inherited the generic homepage OG block), and `sitemap.ts` now includes the ~29 BankX documentation pages it was missing entirely.
+- **Dead code removed**: `lib/lockbox-sidebar.ts` (leftover from the removed LockBox project).
+- **Known tradeoff, deliberately not fixed**: `eslint-config-next@14.2.35`'s transitive `glob` dependency has a known CLI-injection advisory; fixing it means bumping to `eslint-config-next@16` (breaking, needs Next 15+/ESLint 9). Left alone — it's a dev-only build tool, not shipped to the static output, and the breaking upgrade wasn't in scope for this pass.
+- The two OG-preview PNGs (`public/ttt_logo.png`, `public/ttt_icon.png`) are oversized (8000×4500) for their use but weren't touched — no image tool was available in the audit environment, and they're fetched only by social-media crawlers, never by site visitors, so they don't affect Core Web Vitals.
