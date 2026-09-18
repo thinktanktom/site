@@ -1,16 +1,35 @@
 import type { Metadata } from 'next'
 import Image from 'next/image'
 
+const description =
+  'Thomas Cyriac — DeFi Protocol Developer, Smart Contract Engineer, Open Source Contributor.'
+
 export const metadata: Metadata = {
   title: 'About',
-  description:
-    'Thomas Cyriac — DeFi Protocol Developer, Smart Contract Engineer, Open Source Contributor.',
+  description,
+  alternates: { canonical: '/about' },
+  openGraph: {
+    title: 'About — thinktanktom',
+    description,
+    type: 'profile',
+    url: 'https://thinktanktom.com/about',
+    siteName: 'thinktanktom',
+    images: ['/ttt_logo.png'],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'About — thinktanktom',
+    description,
+    images: ['/ttt_logo.png'],
+  },
 }
 
 export default function AboutPage() {
   return (
     <main className="pt-32 pb-24 px-6">
       <div className="max-w-chrome mx-auto">
+        <h1 className="sr-only">About Thomas Cyriac</h1>
+
         {/* Logo as title */}
         <div className="mb-16 flex justify-center">
           <Image
