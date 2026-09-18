@@ -95,7 +95,7 @@ export default function AboutPage() {
           <ul className="font-sans text-base text-text leading-[1.75] space-y-2 list-disc pl-4">
             <li>Building CollabGraph, A GitHub App and AT Protocol AppView that turns your pull request and review history into a verifiable, portable collaboration graph you own.</li>
             <li>
-              Building and hardening the self-hosted Claude Code / Ruflo agent-orchestration servers a client uses to build LockBox — an IOTA-based asset-locking platform with encrypted shards, ZKP ownership proofs, and a LockScript VM. The AI dev system is mine; LockBox itself is the client&apos;s.
+              Building and hardening self-hosted Claude Code / Ruflo agent-orchestration infrastructure for a client — the servers, not the product the agents build with them.
             </li>
             <li>Setting up AI supplemented environments to ship code more efficiently</li>
             <li>Constantly worrying about identity and data ownership.</li>
