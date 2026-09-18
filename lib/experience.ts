@@ -9,21 +9,23 @@ export interface ExperienceEntry {
   link?: { href: string; label: string }
 }
 
-// Newest first. Curated from a private work-history record — short
-// consultations are merged or omitted for readability; financial
-// figures are left out. Direct clients and named companies below;
-// standalone Upwork-channel engagements are grouped separately in
-// `upworkProjects`.
+// Curated from a private work-history record — short consultations are
+// merged or omitted for readability; financial figures are left out.
+// Direct clients and named companies below; standalone Upwork-channel
+// engagements are grouped separately in `upworkProjects`. Order is
+// deliberate (BankX and the AI orchestration role lead), not strict
+// chronology.
 export const experience: ExperienceEntry[] = [
   {
-    role: 'Trading Infrastructure Engineer',
-    org: 'Independent client',
-    start: 'Jun 2026',
+    role: 'Lead Smart Contract Engineer',
+    org: 'BankX Protocol',
+    orgLink: 'https://bankx.io',
+    start: 'Oct 2021',
     end: 'Present',
     summary:
-      'Signal-delivery infrastructure for a Micro E-mini S&P 500 futures bot: a Spring Boot webhook server queuing TradingView alerts, a Python polling client, and a Telegram notifier for trade and system events.',
-    stack: ['Java', 'Spring Boot', 'SQLite', 'Python', 'Caddy'],
-    link: { href: '/projects/FractalWebhook/introduction', label: 'Project writeup' },
+      'Wrote and deployed the XSD/BankX contract suite — a silver-pegged stablecoin with no liquidations, PID-controlled collateral ratios, and protocol-owned liquidity — live across 8 chains and covered by CoinFabrik and independent audits plus an active Immunefi bug bounty. Implementation and testing are mine; the protocol’s economic design is the founding team’s.',
+    stack: ['Solidity', 'Hardhat', 'Foundry', 'Chainlink', 'OpenZeppelin'],
+    link: { href: '/projects/BankX/introduction', label: 'Project writeup' },
   },
   {
     role: 'AI Agent-Orchestration Engineer',
@@ -36,6 +38,16 @@ export const experience: ExperienceEntry[] = [
     link: { href: '/writing/self-hosted-ai-orchestration-ruflo-vm', label: 'Writeup' },
   },
   {
+    role: 'Trading Infrastructure Engineer',
+    org: 'Independent client',
+    start: 'Jun 2026',
+    end: 'Present',
+    summary:
+      'Signal-delivery infrastructure for a Micro E-mini S&P 500 futures bot: a Spring Boot webhook server queuing TradingView alerts, a Python polling client, and a Telegram notifier for trade and system events.',
+    stack: ['Java', 'Spring Boot', 'SQLite', 'Python', 'Caddy'],
+    link: { href: '/projects/FractalWebhook/introduction', label: 'Project writeup' },
+  },
+  {
     role: 'Network Engineer',
     org: 'Ctrlbit',
     orgLink: 'https://ctrlbit.com',
@@ -44,17 +56,6 @@ export const experience: ExperienceEntry[] = [
     summary:
       'Co-built an SD-WAN product for MikroTik hardware with a family friend — dual-SIM failover via GenieACS/TR-069 and a guide for network-booting OpenWRT onto RouterBOARD devices. The venture wound down after import-tax changes on the hardware.',
     stack: ['MikroTik RouterOS', 'OpenWRT', 'GenieACS', 'Node.js'],
-  },
-  {
-    role: 'Lead Smart Contract Engineer',
-    org: 'BankX Protocol',
-    orgLink: 'https://bankx.io',
-    start: 'Oct 2021',
-    end: 'Present',
-    summary:
-      'Wrote and deployed the XSD/BankX contract suite — a silver-pegged stablecoin with no liquidations, PID-controlled collateral ratios, and protocol-owned liquidity — live across 8 chains and covered by CoinFabrik and independent audits plus an active Immunefi bug bounty. Implementation and testing are mine; the protocol’s economic design is the founding team’s.',
-    stack: ['Solidity', 'Hardhat', 'Foundry', 'Chainlink', 'OpenZeppelin'],
-    link: { href: '/projects/BankX/introduction', label: 'Project writeup' },
   },
   {
     role: 'Blockchain Developer',

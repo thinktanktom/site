@@ -16,8 +16,8 @@ export default function ExperiencePage() {
           Experience.
         </h1>
         <p className="font-sans text-lg text-muted mb-16 leading-relaxed">
-          Six years, roughly in reverse — freelance smart contract work, AI agent
-          infrastructure, and the machine learning roles that started it all.
+          Six years of smart contract work, AI agent infrastructure, and the machine
+          learning roles that started it all.
         </p>
 
         <div className="space-y-10">
