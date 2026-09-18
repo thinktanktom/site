@@ -74,6 +74,7 @@ function PRCard({ pr }: { pr: PullRequest }) {
         >
           {pr.repository.full_name}
           <ExternalLink size={11} />
+          <span className="sr-only"> (opens in new tab)</span>
         </a>
 
         <span
@@ -93,6 +94,7 @@ function PRCard({ pr }: { pr: PullRequest }) {
         <h3 className="font-mono text-lg tracking-tight text-text group-hover:text-accent transition-colors duration-200 leading-snug">
           <span className="text-muted mr-2">#{pr.number}</span>
           {pr.title}
+          <span className="sr-only"> (opens in new tab)</span>
         </h3>
       </a>
 

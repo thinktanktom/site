@@ -28,6 +28,9 @@ export default function AboutPage() {
   return (
     <main className="pt-32 pb-24 px-6">
       <div className="max-w-chrome mx-auto">
+        {/* Visually-hidden page heading — the logo below is the visual
+            title, but the page needs a real <h1> for document structure
+            and screen-reader navigation. */}
         <h1 className="sr-only">About Thomas Cyriac</h1>
 
         {/* Logo as title */}
@@ -76,14 +79,14 @@ export default function AboutPage() {
             </p>
             <p>
               That same year brought the{' '}
-              <a href="https://bankx.io" target="_blank" rel="noopener noreferrer" className="text-accent underline underline-offset-4 hover:text-accent-dim transition-colors">BankX</a>
+              <a href="https://bankx.io" target="_blank" rel="noopener noreferrer" className="text-accent underline underline-offset-4 hover:text-accent-dim transition-colors">BankX<span className="sr-only"> (opens in new tab)</span></a>
               {' '}contract, and I have scarcely looked over my shoulder since. Its mathematics, its tokenomics,
               its architecture were all somebody else&apos;s design, gratifyingly complicated, and mine to build,
               which suited me fine — more than enough to occupy a restless mind for several years.
             </p>
             <p>
               Restless minds still wander mid-puzzle, though. Partway through, after a break<span className="text-accent">²</span> I joined a family friend to build{' '}
-              <a href="https://ctrlbit.com" target="_blank" rel="noopener noreferrer" className="text-accent underline underline-offset-4 hover:text-accent-dim transition-colors">Ctrlbit</a>,
+              <a href="https://ctrlbit.com" target="_blank" rel="noopener noreferrer" className="text-accent underline underline-offset-4 hover:text-accent-dim transition-colors">Ctrlbit<span className="sr-only"> (opens in new tab)</span></a>,
               an SDWAN product for Mikrotik hardware here in India. It let me learn the magic behind the internet
               and bend it to my own ends, which was a quiet thrill — until an import-tax change on the hardware we
               depended on ended the venture a few months later. BankX, meanwhile, was still very much alive; it
