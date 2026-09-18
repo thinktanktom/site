@@ -28,12 +28,12 @@ export const metadata: Metadata = {
     apple: '/ttt_icon.svg',
   },
   description:
-    'Thomas Cyriac — DeFi Protocol Developer, Smart Contract Architect. Writing about technology, software, and ideas worth thinking about.',
+    'Thomas Cyriac — DeFi Protocol Developer, Smart Contract Engineer. Writing about technology, software, and ideas worth thinking about.',
   metadataBase: new URL('https://thinktanktom.com'),
   openGraph: {
     title: 'thinktanktom',
     description:
-      'Thomas Cyriac — DeFi Protocol Developer & Smart Contract Architect.',
+      'Thomas Cyriac — DeFi Protocol Developer & Smart Contract Engineer.',
     images: ['/ttt_logo.png'],
     type: 'website',
     url: 'https://thinktanktom.com',
@@ -43,7 +43,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'thinktanktom',
     description:
-      'Thomas Cyriac — DeFi Protocol Developer & Smart Contract Architect.',
+      'Thomas Cyriac — DeFi Protocol Developer & Smart Contract Engineer.',
     images: ['/ttt_logo.png'],
   },
 }
@@ -71,10 +71,10 @@ export default function RootLayout({
                 '@type': 'Person',
                 name: 'Thomas Cyriac',
                 url: 'https://thinktanktom.com',
-                jobTitle: 'DeFi Protocol Developer & Smart Contract Architect',
+                jobTitle: 'DeFi Protocol Developer & Smart Contract Engineer',
                 sameAs: [
                   'https://github.com/thinktanktom',
-                  'https://www.upwork.com/freelancers/thinktanktom',
+                  'https://www.upwork.com/freelancers/~018a1dbf1094588c7e',
                 ],
               },
             ]),

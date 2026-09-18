@@ -9,6 +9,7 @@ import { Menu, X } from 'lucide-react'
 const navLinks = [
   { href: '/writing', label: 'Writing' },
   { href: '/projects', label: 'Projects' },
+  { href: '/experience', label: 'Experience' },
   { href: '/contributions', label: 'Contributions' },
   { href: '/about', label: 'About' },
 ]
@@ -70,7 +71,7 @@ export default function Nav() {
               </Link>
             ))}
             <a
-              href="https://www.upwork.com/freelancers/thinktanktom"
+              href="https://www.upwork.com/freelancers/~018a1dbf1094588c7e"
               target="_blank"
               rel="noopener noreferrer"
               className="font-mono text-sm tracking-wider px-4 py-1.5 rounded-full bg-accent text-bg font-bold hover:bg-accent-dim transition-colors duration-200"
@@ -127,7 +128,7 @@ export default function Nav() {
               </Link>
             ))}
             <a
-              href="https://www.upwork.com/freelancers/thinktanktom"
+              href="https://www.upwork.com/freelancers/~018a1dbf1094588c7e"
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => setMobileOpen(false)}
