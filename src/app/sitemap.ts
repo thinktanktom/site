@@ -21,6 +21,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: 'https://thinktanktom.com/writing', lastModified: new Date() },
     { url: 'https://thinktanktom.com/about', lastModified: new Date() },
     { url: 'https://thinktanktom.com/projects', lastModified: new Date() },
+    { url: 'https://thinktanktom.com/experience', lastModified: new Date() },
     { url: 'https://thinktanktom.com/contributions', lastModified: new Date() },
     ...postUrls,
     ...projectUrls,

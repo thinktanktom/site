@@ -39,3 +39,9 @@ pnpm-debug.log*
 *.swp
 *.swo
 content/projects/BankX_project_files/
+
+# Private source material (not for the public repo)
+/dev/
+/Thomas_Cyriac_Work_Experience_Record.pdf
+/Thomas C.  Top Rated Smart Contract  Web3 Specialist  Upwork Freelancer from Coimbatore India.pdf
+

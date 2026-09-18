@@ -51,7 +51,7 @@ export default function HomePage() {
               Read my writing →
             </Link>
             <a
-              href="https://www.upwork.com/freelancers/thinktanktom"
+              href="https://www.upwork.com/freelancers/~018a1dbf1094588c7e"
               target="_blank"
               rel="noopener noreferrer"
               className="font-mono text-sm tracking-wider px-6 py-3 border border-accent text-accent hover:bg-accent hover:text-bg transition-all duration-200 rounded-sm"

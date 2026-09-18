@@ -4,7 +4,7 @@ import Image from 'next/image'
 export const metadata: Metadata = {
   title: 'About',
   description:
-    'Thomas Cyriac — DeFi Protocol Developer, Smart Contract Architect, Open Source Contributor.',
+    'Thomas Cyriac — DeFi Protocol Developer, Smart Contract Engineer, Open Source Contributor.',
 }
 
 export default function AboutPage() {
@@ -59,15 +59,16 @@ export default function AboutPage() {
               That same year brought the{' '}
               <a href="https://bankx.io" target="_blank" rel="noopener noreferrer" className="text-accent underline underline-offset-4 hover:text-accent-dim transition-colors">BankX</a>
               {' '}contract, and I have scarcely looked over my shoulder since. Its mathematics, its tokenomics,
-              its architecture were all gratifyingly complicated, more than enough to occupy a restless mind for
-              several years.
+              its architecture were all somebody else&apos;s design, gratifyingly complicated, and mine to build,
+              which suited me fine — more than enough to occupy a restless mind for several years.
             </p>
             <p>
-              But restless minds outlast their puzzles. By 2025 the major work had drawn to a close; we had tested
-              and deployed very nearly everything. So, after a break<span className="text-accent">²</span> I joined a family friend to build{' '}
+              Restless minds still wander mid-puzzle, though. Partway through, after a break<span className="text-accent">²</span> I joined a family friend to build{' '}
               <a href="https://ctrlbit.com" target="_blank" rel="noopener noreferrer" className="text-accent underline underline-offset-4 hover:text-accent-dim transition-colors">Ctrlbit</a>,
               an SDWAN product for Mikrotik hardware here in India. It let me learn the magic behind the internet
-              and bend it to my own ends, which was a quiet thrill.
+              and bend it to my own ends, which was a quiet thrill — until an import-tax change on the hardware we
+              depended on ended the venture a few months later. BankX, meanwhile, was still very much alive; it
+              still is.
             </p>
             <p>
               All of which brings me, at last, to the point of this page. Solving a hard problem means outwitting
@@ -94,7 +95,7 @@ export default function AboutPage() {
           <ul className="font-sans text-base text-text leading-[1.75] space-y-2 list-disc pl-4">
             <li>Building CollabGraph, A GitHub App and AT Protocol AppView that turns your pull request and review history into a verifiable, portable collaboration graph you own.</li>
             <li>
-              Building LockBox: a fork of IOTA HORNET v2.0.2 written in Go — a private IOTA fullnode with added asset-locking primitives (encrypted shards, ZKP ownership proofs, multi-sig, LockScript VM, tiered capabilities).
+              Building and hardening the self-hosted Claude Code / Ruflo agent-orchestration servers a client uses to build LockBox — an IOTA-based asset-locking platform with encrypted shards, ZKP ownership proofs, and a LockScript VM. The AI dev system is mine; LockBox itself is the client&apos;s.
             </li>
             <li>Setting up AI supplemented environments to ship code more efficiently</li>
             <li>Constantly worrying about identity and data ownership.</li>

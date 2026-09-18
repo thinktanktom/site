@@ -13,7 +13,7 @@ const links = [
     Icon: Linkedin,
   },
   {
-    href: 'https://www.upwork.com/freelancers/thinktanktom',
+    href: 'https://www.upwork.com/freelancers/~018a1dbf1094588c7e',
     label: 'Upwork',
     Icon: ExternalLink,
   },
@@ -33,7 +33,7 @@ export default function Footer() {
             unoptimized
           />
           <p className="font-mono text-sm text-muted tracking-wider">
-            © 2025 thinktanktom
+            © {new Date().getFullYear()} thinktanktom
           </p>
         </div>
         <div className="flex items-center gap-6">
