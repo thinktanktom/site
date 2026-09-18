@@ -2,10 +2,27 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { experience, upworkProjects } from '@lib/experience'
 
+const description =
+  'A timeline of roles and engagements — smart contracts, AI infrastructure, and the machine learning work that came before it.'
+
 export const metadata: Metadata = {
   title: 'Experience',
-  description:
-    'A timeline of roles and engagements — smart contracts, AI infrastructure, and the machine learning work that came before it.',
+  description,
+  alternates: { canonical: '/experience' },
+  openGraph: {
+    title: 'Experience — thinktanktom',
+    description,
+    type: 'website',
+    url: 'https://thinktanktom.com/experience',
+    siteName: 'thinktanktom',
+    images: ['/ttt_logo.png'],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Experience — thinktanktom',
+    description,
+    images: ['/ttt_logo.png'],
+  },
 }
 
 export default function ExperiencePage() {

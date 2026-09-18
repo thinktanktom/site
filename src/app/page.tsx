@@ -1,7 +1,12 @@
+import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
 import { getAllPosts } from '@lib/posts'
 import PostCard from '@components/PostCard'
+
+export const metadata: Metadata = {
+  alternates: { canonical: '/' },
+}
 
 export default function HomePage() {
   const posts = getAllPosts().slice(0, 3)

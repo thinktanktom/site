@@ -19,6 +19,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: post.title,
     description: post.excerpt,
+    alternates: { canonical: `/writing/${params.slug}` },
     openGraph: {
       title: post.title,
       description: post.excerpt,
@@ -52,7 +53,7 @@ export default function PostPage({ params }: Props) {
 
   const jsonLd = {
     '@context': 'https://schema.org',
-    '@type': 'Article',
+    '@type': 'BlogPosting',
     headline: post.title,
     description: post.excerpt,
     datePublished: post.date,
@@ -66,6 +67,10 @@ export default function PostPage({ params }: Props) {
       '@type': 'Person',
       name: 'Thomas Cyriac',
       url: 'https://thinktanktom.com',
+    },
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': `https://thinktanktom.com/writing/${params.slug}`,
     },
     url: `https://thinktanktom.com/writing/${params.slug}`,
     image: 'https://thinktanktom.com/ttt_logo.png',
