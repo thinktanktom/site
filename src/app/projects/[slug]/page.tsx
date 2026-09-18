@@ -137,6 +137,7 @@ export default function ProjectPage({ params }: Props) {
                 >
                   <Github size={14} />
                   View source
+                  <span className="sr-only"> (opens in new tab)</span>
                 </a>
               )}
               {project.demo && (
@@ -148,6 +149,7 @@ export default function ProjectPage({ params }: Props) {
                 >
                   <ExternalLink size={14} />
                   Live site
+                  <span className="sr-only"> (opens in new tab)</span>
                 </a>
               )}
             </div>

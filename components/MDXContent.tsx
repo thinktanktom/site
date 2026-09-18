@@ -67,14 +67,20 @@ const components = {
   p: (props: React.HTMLAttributes<HTMLParagraphElement>) => (
     <p {...props} className="font-sans text-base text-text leading-[1.75] mb-5" />
   ),
-  a: (props: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
-    <a
-      {...props}
-      className="underline decoration-accent underline-offset-2 hover:text-accent transition-colors duration-200"
-      target={props.href?.startsWith('http') ? '_blank' : undefined}
-      rel={props.href?.startsWith('http') ? 'noopener noreferrer' : undefined}
-    />
-  ),
+  a: ({ children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => {
+    const isExternal = props.href?.startsWith('http')
+    return (
+      <a
+        {...props}
+        className="underline decoration-accent underline-offset-2 hover:text-accent transition-colors duration-200"
+        target={isExternal ? '_blank' : undefined}
+        rel={isExternal ? 'noopener noreferrer' : undefined}
+      >
+        {children}
+        {isExternal && <span className="sr-only"> (opens in new tab)</span>}
+      </a>
+    )
+  },
   blockquote: (props: React.HTMLAttributes<HTMLElement>) => (
     <blockquote
       {...props}

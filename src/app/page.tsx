@@ -12,7 +12,7 @@ export default function HomePage() {
   const posts = getAllPosts().slice(0, 3)
 
   return (
-    <>
+    <main>
       {/* Hero */}
       <section className="min-h-screen flex flex-col items-center justify-center relative px-6 overflow-hidden">
         <div className="pixel-grid absolute inset-0 opacity-40" />
@@ -59,6 +59,7 @@ export default function HomePage() {
               href="https://www.upwork.com/freelancers/~018a1dbf1094588c7e"
               target="_blank"
               rel="noopener noreferrer"
+              aria-label="Hire me on Upwork (opens in new tab)"
               className="font-mono text-sm tracking-wider px-6 py-3 border border-accent text-accent hover:bg-accent hover:text-bg transition-all duration-200 rounded-sm"
             >
               Hire me on Upwork ↗
@@ -95,7 +96,6 @@ export default function HomePage() {
           )}
         </div>
       </section>
-
-    </>
+    </main>
   )
 }

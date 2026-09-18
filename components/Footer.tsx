@@ -44,7 +44,7 @@ export default function Footer() {
               target="_blank"
               rel="noopener noreferrer"
               className="text-muted hover:text-accent transition-colors duration-200"
-              aria-label={label}
+              aria-label={`${label} (opens in new tab)`}
             >
               <Icon size={18} />
             </a>

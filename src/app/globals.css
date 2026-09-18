@@ -7,7 +7,10 @@
   --surface:    #111111;
   --border:     #222222;
   --text:       #f0f0f0;
-  --muted:      #666666;
+  /* #808080 (was #666666) — #666 on #0a0a0a/#111 only hits ~3.3-3.4:1,
+     below the 4.5:1 WCAG AA floor for normal-size text. #808080 clears
+     4.5:1 against both --bg and --surface. See a11y audit notes. */
+  --muted:      #808080;
   --accent:     #e8ff00;
   --accent-dim: #b8cc00;
 }
@@ -29,6 +32,35 @@ body {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+/* Visible keyboard-focus indicator. Dark themes can accidentally rely on
+   the browser default outline, which is easy to lose against near-black
+   surfaces — make it explicit and high-contrast (accent on dark bg). */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Respect reduced-motion preference: keep every animation/transition in
+   place for everyone else, but collapse them to (near) instant for users
+   who have asked the OS not to animate things. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+  }
+
+  .animate-fade-up {
+    opacity: 1;
+  }
 }
 
 /* Hero pixel-grid dot texture */

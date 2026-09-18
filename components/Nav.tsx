@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -18,6 +18,8 @@ export default function Nav() {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const pathname = usePathname()
+  const menuButtonRef = useRef<HTMLButtonElement>(null)
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20)
@@ -31,6 +33,25 @@ export default function Nav() {
       document.body.style.overflow = ''
     }
   }, [mobileOpen])
+
+  // Keyboard support for the mobile overlay: close on Escape, move focus
+  // into the dialog on open, and return it to the toggle button on close.
+  useEffect(() => {
+    if (!mobileOpen) return
+
+    closeButtonRef.current?.focus()
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileOpen(false)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [mobileOpen])
+
+  const closeMobileMenu = () => {
+    setMobileOpen(false)
+    menuButtonRef.current?.focus()
+  }
 
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + '/')
@@ -74,6 +95,7 @@ export default function Nav() {
               href="https://www.upwork.com/freelancers/~018a1dbf1094588c7e"
               target="_blank"
               rel="noopener noreferrer"
+              aria-label="Hire me on Upwork (opens in new tab)"
               className="font-mono text-sm tracking-wider px-4 py-1.5 rounded-full bg-accent text-bg font-bold hover:bg-accent-dim transition-colors duration-200"
             >
               Hire me ↗
@@ -82,9 +104,12 @@ export default function Nav() {
 
           {/* Mobile hamburger */}
           <button
+            ref={menuButtonRef}
             className="md:hidden text-muted hover:text-text transition-colors"
             onClick={() => setMobileOpen(true)}
             aria-label="Open menu"
+            aria-expanded={mobileOpen}
+            aria-controls="mobile-nav"
           >
             <Menu size={24} />
           </button>
@@ -93,9 +118,15 @@ export default function Nav() {
 
       {/* Mobile full-screen overlay */}
       {mobileOpen && (
-        <div className="fixed inset-0 z-[100] bg-bg flex flex-col">
+        <div
+          id="mobile-nav"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Mobile navigation"
+          className="fixed inset-0 z-[100] bg-bg flex flex-col"
+        >
           <div className="flex items-center justify-between px-6 h-16">
-            <Link href="/" onClick={() => setMobileOpen(false)}>
+            <Link href="/" onClick={closeMobileMenu}>
               <Image
                 src="/ttt_side_no_byline_logo.svg"
                 alt="thinktanktom"
@@ -106,7 +137,8 @@ export default function Nav() {
               />
             </Link>
             <button
-              onClick={() => setMobileOpen(false)}
+              ref={closeButtonRef}
+              onClick={closeMobileMenu}
               className="text-muted hover:text-text transition-colors"
               aria-label="Close menu"
             >
@@ -119,7 +151,7 @@ export default function Nav() {
               <Link
                 key={href}
                 href={href}
-                onClick={() => setMobileOpen(false)}
+                onClick={closeMobileMenu}
                 className={`font-mono text-4xl tracking-widest uppercase transition-colors duration-200 ${
                   isActive(href) ? 'text-accent' : 'text-text hover:text-accent'
                 }`}
@@ -131,7 +163,8 @@ export default function Nav() {
               href="https://www.upwork.com/freelancers/~018a1dbf1094588c7e"
               target="_blank"
               rel="noopener noreferrer"
-              onClick={() => setMobileOpen(false)}
+              aria-label="Hire me on Upwork (opens in new tab)"
+              onClick={closeMobileMenu}
               className="font-mono text-xl tracking-wider px-8 py-3 rounded-full bg-accent text-bg font-bold hover:bg-accent-dim transition-colors duration-200"
             >
               Hire me ↗

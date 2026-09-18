@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Menu, X } from 'lucide-react'
 import { sidebarNav, isSidebarGroup, type SidebarLeaf } from '@lib/bankx-sidebar'
 
@@ -66,6 +66,15 @@ function SidebarContent({ onLinkClick }: { onLinkClick?: () => void }) {
 export default function BankXDocSidebar() {
   const [mobileOpen, setMobileOpen] = useState(false)
 
+  useEffect(() => {
+    if (!mobileOpen) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileOpen(false)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [mobileOpen])
+
   return (
     <>
       {/* Mobile toggle button */}
@@ -73,13 +82,21 @@ export default function BankXDocSidebar() {
         onClick={() => setMobileOpen(true)}
         className="lg:hidden fixed bottom-6 right-6 z-50 w-12 h-12 bg-accent text-bg rounded-full flex items-center justify-center shadow-lg"
         aria-label="Open navigation"
+        aria-expanded={mobileOpen}
+        aria-controls="bankx-mobile-nav"
       >
         <Menu size={18} />
       </button>
 
       {/* Mobile overlay */}
       {mobileOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 flex">
+        <div
+          id="bankx-mobile-nav"
+          role="dialog"
+          aria-modal="true"
+          aria-label="BankX documentation navigation"
+          className="lg:hidden fixed inset-0 z-50 flex"
+        >
           <div
             className="absolute inset-0 bg-bg/80 backdrop-blur-sm"
             onClick={() => setMobileOpen(false)}
