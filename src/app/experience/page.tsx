@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { experience } from '@lib/experience'
+import { experience, upworkProjects } from '@lib/experience'
 
 export const metadata: Metadata = {
   title: 'Experience',
@@ -77,8 +77,57 @@ export default function ExperiencePage() {
           ))}
         </div>
 
+        {/* Upwork */}
+        <div className="mt-10 p-6 border border-border rounded-sm bg-surface/30">
+          <h2 className="font-mono text-xs tracking-widest uppercase text-accent mb-1">
+            Upwork
+          </h2>
+          <p className="font-sans text-sm text-muted mb-6">
+            Standalone contracts sourced through Upwork, separate from the direct-client work above.
+          </p>
+
+          <div className="divide-y divide-border">
+            {upworkProjects.map((entry, i) => (
+              <div key={i} className="py-5 first:pt-0 last:pb-0">
+                <time className="font-mono text-xs text-muted tracking-widest uppercase">
+                  {entry.start} — {entry.end}
+                </time>
+
+                <h3 className="font-mono text-lg text-text mt-1 mb-2 leading-snug">
+                  {entry.role}
+                </h3>
+
+                <p className="font-sans text-base text-text leading-[1.75] mb-3">
+                  {entry.summary}
+                </p>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {entry.stack.map((tech) => (
+                    <span
+                      key={tech}
+                      className="font-mono text-xs px-2 py-0.5 border border-border text-muted rounded-sm"
+                    >
+                      {tech}
+                    </span>
+                  ))}
+                  {entry.link && (
+                    <a
+                      href={entry.link.href}
+                      target={entry.link.href.startsWith('http') ? '_blank' : undefined}
+                      rel={entry.link.href.startsWith('http') ? 'noopener noreferrer' : undefined}
+                      className="font-mono text-xs text-muted hover:text-accent tracking-wider transition-colors duration-200 ml-1"
+                    >
+                      {entry.link.label} →
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Open source */}
-        <div className="mt-16 p-6 border border-border rounded-sm bg-surface/30">
+        <div className="mt-10 p-6 border border-border rounded-sm bg-surface/30">
           <h2 className="font-mono text-xs tracking-widest uppercase text-accent mb-3">
             Open source
           </h2>

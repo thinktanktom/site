@@ -1,6 +1,6 @@
 export interface ExperienceEntry {
   role: string
-  org: string
+  org?: string
   orgLink?: string
   start: string // e.g. "Jun 2020"
   end: string // e.g. "Jul 2020" or "Present"
@@ -10,8 +10,10 @@ export interface ExperienceEntry {
 }
 
 // Newest first. Curated from a private work-history record — short
-// consultations and near-duplicate short Upwork jobs are merged or
-// omitted for readability; financial figures are left out.
+// consultations are merged or omitted for readability; financial
+// figures are left out. Direct clients and named companies below;
+// standalone Upwork-channel engagements are grouped separately in
+// `upworkProjects`.
 export const experience: ExperienceEntry[] = [
   {
     role: 'Trading Infrastructure Engineer',
@@ -34,25 +36,6 @@ export const experience: ExperienceEntry[] = [
     link: { href: '/writing/self-hosted-ai-orchestration-ruflo-vm', label: 'Writeup' },
   },
   {
-    role: 'React → Shopify Liquid Migration',
-    org: 'Upwork client',
-    start: 'Feb 2026',
-    end: 'work completed',
-    summary:
-      'Migrated a client’s React storefront to a custom Shopify Liquid theme with GitHub-integrated deploys.',
-    stack: ['React', 'TypeScript', 'Shopify Liquid', 'Vite'],
-  },
-  {
-    role: 'Smart Contract Engineer',
-    org: 'Based Agents',
-    start: 'Jul 2024',
-    end: 'Feb 2025',
-    summary:
-      'Built and deployed the Based Agents contract suite — Protocol Rewards, Bonding Curve, Bag Token, Bag Governance, and an upgradeable Bag Factory — with Hardhat tests run against a mainnet fork.',
-    stack: ['Solidity', 'Hardhat', 'Sepolia'],
-    link: { href: 'https://github.com/BasedAgents/smart-contracts', label: 'GitHub' },
-  },
-  {
     role: 'Network Engineer',
     org: 'Ctrlbit',
     orgLink: 'https://ctrlbit.com',
@@ -61,15 +44,6 @@ export const experience: ExperienceEntry[] = [
     summary:
       'Co-built an SD-WAN product for MikroTik hardware with a family friend — dual-SIM failover via GenieACS/TR-069 and a guide for network-booting OpenWRT onto RouterBOARD devices. The venture wound down after import-tax changes on the hardware.',
     stack: ['MikroTik RouterOS', 'OpenWRT', 'GenieACS', 'Node.js'],
-  },
-  {
-    role: 'Rust / Soroban Smart Contract Engineer',
-    org: 'Upwork client',
-    start: 'Aug 2023',
-    end: 'Jul 2024',
-    summary:
-      'Fixed bugs across two contracts in a client’s Stellar Soroban codebase, deployed to Stellar and Futurenet, and trained their team to deploy and operate it themselves.',
-    stack: ['Rust', 'Stellar Soroban'],
   },
   {
     role: 'Lead Smart Contract Engineer',
@@ -84,39 +58,12 @@ export const experience: ExperienceEntry[] = [
   },
   {
     role: 'Blockchain Developer',
-    org: 'Upwork client',
-    start: 'Jan 2022',
-    end: 'Jan 2023',
-    summary:
-      'Solidity work on a decentralized perpetual futures platform, plus an end-to-end NFT marketplace build — asset pinning via IPFS/Pinata through to an OpenSea listing.',
-    stack: ['Solidity', 'BSC', 'IPFS'],
-  },
-  {
-    role: 'Smart Contract Engineer',
-    org: 'Upwork client',
-    start: 'Aug 2021',
-    end: 'Jan 2022',
-    summary:
-      'Built a Hashmasks-style NFT project, recreating its on-chain randomization algorithm, and deployed it to BSC.',
-    stack: ['Solidity', 'BSC'],
-  },
-  {
-    role: 'Blockchain Developer',
     org: 'Nord Finance',
     start: 'Jul 2021',
     end: 'Sep 2021',
     summary:
       'Wrote automated test suites for the DeFi contracts behind Nord Finance’s interest-bearing savings products — deposits, withdrawals, yield accounting, access control — using local and mainnet-forked environments. Contributed to the design of a decentralized loan application.',
     stack: ['Solidity', 'Hardhat', 'Ganache'],
-  },
-  {
-    role: 'Freelance Solidity Engineer',
-    org: 'Upwork (various clients)',
-    start: 'Apr 2021',
-    end: 'Jul 2021',
-    summary:
-      'Early smart contract freelancing: a mint/burn ERC-20 token, a BSC staking and lending contract integrating Venus Protocol and PancakeSwap, and a BEP-20 reflection token forked from RFI.',
-    stack: ['Solidity', 'BSC', 'Truffle'],
   },
   {
     role: 'Deep Learning Research Engineer',
@@ -144,5 +91,58 @@ export const experience: ExperienceEntry[] = [
     summary:
       'Built a face-alignment pipeline for a KYC product (rotation correction via dlib facial landmarks) and an LDA topic-modelling pipeline for document analysis.',
     stack: ['Python', 'dlib', 'OpenCV'],
+  },
+]
+
+// Standalone engagements sourced through Upwork, newest first.
+export const upworkProjects: ExperienceEntry[] = [
+  {
+    role: 'React → Shopify Liquid Migration',
+    start: 'Feb 2026',
+    end: 'work completed',
+    summary:
+      'Migrated a client’s React storefront to a custom Shopify Liquid theme with GitHub-integrated deploys.',
+    stack: ['React', 'TypeScript', 'Shopify Liquid', 'Vite'],
+  },
+  {
+    role: 'Based Agents — Smart Contract Suite',
+    start: 'Jul 2024',
+    end: 'Feb 2025',
+    summary:
+      'Built and deployed the Based Agents contract suite — Protocol Rewards, Bonding Curve, Bag Token, Bag Governance, and an upgradeable Bag Factory — with Hardhat tests run against a mainnet fork.',
+    stack: ['Solidity', 'Hardhat', 'Sepolia'],
+    link: { href: 'https://github.com/BasedAgents/smart-contracts', label: 'GitHub' },
+  },
+  {
+    role: 'Rust / Soroban Smart Contract Engineer',
+    start: 'Aug 2023',
+    end: 'Jul 2024',
+    summary:
+      'Fixed bugs across two contracts in a client’s Stellar Soroban codebase, deployed to Stellar and Futurenet, and trained their team to deploy and operate it themselves.',
+    stack: ['Rust', 'Stellar Soroban'],
+  },
+  {
+    role: 'Perpetual Futures Platform + NFT Marketplace',
+    start: 'Jan 2022',
+    end: 'Jan 2023',
+    summary:
+      'Solidity work on a decentralized perpetual futures platform, plus an end-to-end NFT marketplace build — asset pinning via IPFS/Pinata through to an OpenSea listing.',
+    stack: ['Solidity', 'BSC', 'IPFS'],
+  },
+  {
+    role: 'Hashmasks-Style NFT Clone',
+    start: 'Aug 2021',
+    end: 'Jan 2022',
+    summary:
+      'Built a Hashmasks-style NFT project, recreating its on-chain randomization algorithm, and deployed it to BSC.',
+    stack: ['Solidity', 'BSC'],
+  },
+  {
+    role: 'Early Freelance Solidity Engineering',
+    start: 'Apr 2021',
+    end: 'Jul 2021',
+    summary:
+      'Early smart contract freelancing across several short contracts: a mint/burn ERC-20 token, a BSC staking and lending contract integrating Venus Protocol and PancakeSwap, and a BEP-20 reflection token forked from RFI.',
+    stack: ['Solidity', 'BSC', 'Truffle'],
   },
 ]
