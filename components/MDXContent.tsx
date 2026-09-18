@@ -96,6 +96,8 @@ const components = {
   img: (props: React.ImgHTMLAttributes<HTMLImageElement>) => (
     // eslint-disable-next-line @next/next/no-img-element
     <img
+      loading="lazy"
+      decoding="async"
       {...props}
       alt={props.alt ?? ''}
       className="w-full rounded-sm border border-border my-8 block"
