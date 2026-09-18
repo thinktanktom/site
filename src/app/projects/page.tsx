@@ -2,9 +2,26 @@ import type { Metadata } from 'next'
 import { getAllProjects } from '@lib/projects'
 import ProjectCard from '@components/ProjectCard'
 
+const description = 'Technical projects, case studies, and the tools I have built.'
+
 export const metadata: Metadata = {
   title: 'Projects',
-  description: 'Technical projects, case studies, and the tools I have built.',
+  description,
+  alternates: { canonical: '/projects' },
+  openGraph: {
+    title: 'Projects — thinktanktom',
+    description,
+    type: 'website',
+    url: 'https://thinktanktom.com/projects',
+    siteName: 'thinktanktom',
+    images: ['/ttt_logo.png'],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Projects — thinktanktom',
+    description,
+    images: ['/ttt_logo.png'],
+  },
 }
 
 export default function ProjectsPage() {

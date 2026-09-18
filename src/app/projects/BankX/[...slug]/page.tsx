@@ -21,6 +21,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title,
     description,
+    alternates: { canonical: `/projects/BankX/${params.slug.join('/')}` },
     openGraph: {
       title,
       description,
@@ -44,8 +45,28 @@ export default function BankXDocPage({ params }: Props) {
 
   const { prev, next } = getAdjacentPages(params.slug)
 
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://thinktanktom.com' },
+      { '@type': 'ListItem', position: 2, name: 'Projects', item: 'https://thinktanktom.com/projects' },
+      { '@type': 'ListItem', position: 3, name: 'BankX Protocol', item: 'https://thinktanktom.com/projects/BankX' },
+      {
+        '@type': 'ListItem',
+        position: 4,
+        name: doc.title,
+        item: `https://thinktanktom.com/projects/BankX/${params.slug.join('/')}`,
+      },
+    ],
+  }
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
       <header className="mb-10">
         <p className="font-mono text-xs text-muted tracking-widest uppercase mb-3">
           {params.slug.length > 1 ? params.slug[0] : 'Overview'}

@@ -2,9 +2,26 @@ import type { Metadata } from 'next'
 import { getAllPosts } from '@lib/posts'
 import PostCard from '@components/PostCard'
 
+const description = 'Thoughts on tech, tools, and the craft of building things.'
+
 export const metadata: Metadata = {
   title: 'Writing',
-  description: 'Thoughts on tech, tools, and the craft of building things.',
+  description,
+  alternates: { canonical: '/writing' },
+  openGraph: {
+    title: 'Writing — thinktanktom',
+    description,
+    type: 'website',
+    url: 'https://thinktanktom.com/writing',
+    siteName: 'thinktanktom',
+    images: ['/ttt_logo.png'],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Writing — thinktanktom',
+    description,
+    images: ['/ttt_logo.png'],
+  },
 }
 
 export default function WritingPage() {

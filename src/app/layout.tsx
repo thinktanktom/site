@@ -74,6 +74,7 @@ export default function RootLayout({
                 jobTitle: 'DeFi Protocol Developer & Smart Contract Engineer',
                 sameAs: [
                   'https://github.com/thinktanktom',
+                  'https://linkedin.com/in/thinktanktom',
                   'https://www.upwork.com/freelancers/~018a1dbf1094588c7e',
                 ],
               },
