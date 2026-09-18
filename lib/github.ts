@@ -22,6 +22,19 @@ export function getPRStatus(pr: PullRequest): PRStatus {
   return 'closed'
 }
 
+interface GitHubSearchIssueItem {
+  id: number
+  number: number
+  title: string
+  body: string | null
+  html_url: string
+  state: 'open' | 'closed'
+  created_at: string
+  repository_url?: string
+  pull_request?: { merged_at: string | null }
+  labels?: Array<{ name: string; color: string }>
+}
+
 export async function getOpenSourcePRs(): Promise<PullRequest[]> {
   const res = await fetch(
     'https://api.github.com/search/issues?q=type:pr+author:thinktanktom+is:public+-user:thinktanktom&sort=created&order=desc&per_page=50',
@@ -30,15 +43,14 @@ export async function getOpenSourcePRs(): Promise<PullRequest[]> {
 
   if (!res.ok) return []
 
-  const data = await res.json()
+  const data = (await res.json()) as { items?: GitHubSearchIssueItem[] }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (data.items ?? []).map((item: any) => {
+  return (data.items ?? []).map((item) => {
     const repoMatch = item.repository_url?.match(/repos\/(.+)$/)
     const repoFullName = repoMatch ? repoMatch[1] : ''
     const repoHtmlUrl = repoFullName
       ? `https://github.com/${repoFullName}`
-      : item.repository_url
+      : (item.repository_url ?? '')
 
     return {
       id: item.id,
