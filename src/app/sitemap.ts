@@ -1,10 +1,12 @@
 import type { MetadataRoute } from 'next'
 import { getAllPosts } from '@lib/posts'
 import { getAllProjects } from '@lib/projects'
+import { getAllDocSlugs } from '@lib/bankx-docs'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const posts = getAllPosts()
   const projects = getAllProjects()
+  const bankxDocSlugs = getAllDocSlugs()
 
   const postUrls: MetadataRoute.Sitemap = posts.map((p) => ({
     url: `https://thinktanktom.com/writing/${p.slug}`,
@@ -16,6 +18,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     lastModified: p.date,
   }))
 
+  const bankxDocUrls: MetadataRoute.Sitemap = bankxDocSlugs.map((slug) => ({
+    url: `https://thinktanktom.com/projects/BankX/${slug.join('/')}`,
+    lastModified: new Date(),
+  }))
+
   return [
     { url: 'https://thinktanktom.com', lastModified: new Date() },
     { url: 'https://thinktanktom.com/writing', lastModified: new Date() },
@@ -25,5 +32,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: 'https://thinktanktom.com/contributions', lastModified: new Date() },
     ...postUrls,
     ...projectUrls,
+    ...bankxDocUrls,
   ]
 }
