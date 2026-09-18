@@ -25,13 +25,13 @@ export const experience: ExperienceEntry[] = [
   },
   {
     role: 'AI Agent-Orchestration Engineer',
-    org: 'LockBox (client)',
+    org: 'Independent client',
     start: 'Apr 2026',
     end: 'Present',
     summary:
-      'Built, deployed, and hardened self-hosted Claude Code / Ruflo agent-orchestration servers the client uses to develop a multi-chain asset platform — plus a permanent run-control layer (locked plans, retry caps, human approval gates) after early runs fell into re-assessment loops.',
+      'Built, deployed, and hardened self-hosted Claude Code / Ruflo agent-orchestration servers the client uses to develop their own product — plus a permanent run-control layer (locked plans, retry caps, human approval gates) after early runs fell into re-assessment loops. The infrastructure is mine; what the client builds with it is theirs.',
     stack: ['Ruflo', 'Claude Code', 'MCP', 'Docker Compose', 'Caddy', 'DigitalOcean'],
-    link: { href: '/projects/LockBox/introduction', label: 'Project writeup' },
+    link: { href: '/writing/self-hosted-ai-orchestration-ruflo-vm', label: 'Writeup' },
   },
   {
     role: 'React → Shopify Liquid Migration',
