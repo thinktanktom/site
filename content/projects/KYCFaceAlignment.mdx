@@ -1,0 +1,31 @@
+---
+title: "KYC Face Alignment & Document Topic Modeling"
+date: "2020-07-01"
+excerpt: "A face-alignment technique for a KYC product, worked out across four public prototypes — from plain OpenCV detection to a threaded dlib-landmark aligner — plus a separate LDA topic-modeling pipeline for document analysis."
+stack: ["Python", "dlib", "OpenCV"]
+status: "completed"
+github: "https://github.com/thinktanktom/face-align-3"
+---
+
+## What is this?
+
+Two smaller pipelines built during a short machine-learning engagement at GIEOM, both feeding into KYC (Know Your Customer) tooling. The alignment technique below was worked out across four public repos as I iterated toward it; the repos are personal prototypes, not GIEOM's production codebase, but they're the real record of how the approach was developed.
+
+## Face alignment
+
+KYC flows that photograph an ID document or a selfie need consistent framing before any downstream check (face matching, liveness, OCR) can run reliably — a tilted or rotated capture degrades all of it. Getting there took four iterations:
+
+- [**face-recog**](https://github.com/thinktanktom/face-recog) — the starting point: plain OpenCV Haar-cascade face detection, drawing a box around any face found in an image or webcam feed. No alignment yet, just detection.
+- [**face_align_1**](https://github.com/thinktanktom/face_align_1) — a first pass at correcting large rotations (faces at 90°+): rotate the image in a loop until the Haar cascade successfully detects a face in it, then stop.
+- [**face-align-2**](https://github.com/thinktanktom/face-align-2) — a more principled approach for smaller tilts: **dlib's 68-point facial landmark predictor** locates the eyes, and the image is de-skewed by leveling the line between them (via `imutils`' `FaceAligner`).
+- [**face-align-3**](https://github.com/thinktanktom/face-align-3) — combines both: the Haar cascade from the first version handles initial detection, dlib's landmarks locate the eyes, and the rotation angle is computed from the eye-to-eye and eye-to-nose distances using the law of cosines. Independent distance calculations run on separate threads to cut runtime.
+
+The production version built for GIEOM's KYC flow followed this same detect-then-landmark-then-derotate shape, with OpenCV handling image I/O and the affine transform.
+
+## Document topic modeling
+
+The second piece was unrelated to faces: an **LDA (Latent Dirichlet Allocation)** topic-modeling pipeline for document analysis, used to automatically surface the dominant topics in a batch of documents rather than requiring manual categorization.
+
+## Outcome
+
+Both pipelines were delivered as part of a short (roughly one-month) contract; the surrounding KYC product and its onward use of these pipelines belonged to GIEOM.
