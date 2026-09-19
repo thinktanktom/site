@@ -95,6 +95,7 @@ export const experience: ExperienceEntry[] = [
     summary:
       'Built a face-alignment pipeline for a KYC product (rotation correction via dlib facial landmarks) and an LDA topic-modelling pipeline for document analysis.',
     stack: ['Python', 'dlib', 'OpenCV'],
+    link: { href: '/projects/KYCFaceAlignment', label: 'Project writeup' },
   },
 ]
 
