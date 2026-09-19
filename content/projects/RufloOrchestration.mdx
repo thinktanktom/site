@@ -1,0 +1,32 @@
+---
+title: "Self-Hosted AI Agent Orchestration"
+date: "2026-05-12"
+excerpt: "A self-hosted Claude Code / Ruflo agent-orchestration server built for a client on a DigitalOcean VM — Docker Compose, a Caddy-fronted MCP bridge, a 12-skill workflow layer, and a permanent run-control layer added after early runs fell into re-assessment loops."
+stack: ["Ruflo", "Claude Code", "MCP", "Docker Compose", "Caddy", "DigitalOcean"]
+status: "active"
+link: "/projects/RufloOrchestration/introduction"
+---
+
+## What is this?
+
+This is the agent-orchestration infrastructure I built, deployed, and continue to harden for an independent client, starting April 2026. The client uses it to develop their own product; the infrastructure — the VM, the container stack, the auth, the workflow tooling, and the run-control layer — is mine.
+
+At its core it's a self-hosted [Ruflo](https://github.com/ruvnet/ruflo) deployment on a DigitalOcean VM: a chat UI backed by Claude models, an MCP bridge exposing 200+ tools, and a Claude Code orchestration layer running headless workflows against the client's codebase. The engineering work was less about writing new code and more about closing the gap between what Ruflo's documentation claims and what the actual repo does — and then hardening the result so a client-facing credential handover doesn't become a liability.
+
+## Architecture
+
+- **DigitalOcean VM** (Ubuntu, 2 vCPU / 4 GB RAM) — hosts the full Docker Compose stack: the chat UI (a ruvocal fork), the MCP bridge, and supporting services.
+- **Caddy** — the only process reachable from the internet. Terminates TLS (Let's Encrypt, auto-renewed via a DuckDNS subdomain), and fronts two distinct routes: the chat UI behind basic auth, and `/mcp-bridge/*` behind bearer-token auth.
+- **MCP bridge** — exposes 200+ tools over HTTP/SSE. The client's Claude Code desktop connects to it directly as a remote MCP server, with no SSH or VPN in the path.
+- **Workflow layer** — 12 specialist skill files under `.claude/skills/` (cryptography, gRPC API, EVM bridge, DAG persistence, admin auth, and more) plus a bash orchestration script that drives Claude Code headlessly across 12 sequential development passes, and two custom MCP tools that expose that workflow to any connected agent.
+- **Run-control layer** — added after early runs fell into re-assessment loops: locked plans, retry caps, and human approval gates, sitting permanently on top of the orchestration layer.
+
+## Key Engineering Decisions
+
+**Docker Compose over the documented npm path.** `npm install -g ruflo@latest && ruflo init` doesn't produce the config file the docs describe, and the repo's actual layout (`src/ruvocal/`, a nested `docker-compose.yml`, runtime-injected env vars) diverges from what's documented throughout. I diagnosed this early and moved straight to running from a cloned repo via Docker Compose — the intended production path — rather than trying to reconcile a drifted npm package with the docs.
+
+**Basic auth over Google OIDC.** Ruflo's docs point to OIDC for the chat UI. For a single-client deployment, that's more infrastructure than the threat model justifies — an OAuth app registration and callback config for one user. Caddy basic auth is faster to hand over and has no external dependency; it can be revisited if the deployment ever needs to scale to more users.
+
+**Bearer token for the MCP bridge, with the risk written down, not hidden.** A static bearer token is an acceptable but imperfect handover mechanism — no expiry, no per-session audit trail, uniform access from anywhere it's presented. I treated the blast radius of a leaked token (arbitrary shell execution, full workspace read/write, exposed API keys) as a first-class design input, not an afterthought: git push credentials were removed from the VM so any AI-made change still has to go through a pull request, and the hardening checklist (IP-restrict the route, split tokens by trust level, scope tool groups, log access, rotate on a schedule) is ordered by actual impact, not by what was easiest to ship.
+
+**A permanent run-control layer, not just a workflow script.** The workflow runner script (PID-locked, auto-resuming, status-JSON-reporting) solved concurrency and resumability for headless runs. It didn't solve a different problem that showed up early: agent runs falling into re-assessment loops instead of converging. That needed a standing layer on top — locked plans, retry caps, and human approval gates — that constrains how an agent run is allowed to proceed, independent of any single workflow script.

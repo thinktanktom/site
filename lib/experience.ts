@@ -35,7 +35,7 @@ export const experience: ExperienceEntry[] = [
     summary:
       'Built, deployed, and hardened self-hosted Claude Code / Ruflo agent-orchestration servers the client uses to develop their own product — plus a permanent run-control layer (locked plans, retry caps, human approval gates) after early runs fell into re-assessment loops. The infrastructure is mine; what the client builds with it is theirs.',
     stack: ['Ruflo', 'Claude Code', 'MCP', 'Docker Compose', 'Caddy', 'DigitalOcean'],
-    link: { href: '/writing/self-hosted-ai-orchestration-ruflo-vm', label: 'Writeup' },
+    link: { href: '/projects/RufloOrchestration/introduction', label: 'Project writeup' },
   },
   {
     role: 'Trading Infrastructure Engineer',
