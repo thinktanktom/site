@@ -23,7 +23,7 @@ export const experience: ExperienceEntry[] = [
     start: 'Oct 2021',
     end: 'Present',
     summary:
-      'Wrote and deployed the XSD/BankX contract suite — a silver-pegged stablecoin with no liquidations, PID-controlled collateral ratios, and protocol-owned liquidity — live across 8 chains and covered by CoinFabrik and independent audits plus an active Immunefi bug bounty. Implementation and testing are mine; the protocol’s economic design is the founding team’s.',
+      'Wrote and deployed the XSD/BankX contract suite — a silver-pegged stablecoin with no liquidations, PID-controlled collateral ratios, and protocol-owned liquidity — live across 8 chains and covered by CoinFabrik and independent audits plus an active Immunefi bug bounty.',
     stack: ['Solidity', 'Hardhat', 'Foundry', 'Chainlink', 'OpenZeppelin'],
     link: { href: '/projects/BankX/introduction', label: 'Project writeup' },
   },
@@ -33,7 +33,7 @@ export const experience: ExperienceEntry[] = [
     start: 'Apr 2026',
     end: 'Present',
     summary:
-      'Built, deployed, and hardened self-hosted Claude Code / Ruflo agent-orchestration servers the client uses to develop their own product — plus a permanent run-control layer (locked plans, retry caps, human approval gates) after early runs fell into re-assessment loops. The infrastructure is mine; what the client builds with it is theirs.',
+      'Built, deployed, and hardened self-hosted Claude Code / Ruflo agent-orchestration servers the client uses to develop their own product — plus a permanent run-control layer (locked plans, retry caps, human approval gates) after early runs fell into re-assessment loops.',
     stack: ['Ruflo', 'Claude Code', 'MCP', 'Docker Compose', 'Caddy', 'DigitalOcean'],
     link: { href: '/projects/RufloOrchestration/introduction', label: 'Project writeup' },
   },
