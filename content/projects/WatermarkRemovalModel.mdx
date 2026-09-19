@@ -1,0 +1,19 @@
+---
+title: "Visible Watermark Removal (TF2 Port)"
+date: "2021-02-01"
+excerpt: "Ported an open-source visible-watermark detection and removal model to TensorFlow 2.x, then called it early when the results weren't accurate enough to ship."
+stack: ["Python", "TensorFlow"]
+status: "archived"
+---
+
+## What was this?
+
+A research engagement at Lambda Vision: take an existing open-source model for detecting and removing visible watermarks from images, and port it from its original TensorFlow 1.x codebase to TensorFlow 2.x. Watermark removal here means the narrow, legitimate use case of striping stock-photo-style watermark overlays that a rights holder wants cleaned from their own licensed imagery — not evading someone else's copyright protection.
+
+## The work
+
+Most of the effort was in the port itself: TF1-to-TF2 migrations of that era routinely broke on graph-mode/eager-mode differences, session-based APIs replaced by `tf.function`, and checkpoint formats that didn't load cleanly across versions. Getting the ported model to run at all, then to reproduce the original paper's qualitative results, was the bulk of the work.
+
+## Outcome
+
+Once the port was working end to end, evaluation against a broader set of real-world watermarked images showed the model's accuracy didn't hold up well outside the conditions it was originally demonstrated under — visible artifacts and incomplete removal on watermark styles it hadn't been tuned for. Rather than investing further into a model whose ceiling looked limited, the honest call was to conclude the approach wasn't accurate enough to productionize and move on. Not every research port ships, and this one didn't.
