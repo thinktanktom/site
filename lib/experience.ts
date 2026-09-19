@@ -56,6 +56,7 @@ export const experience: ExperienceEntry[] = [
     summary:
       'Co-built an SD-WAN product for MikroTik hardware with a family friend — dual-SIM failover via GenieACS/TR-069 and a guide for network-booting OpenWRT onto RouterBOARD devices. The venture wound down after import-tax changes on the hardware.',
     stack: ['MikroTik RouterOS', 'OpenWRT', 'GenieACS', 'Node.js'],
+    link: { href: '/projects/CtrlbitSDWAN', label: 'Project writeup' },
   },
   {
     role: 'Blockchain Developer',

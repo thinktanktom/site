@@ -1,0 +1,21 @@
+---
+title: "Ctrlbit SD-WAN"
+date: "2024-11-01"
+excerpt: "An SD-WAN product for MikroTik hardware — dual-SIM cellular failover managed via GenieACS/TR-069, plus a network-boot path for running OpenWRT on RouterBOARD devices."
+stack: ["MikroTik RouterOS", "OpenWRT", "GenieACS", "TR-069", "Node.js"]
+status: "archived"
+---
+
+## What is Ctrlbit SD-WAN?
+
+Ctrlbit was a small SD-WAN venture I co-built with a family friend, targeting MikroTik hardware as a lower-cost alternative to commercial SD-WAN appliances. The pitch was straightforward: give small sites automatic failover between two cellular SIMs so a primary carrier outage doesn't take the site offline, and manage the whole fleet remotely instead of touching each router by hand.
+
+## Architecture
+
+The failover logic ran on MikroTik RouterOS itself, watching link health on both SIM interfaces and re-routing traffic when the primary connection degraded. Fleet management went through **GenieACS**, a TR-069 auto-configuration server — TR-069 is the standard protocol ISPs use to remotely provision CPE hardware, and using it here meant we could push config changes and pull health telemetry across every deployed router from one place, rather than relying on per-device SSH access.
+
+A second, more exploratory piece of the work was a guide for **network-booting OpenWRT onto RouterBOARD devices** — MikroTik's hardware normally ships with RouterOS only, and getting a different OS onto it via PXE/netboot rather than a manual flash was useful for hardware where we wanted OpenWRT's broader package ecosystem instead of RouterOS's more closed one.
+
+## Outcome
+
+The product worked technically, but the venture wound down after import-tax changes made the underlying MikroTik hardware meaningfully more expensive to source — enough to break the cost story the whole pitch depended on. No shipped customers were left mid-deployment; the project was stopped at the hardware-sourcing stage.
