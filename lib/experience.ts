@@ -142,6 +142,7 @@ export const upworkProjects: ExperienceEntry[] = [
     summary:
       'Built a Hashmasks-style NFT project, recreating its on-chain randomization algorithm, and deployed it to BSC.',
     stack: ['Solidity', 'BSC'],
+    link: { href: 'https://github.com/thinktanktom/onchain-randomization', label: 'GitHub' },
   },
   {
     role: 'Early Freelance Solidity Engineering',
