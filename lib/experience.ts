@@ -108,6 +108,7 @@ export const upworkProjects: ExperienceEntry[] = [
     summary:
       'Migrated a client’s React storefront to a custom Shopify Liquid theme with GitHub-integrated deploys.',
     stack: ['React', 'TypeScript', 'Shopify Liquid', 'Vite'],
+    link: { href: 'https://github.com/thinktanktom/OREA', label: 'GitHub' },
   },
   {
     role: 'Based Agents — Smart Contract Suite',
