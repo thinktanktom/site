@@ -75,6 +75,7 @@ export const experience: ExperienceEntry[] = [
     summary:
       'Ported an open-source visible-watermark detection and removal model to TensorFlow 2.x, then concluded the approach wasn’t accurate enough to ship and moved on.',
     stack: ['Python', 'TensorFlow'],
+    link: { href: '/projects/WatermarkRemovalModel', label: 'Project writeup' },
   },
   {
     role: 'Deep Learning Engineer',
