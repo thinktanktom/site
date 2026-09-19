@@ -1,0 +1,32 @@
+---
+title: "Based Agents Smart Contract Suite"
+date: "2025-02-01"
+excerpt: "A Solidity contract suite for launching agent-owned tokens on a bonding curve that graduate into a Uniswap V3 pool — plus the protocol rewards escrow, upgradeable factory, and per-token governance that support it."
+stack: ["Solidity", "Hardhat", "OpenZeppelin Upgradeable", "Uniswap V3", "Solady", "Sepolia"]
+status: "completed"
+github: "https://github.com/BasedAgents/smart-contracts"
+link: "/projects/BasedAgents/introduction"
+---
+
+## What is the Based Agents Smart Contract Suite?
+
+This was a freelance engagement (sourced via Upwork, mid-2024 through early 2025) to build and deploy the on-chain contracts behind **Based Agents** — a protocol for launching agent-owned tokens that start life on an internal bonding curve and "graduate" into a real Uniswap V3 market once enough of the supply has been bought. I built and deployed the full suite: **Protocol Rewards**, **Bonding Curve**, **Bag** (the per-agent token), **Bag Governance**, and an upgradeable **Bag Factory** — with a Hardhat test suite run against a forked mainnet so the graduation path could be exercised against real Uniswap V3 contracts rather than mocks.
+
+## Architecture
+
+The factory is the entry point. `BagFactoryImpl` sits behind a UUPS proxy and exposes a single `deploy()` function: anyone can call it to launch a new token. Each call clones two contracts deterministically (via OpenZeppelin's `Clones.cloneDeterministic`) from a shared, immutable implementation pair:
+
+- **Bag** — the ERC-20 token itself. It opens in `BONDING_CURVE` mode, selling from an 800M-token primary allocation priced along an exponential curve, then permanently switches to `UNISWAP_POOL` mode once that allocation sells out — minting the remaining 200M tokens, wrapping the curve's accumulated ETH into a Uniswap V3 position, and handing that LP position to the token's creator.
+- **BagGovernor** — an OpenZeppelin Governor stack (`GovernorSettings` + `GovernorCountingSimple` + `GovernorVotes` + a 10% quorum fraction) scoped to that one token, with proposal rights restricted to the token's creator.
+
+Two shared, stateless-ish contracts back every token: **BondingCurve**, a pure-math contract implementing the `y = A·e^(Bx)` pricing curve, and **ProtocolRewards**, a permissionless ETH escrow that every fee split (creator / protocol / platform referrer / order referrer) gets paid into, supporting both direct withdrawal and EIP-712 gasless withdrawal.
+
+## Key Engineering Decisions
+
+**Deterministic clone deployment.** `BagFactoryImpl` never deploys a full contract per token — it clones a minimal proxy against one shared `Bag` and one shared `BagGovernor` implementation, salted from the creator's address, the token URI hash, and several block-level values. This keeps per-launch gas costs low and guarantees every token runs identical, audited bytecode.
+
+**Automatic market graduation.** There's no manual "launch to DEX" step. `buy()` on the bonding curve recomputes the order against the remaining primary supply on every call; the moment that supply is exhausted, the same transaction mints the secondary allocation, seeds a Uniswap V3 pool at a pre-set price, and mints the LP position — atomically, in one call.
+
+**Pull-based, permissionless fee escrow.** Rather than pushing ETH to four different recipients on every trade (any one of which could be a griefing contract that reverts), fees are deposited into `ProtocolRewards` via `depositBatch`, and each recipient pulls their own balance whenever they choose — including via a signed, gasless `withdrawWithSig` path.
+
+**An owner-controlled escape hatch.** Every `Bag` token exposes `upgradeParameters()`, letting its creator (the `Ownable` owner) rewrite supply, fee, and graduation-fee constants after the token is live. It's a deliberate centralization point I flagged and documented rather than hid — see the [access control](/projects/BasedAgents/security/access-control) page for the full picture.
