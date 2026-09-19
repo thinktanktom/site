@@ -85,6 +85,7 @@ export const experience: ExperienceEntry[] = [
     summary:
       'Built and deployed an AI background-removal web app on the U-2-Net segmentation model, containerized and shipped to Heroku and AWS EC2.',
     stack: ['Python', 'PyTorch', 'Docker', 'Flask'],
+    link: { href: '/projects/BackgroundRemovalApp', label: 'Project writeup' },
   },
   {
     role: 'Machine Learning Engineer',
