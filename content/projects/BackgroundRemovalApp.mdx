@@ -1,0 +1,23 @@
+---
+title: "AI Background Removal Web App"
+date: "2020-09-01"
+excerpt: "A background-removal web app built on the U-2-Net segmentation model, packaged as near-identical Flask deployments for Heroku and AWS EC2, on top of an earlier full-stack Vue/Flask exploration of the same model."
+stack: ["Python", "PyTorch", "Docker", "Flask"]
+status: "completed"
+github: "https://github.com/thinktanktom/Heroku-Background-Removal"
+---
+
+## What is this?
+
+A short engagement at Appcilious to build and ship an image background-removal tool as a web app — upload a photo, get back a version with the background stripped out. The core of the work was wiring up **U-2-Net** (specifically `u2netp`, its lighter-weight variant), an open-source salient-object-detection model well suited to this kind of foreground/background segmentation, behind a usable web interface rather than a bare inference script.
+
+## Architecture
+
+The path here ran through two stages, both public:
+
+- [**background-removal**](https://github.com/thinktanktom/background-removal) — an earlier, more ambitious exploration: a full Vue.js frontend talking to a Flask/PyTorch backend, adapted from open-source references ([`aquadzn/background-removal`](https://github.com/aquadzn/background-removal) and [`cyrildiagne/u2net-http`](https://github.com/cyrildiagne/u2net-http)) and hosted on GCP Cloud Run. This is where the U-2-Net-as-a-service approach was worked out.
+- [**Heroku-Background-Removal**](https://github.com/thinktanktom/Heroku-Background-Removal) and [**AWS-Background-Removal**](https://github.com/thinktanktom/AWS-Background-Removal) — the actual delivered app: a much simpler, single-page Flask service (no separate frontend framework) that loads `u2netp` directly with PyTorch, exposes one upload endpoint, and returns the cutout image. The two repos are near-identical — same `app.py` and `detect.py` — differing only in how each is packaged for its target: the Heroku version ships a `Procfile` (gunicorn) and `heroku.yml` for Heroku's Docker build path, while the AWS version is a plain Dockerfile built for a direct `docker run` on EC2, with the port explicitly exposed.
+
+## Outcome
+
+The app shipped and ran on both platforms within the engagement window. This was early, focused work — a single well-scoped model wrapped in a deployable service — rather than an ongoing product, and the engagement wrapped up once it was live.
