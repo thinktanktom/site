@@ -30,7 +30,7 @@ aiGenerated: true
 - **File:** `contracts/XSD/Pools/RewardManager.sol`
 - **Category:** confused deputy
 
-`userProvideBankXLiquidity`, `userProvideXSDLiquidity`, and `LiquidityRedemption` each take an explicit `to` beneficiary parameter, separate from `msg.sender`, so a relayer/router can submit on a user's behalf. Each function gates on a per-address cooldown flag set by `PIDController.priceCheck()`, then clears it. Both the check and the clear used `msg.sender`.
+`userProvideBankXLiquidity`, `userProvideXSDLiquidity`, and `LiquidityRedemption` each take an explicit `to` beneficiary parameter, separate from `msg.sender`, so a relayer or router can submit on a user's behalf. Each function gates on a per-address cooldown flag set by `PIDController.priceCheck()`, then clears it. Both the check and the clear used `msg.sender`.
 
 **Before:**
 ```solidity
@@ -64,13 +64,13 @@ function userProvideBankXLiquidity(address to) external override nonReentrant{
 
 Same substitution applied in `userProvideXSDLiquidity` and `LiquidityRedemption`.
 
-**Root cause:** principal mismatch. Code is correct only when `to == msg.sender`; any call through an intermediary checks/clears the wrong address's state.
+**Root cause:** principal mismatch. Code is correct only when `to == msg.sender`; any call through an intermediary checks and clears the wrong address's state.
 
-**Impact if unfixed:** a relayed call for a beneficiary who hadn't primed their own price-check reverts with "must wait" regardless of correctness; conversely a relayer with a primed flag could push a call through and clear the relayer's own flag, leaving the real beneficiary's cooldown gate armed for a payout that already happened under someone else's state.
+**Impact if unfixed:** a relayed call for a beneficiary who hadn't primed their own price-check reverts with "must wait" regardless of correctness. Conversely a relayer with a primed flag could push a call through and clear the relayer's own flag, leaving the real beneficiary's cooldown gate armed for a payout that already happened under someone else's state.
 
-**Also in this commit:** the repeated inline `require(msg.sender == smartcontract_owner, ...)` across ~6 admin functions was consolidated into a single `onlyByOwner` modifier.
+**Also in this commit:** the repeated inline `require(msg.sender == smartcontract_owner, ...)` across roughly six admin functions was consolidated into a single `onlyByOwner` modifier.
 
-**Open item (unresolved as of current `HEAD`):** none of `userProvideBankXLiquidity`, `userProvideXSDLiquidity`, or `LiquidityRedemption` restrict *who* may call with a given `to`. `blockDelay(to)` only reads/writes `pid_controller.lastPriceCheck(to)`; there is no `onlyRouter` or `msg.sender == to` check anywhere in `RewardManager.sol`. Any caller can name an arbitrary beneficiary and touch that address's cooldown state. Not addressed by this commit or any later one reviewed here.
+**Open item (unresolved as of current `HEAD`):** none of `userProvideBankXLiquidity`, `userProvideXSDLiquidity`, or `LiquidityRedemption` restrict *who* may call with a given `to`. `blockDelay(to)` only reads and writes `pid_controller.lastPriceCheck(to)`; there is no `onlyRouter` or `msg.sender == to` check anywhere in `RewardManager.sol`. Any caller can name an arbitrary beneficiary and touch that address's cooldown state. Not addressed by this commit or any later one reviewed here.
 
 ---
 
@@ -117,11 +117,11 @@ function pool_price(PriceChoice choice) internal view returns (uint256) {
 }
 ```
 
-**Token ordering (verified):** both `XSDWETHpool.sol` and `BankXWETHpool.sol` hardcode `token0` = protocol token (XSD/BankX), `token1` = WETH, in their constructors — not Uniswap's address-sort convention. This ordering holds by construction on every deployment of a given pool contract.
+**Token ordering (verified):** both `XSDWETHpool.sol` and `BankXWETHpool.sol` hardcode `token0` as the protocol token (XSD/BankX) and `token1` as WETH, in their constructors, not Uniswap's address-sort convention. This ordering holds by construction on every deployment of a given pool contract.
 
-**Root cause:** `reserve0/reserve1` is therefore a tokens-per-WETH ratio, ordinarily large (thousands), since one XSD/BankX token is worth a small fraction of one WETH. Integer division on a large ratio drops only the fractional remainder — a small precision loss that grows proportionally as the ratio shrinks. In thin/newly-seeded liquidity, where the ratio can fall below 1, it truncates to exactly 0. The existing `if (reserve0 == 0 || reserve1 == 0) return 1;` guard covers zero reserves, not a zero *ratio* — `_eth_usd_price / price_vs_eth` then divides by that zero and reverts.
+**Root cause:** `reserve0/reserve1` is therefore a tokens-per-WETH ratio, ordinarily large (thousands), since one XSD or BankX token is worth a small fraction of one WETH. Integer division on a large ratio drops only the fractional remainder, a small precision loss that grows proportionally as the ratio shrinks. In thin or newly-seeded liquidity, where the ratio can fall below 1, it truncates to exactly 0. The existing `if (reserve0 == 0 || reserve1 == 0) return 1;` guard covers zero reserves, not a zero *ratio*, so `_eth_usd_price / price_vs_eth` then divides by that zero and reverts.
 
-**Impact if unfixed:** normal-liquidity case is silent precision drift (no revert, plausible-looking numbers). Thin-liquidity case is a revert propagating to every caller of `pool_price()` — collateral-ratio math, mint/redeem pricing, interest calculations.
+**Impact if unfixed:** the normal-liquidity case is silent precision drift, no revert, just plausible-looking numbers. The thin-liquidity case is a revert propagating to every caller of `pool_price()`: collateral-ratio math, mint/redeem pricing, interest calculations.
 
 ---
 
@@ -131,7 +131,7 @@ function pool_price(PriceChoice choice) internal view returns (uint256) {
 - **File:** `contracts/Oracle/PIDController.sol` (`systemCalculations()`)
 - **Category:** underflow / liveness
 
-`systemCalculations()` is a permissionless entrypoint anyone can call; it runs `incentiveChecker1/2/3()` and `priceCheck()` before stepping `global_collateral_ratio`.
+`systemCalculations()` is a permissionless entrypoint anyone can call. It runs `incentiveChecker1/2/3()` and `priceCheck()` before stepping `global_collateral_ratio`.
 
 ### 3a. Ratio-step underflow (`42e7683`)
 
@@ -153,7 +153,7 @@ if (xsdprice > XSD_top_band) {
 }
 ```
 
-Solidity ≥0.8 reverts on underflow. Once `last_collateral_ratio < xsd_step`, the unguarded subtraction reverted every subsequent call to `systemCalculations()`, with no recovery short of an admin lowering `xsd_step`.
+Solidity 0.8 and above reverts on underflow. Once `last_collateral_ratio < xsd_step`, the unguarded subtraction reverted every subsequent call to `systemCalculations()`, with no recovery short of an admin lowering `xsd_step`.
 
 ### 3b. Cooldown implemented as a hard `require` inside a shared function (`e6e5b1d` → `c4f139f`)
 
@@ -188,9 +188,9 @@ if (is_active && (time_elapsed >= collateral_ratio_cooldown)) {
 - **File:** `contracts/XSD/Pools/CollateralPool.sol`
 - **Category:** settlement risk
 
-Redemption has a mandatory `block_delay` between request and `collectRedemption()`. Pre-fix, `unclaimedPoolBankX` (the pool's ledger of outstanding BankX owed) was credited in dollars at request time and converted to a BankX token amount only at claim time, using whatever `bankx_updated_price()` was current at that later block.
+Redemption has a mandatory `block_delay` between request and `collectRedemption()`. Pre-fix, `unclaimedPoolBankX`, the pool's ledger of outstanding BankX owed, was credited in dollars at request time and converted to a BankX token amount only at claim time, using whatever `bankx_updated_price()` was current at that later block.
 
-**Before — `collectRedemption()`:**
+**Before, `collectRedemption()`:**
 ```solidity
 if (redeemBankXBalances[msg.sender] > 0) {
     BankXDollarAmount = redeemBankXBalances[msg.sender];
@@ -201,7 +201,7 @@ if (redeemBankXBalances[msg.sender] > 0) {
 }
 ```
 
-**After — `collectRedemption()`:**
+**After, `collectRedemption()`:**
 ```solidity
 if (redeemBankXBalances[msg.sender] > 0) {
     BankXAmount = redeemBankXTokenBalances[msg.sender];
@@ -222,11 +222,11 @@ unclaimedPoolBankX = (unclaimedPoolBankX + bankx_amount);              // token-
 redeemBankXTokenBalances[msg.sender] = (redeemBankXTokenBalances[msg.sender] + bankx_amount);
 ```
 
-Verified (`grep unclaimedPoolBankX` on `fd516b4` and current state): every write site to `unclaimedPoolBankX`, credit and debit, is token-denominated post-fix. `current_accum_interest` is itself dollar-denominated (confirmed: only ever used as `.../bankx_updated_price()` to derive a token amount, and credited directly into the dollar-named `redeemBankXBalances`), so the pre-fix expression `bankx_dollar_value_d18 + current_accum_interest` summed two dollar figures, not two different units — the defect is that the whole ledger was tracked in the wrong unit for what it represents, not an intra-line unit mix.
+Verified (`grep unclaimedPoolBankX` on `fd516b4` and current state): every write site to `unclaimedPoolBankX`, credit and debit, is token-denominated post-fix. `current_accum_interest` is itself dollar-denominated (confirmed: only ever used as `.../bankx_updated_price()` to derive a token amount, and credited directly into the dollar-named `redeemBankXBalances`), so the pre-fix expression `bankx_dollar_value_d18 + current_accum_interest` summed two dollar figures, not two different units. The defect is that the whole ledger was tracked in the wrong unit for what it represents, not an intra-line unit mix.
 
 **Root cause:** a field meant to represent a fixed token liability was denominated in dollars and re-priced at an arbitrary later block.
 
-**Impact if unfixed:** redeemer's actual payout, and the pool's own internal ledger of outstanding BankX liabilities, both drift with BankX price movement during the mandatory delay window — a window that exists as a flash-loan/flash-mint guard, not as a pricing mechanism.
+**Impact if unfixed:** the redeemer's actual payout, and the pool's own internal ledger of outstanding BankX liabilities, both drift with BankX price movement during the mandatory delay window, a window that exists as a flash-loan and flash-mint guard, not as a pricing mechanism.
 
 **Fix:** fix the token amount once at request time in `redeemBankXTokenBalances`; `collectRedemption()` reads the precomputed figure with no second price lookup.
 
@@ -255,7 +255,7 @@ require(
 );
 ```
 
-**Root cause:** `unclaimedPoolCollateral` is a dollar-denominated reserve (1e18 scale, per `fd516b4`: `weth_dollar_value = (neededWETH * eth_usd_price())/1e6 // precision of 1e18`), subtracted directly from a raw WETH token balance. `eth_usd_price()` is 1e6-scaled dollars-per-WETH (`PRICE_PRECISION = 1e6`). Dimensional check on the fix: `(dollars_1e18 * 1e6) / price_1e6 = dollars_1e18 / price_raw * 1e6` reduces to WETH-wei — the formula is dimensionally correct as written; this was verified, not assumed.
+**Root cause:** `unclaimedPoolCollateral` is a dollar-denominated reserve (1e18 scale, per `fd516b4`: `weth_dollar_value = (neededWETH * eth_usd_price())/1e6 // precision of 1e18`), subtracted directly from a raw WETH token balance. `eth_usd_price()` is 1e6-scaled dollars-per-WETH (`PRICE_PRECISION = 1e6`). Dimensional check on the fix: `(dollars_1e18 * 1e6) / price_1e6 = dollars_1e18 / price_raw * 1e6` reduces to WETH-wei; the formula is dimensionally correct as written, verified rather than assumed.
 
 **Impact if unfixed:** the "reserved" amount subtracted is wrong by exactly the ETH/USD price factor. At high ETH price, too little WETH is treated as reserved, so the pool can approve redemptions against collateral that isn't actually free. At low ETH price, the check over-reserves and rejects valid redemptions.
 
@@ -269,7 +269,7 @@ require(
 
 ### 6a. No reentrancy guard
 
-Through most of `Router.sol`'s history, no function had a reentrancy guard despite every swap/liquidity function making external calls (WETH, pool contracts). `c8a2611` added a hand-rolled lock:
+Through most of `Router.sol`'s history, no function had a reentrancy guard despite every swap and liquidity function making external calls (WETH, pool contracts). `c8a2611` added a hand-rolled lock:
 
 ```solidity
 bool private locked;
@@ -312,9 +312,9 @@ function userRedeemLiquidity(address pool, uint deadline) external ensure(deadli
 }
 ```
 
-**Root cause:** the three near-identical branches read as input validation but weren't. Passing any other address matched no branch: the function returned without calling anything and the transaction still succeeded. This is a silent no-op, not an unchecked call reaching `RewardManager` — nothing downstream ever received an invalid address.
+**Root cause:** the three near-identical branches read as input validation but weren't. Passing any other address matched no branch: the function returned without calling anything and the transaction still succeeded. This is a silent no-op, not an unchecked call reaching `RewardManager`; nothing downstream ever received an invalid address.
 
-**Impact if unfixed:** correctness/integration-hygiene defect. A caller (or an integrator) cannot distinguish a successful redemption from a silent no-op, since both return without error.
+**Impact if unfixed:** a correctness and integration-hygiene defect. A caller, or an integrator, cannot distinguish a successful redemption from a silent no-op, since both return without error.
 
 ### 6c. Circuit-breaker identity resolved by hashing struct state
 
@@ -330,7 +330,7 @@ function getCircuitBreakerType(CircuitBreaker storage breaker) internal view ret
 }
 ```
 
-**Root cause:** this cannot distinguish two breakers with identical field values, and at genesis all four breakers initialize to `is_active=false, price_threshold=0, volume_threshold=0, last_price=0` — identical hashes. `2a7a3f1` fixed this by passing `breaker_type` explicitly through the call chain (`getSafety(breaker_type)`, `mapping(uint8 => ...)` thresholds) instead of reverse-engineering identity from state.
+**Root cause:** this cannot distinguish two breakers with identical field values, and at genesis all four breakers initialize to `is_active=false, price_threshold=0, volume_threshold=0, last_price=0`, identical hashes. `2a7a3f1` fixed this by passing `breaker_type` explicitly through the call chain (`getSafety(breaker_type)`, `mapping(uint8 => ...)` thresholds) instead of reverse-engineering identity from state.
 
 **Impact if unfixed:** every circuit-breaker trip event and admin toggle would resolve to the wrong breaker from the moment the feature shipped.
 
@@ -359,7 +359,7 @@ for (uint256 i = 0; i < 11; i++) {
 
 **Defect:** all 11 seeded "history" entries hold the identical spot price. A TWAP's function is to average a spot price against genuinely independent past observations; a buffer pre-filled with copies of the current price is not an average until 10 real blocks have elapsed. Indexed by block count, not wall-clock time, so equivalent windows vary with block-time on any non-constant-block-time chain.
 
-**Also in this commit (verified via diff, not present before):** `require(eth_usd_price > 0, ...)` and equivalents for BankX/XSD prices, closing a separate path where a stale/zeroed oracle read could propagate into mint/redeem math.
+**Also in this commit (verified via diff, not present before):** `require(eth_usd_price > 0, ...)` and equivalents for BankX/XSD prices, closing a separate path where a stale or zeroed oracle read could propagate into mint/redeem math.
 
 ### Attempt 2 (`7d3f5c6`): real cumulative-price TWAP, real-time clock
 
@@ -382,9 +382,9 @@ function updateTWAP() public {
 }
 ```
 
-Standard Uniswap-V2 cumulative-price primitive, real-time-based rather than block-count-based. Brings the standard hazards of that primitive: `UQ112x112` fixed-point range, overflow/wraparound bookkeeping on the accumulator.
+Standard Uniswap-V2 cumulative-price primitive, real-time-based rather than block-count-based. Brings the standard hazards of that primitive: `UQ112x112` fixed-point range, overflow and wraparound bookkeeping on the accumulator.
 
-### Attempt 3 (`a1f89b4`): fixed-length rolling average — current implementation
+### Attempt 3 (`a1f89b4`): fixed-length rolling average, current implementation
 
 ```solidity
 uint256 public constant PRICE_HISTORY_LENGTH = 10;
@@ -399,16 +399,13 @@ function calculateAveragePrice(uint256[] memory history) internal pure returns (
 
 Arithmetic mean of the last 10 samples, sampled at most once per 180s. Avoids the cumulative-price accumulator's overflow edge cases.
 
-**Manipulation-resistance analysis (current state):**
-- `updatePrices()` is `public`, no access-control modifier, gated only by `currentTime >= lastPriceUpdateTime + priceUpdateInterval`. No same-block/same-transaction guard: a transaction that moves the pool price and then calls `updatePrices()` can record a skewed sample, affecting ~1/10 of the rolling average.
-- `Router.sol` provides the actual manipulation bound: `checkAndUpdateSafety(token_type, current_price, volume)` runs on every swap path and reverts `"Price manipulation detected"` if `deviationPercent = abs(poolPrice, referencePrice) * 10000 / referencePrice > price_threshold[token_type]`, with `price_threshold[0] = price_threshold[1] = 1000` (10%, verified in `Router.sol`).
-- The 10-sample/3-minute window bounds how much a single block can move the *average*; the router's 10% deviation check is what actually bounds how much a single block can move the underlying *price* being sampled.
+**Manipulation-resistance analysis (current state):** `updatePrices()` is `public`, with no access-control modifier, gated only by `currentTime >= lastPriceUpdateTime + priceUpdateInterval`. It has no same-block or same-transaction guard, so a transaction that moves the pool price and then calls `updatePrices()` can record a skewed sample, affecting roughly one tenth of the rolling average. `Router.sol` provides the actual manipulation bound: `checkAndUpdateSafety(token_type, current_price, volume)` runs on every swap path and reverts `"Price manipulation detected"` if `deviationPercent = abs(poolPrice, referencePrice) * 10000 / referencePrice > price_threshold[token_type]`, with `price_threshold[0] = price_threshold[1] = 1000` (10%, verified in `Router.sol`). The 10-sample, 3-minute window bounds how much a single block can move the *average*; the router's 10% deviation check is what actually bounds how much a single block can move the underlying *price* being sampled.
 
 ---
 
 ## Minor items
 
-### `24f4b07` (2022-08-01) — silver-peg conversion constant, wrong on first pass
+### `24f4b07` (2022-08-01): silver-peg conversion constant, wrong on first pass
 
 Earliest mint/redeem math priced XSD as flat $1 with no silver reference. This commit introduced a first conversion:
 
@@ -424,10 +421,10 @@ gram_price = (silver_price * 1e4) / 311035;
 
 dimensionally correct (`$/troy-oz ÷ g/troy-oz = $/g`).
 
-**Open item:** exact commit that corrected 283495/multiply → 311035/divide not identified in this review.
+**Open item:** the exact commit that corrected 283495/multiply to 311035/divide wasn't identified in this review.
 
-### `08a6001` (2024-06-05) — `CollateralPoolLibrary` visibility: `internal` → `public`
+### `08a6001` (2024-06-05): `CollateralPoolLibrary` visibility, `internal` to `public`
 
-Commit message ("Collateral Pool Library visibility modified") does not state a reason; no comment in the diff. Standard technical effect of the change: `public`/`external` library functions can be deployed once and linked externally instead of inlined into every caller's bytecode, relevant when a contract's own bytecode approaches the 24 KB (EIP-170) limit.
+The commit message ("Collateral Pool Library visibility modified") does not state a reason; no comment appears in the diff. The standard technical effect of the change: `public`/`external` library functions can be deployed once and linked externally instead of inlined into every caller's bytecode, relevant when a contract's own bytecode approaches the 24 KB (EIP-170) limit.
 
-**Open item:** no `libraries: {...}` linking block exists in `hardhat.config.js`, and no deploy script references `CollateralPoolLibrary` for external linking (only test files do). Cannot confirm this was the actual motivation from repo evidence alone.
+**Open item:** no `libraries: {...}` linking block exists in `hardhat.config.js`, and no deploy script references `CollateralPoolLibrary` for external linking (only test files do). This review's repo evidence alone cannot confirm that was the actual motivation.
