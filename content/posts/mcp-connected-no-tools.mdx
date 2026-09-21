@@ -1,44 +1,44 @@
 ---
 title: "Connected, but Not Authenticated"
 date: "2026-05-25"
-excerpt: "Claude Code reported my MCP server 'connected but not authenticated' — TLS fine, token valid, zero tools. The culprit wasn't the token. It was a 401 from a route that never wanted a Bearer in the first place, and what that 401 set in motion."
+excerpt: "Claude Code reported my MCP server 'connected but not authenticated': TLS fine, token valid, zero tools. The culprit wasn't the token. It was a 401 from a route that never wanted a Bearer in the first place, and what that 401 set in motion."
 tags: ["mcp", "debugging", "devops", "ai-tooling", "self-hosted"]
 aiGenerated: true
 ---
 
-### *Part II — wiring my own Claude Code CLI to the same self-hosted VM that served the Chat UI from Part I.*
+### *Part II, wiring my own Claude Code CLI to the same self-hosted VM that served the Chat UI from Part I.*
 
 ---
 
-Part I was the pretty part: a Chat UI, the bit people actually look at. This part is the one nobody sees — getting Claude Code, running in my own terminal on a NixOS box, to talk to the VM's tooling. Less a launch, more a private rehearsal. And the rehearsal went badly four separate times, each one wearing the same mask.
+Part I covered the Chat UI, the part people actually look at. This part covers the piece nobody sees: getting Claude Code, running in my own terminal on a NixOS box, to talk to the VM's tooling. It went badly four separate times, and each failure looked identical from the outside.
 
 ## The setup
 
-The VM was already up on a cloud droplet — Ubuntu, reachable over SSH. Caddy terminates HTTPS out front. Under PM2 it runs two things: the chat UI on `:3000` (that was Part I) and the **MCP bridge** on `:3001` — a couple hundred tools across several backends.
+The VM was already up on a cloud droplet, Ubuntu, reachable over SSH. Caddy terminates HTTPS out front. Under PM2 it runs two things: the chat UI on `:3000` (that was Part I) and the **MCP bridge** on `:3001`, a couple hundred tools across several backends.
 
-One detail about the front door matters for everything that follows: Caddy serves two auth routes. A Bearer-token path for API clients, and a catch-all behind **HTTP basic auth** for everything else. The bridge itself does exactly one auth check — the right Bearer token — and nothing more. No OAuth, no discovery endpoints, no metadata. Hold that two-route thought; it's where the first trap is buried.
+One detail about the front door matters for everything that follows. Caddy serves two auth routes: a Bearer-token path for API clients, and a catch-all behind **HTTP basic auth** for everything else. The bridge itself does exactly one auth check, the right Bearer token, and nothing more. No OAuth, no discovery endpoints, no metadata. Keep that two-route detail in mind; it's where the first trap sits.
 
-The job: register the bridge in Claude Code so I could drive those tools from the local terminal. Should be five minutes. It was not.
+The job was to register the bridge in Claude Code so I could drive those tools from the local terminal. It should have taken five minutes. It didn't.
 
 ## "Connected but not authenticated"
 
-I registered the bridge over Claude Code's HTTP MCP transport, passing a static Bearer token in the `Authorization` header — the documented way to talk to a token-protected server. `claude mcp list` came back with the most annoying status a daemon can emit: **connected**, and in the same breath, **not authenticated**.
+I registered the bridge over Claude Code's HTTP MCP transport, passing a static Bearer token in the `Authorization` header, the documented way to talk to a token-protected server. `claude mcp list` came back with the most frustrating status a daemon can emit: **connected**, and in the same breath, **not authenticated**.
 
-TCP fine. TLS fine. Server reachable. Every layer green — and not a single tool in the session. The connection had shown up to the party, shaken every hand, and somehow remained a complete stranger to everyone in the room. It would turn out to be the first of several distinct bugs all flying that exact false flag.
+TCP fine. TLS fine. Server reachable. Every layer green, and not a single tool in the session. It turned out to be the first of several distinct bugs, all producing that exact same misleading status.
 
-> One honest caveat before the diagnosis: I didn't capture the wire trace live for the auth failure. What follows there is reconstructed from the transport's documented behavior plus the symptom I actually saw — not a saved log. It holds up, but I'd rather you know which parts are observed and which are inferred. The two failures after it *were* logged, and I'll say so when we get there.
+> One honest caveat before the diagnosis: I didn't capture the wire trace live for the auth failure. What follows is reconstructed from the transport's documented behavior plus the symptom I actually saw, not a saved log. It holds up, but I'd rather flag which parts are observed and which are inferred. The two failures after it were logged, and I'll note that when we get there.
 
 ## Why: a valid token, judged at the wrong door
 
-The thing I had backwards was how OAuth gets involved at all. A static Bearer token is *not* inherently the problem — the HTTP transport is perfectly happy with one, **as long as the authenticated request comes back `200`.** The OAuth machinery doesn't engage on the *absence* of a token. It engages when something answers `401`: the client reads the 401 as an auth challenge and tries to begin a flow to satisfy it, using whatever the `WWW-Authenticate` header points it at.
+What I had backwards was how OAuth gets involved at all. A static Bearer token isn't inherently the problem. The HTTP transport is perfectly happy with one, **as long as the authenticated request comes back `200`.** The OAuth machinery doesn't engage on the *absence* of a token. It engages when something answers `401`: the client reads the 401 as an auth challenge and tries to begin a flow to satisfy it, using whatever the `WWW-Authenticate` header points it at.
 
-**Culprit 1 — the request landed on the wrong route.** This is the one that bit me, and it's embarrassingly mundane at the root. My token was valid, but the request never reached the Bearer path that would have honored it. It hit the *catch-all basic-auth route* instead — and basic auth, handed an `Authorization: Bearer …` header where it expected Basic credentials, did the only thing it knows how to do: it rejected it with a `401` and `WWW-Authenticate: Basic`. The token was never evaluated. It got 401'd at the wrong door.
+**Culprit 1, the request landed on the wrong route.** This is the one that bit me, and the root cause is mundane. My token was valid, but the request never reached the Bearer path that would have honored it. It hit the *catch-all basic-auth route* instead, and basic auth, handed an `Authorization: Bearer …` header where it expected Basic credentials, did the only thing it knows how to do: it rejected the request with a `401` and `WWW-Authenticate: Basic`. The token was never evaluated. It got 401'd at the wrong door.
 
-That 401 set everything else in motion. Claude Code treats the 401 as "this server wants authentication," and goes looking for a flow to satisfy it — but a basic-auth challenge points at nothing the client can negotiate against, so it starts a conversation the server can never finish, and goes quiet. That dead-ended exchange is precisely what `connected but not authenticated` *is*: transport up, auth step started, never completed. The non-obvious part is the layering — a trivial routing mismatch surfaced as an inscrutable *auth-model* failure two layers up.
+That 401 set everything else in motion. Claude Code treats the 401 as "this server wants authentication" and goes looking for a flow to satisfy it. A basic-auth challenge points at nothing the client can negotiate against, so it starts a conversation the server can never finish, and goes quiet. That dead-ended exchange is precisely what `connected but not authenticated` means: transport up, auth step started, never completed. The non-obvious part is the layering: a trivial routing mismatch surfaced as an inscrutable *auth-model* failure two layers up.
 
-**Culprit 2 — discovery metadata you didn't mean to expose** *(a related trap, not mine).* On a setup that returns a `WWW-Authenticate` pointing at an authorization server, or exposes `/.well-known/oauth-*` metadata, the client will pre-emptively trip into full OAuth discovery and strand you the same way — even on a clean `200` token path. My bridge published none of that, so this wasn't my failure. But if yours does, rule it out by version rather than assumption; same misleading status line, different reason.
+**Culprit 2, discovery metadata you didn't mean to expose.** This one's a related trap, not mine. On a setup that returns a `WWW-Authenticate` pointing at an authorization server, or exposes `/.well-known/oauth-*` metadata, the client will pre-emptively trip into full OAuth discovery and strand you the same way, even on a clean `200` token path. My bridge published none of that, so this wasn't my failure. But if yours does, rule it out by version rather than assumption; the misleading status line looks the same, the reason differs.
 
-You don't have to guess which one you're hitting. Exercise the path you actually care about — the authenticated one — and dump the headers:
+Exercise the path you actually care about, the authenticated one, and dump the headers:
 
 ```bash
 curl -sD - -o /dev/null https://<your-bridge-domain>/mcp \
@@ -47,27 +47,27 @@ curl -sD - -o /dev/null https://<your-bridge-domain>/mcp \
   -d '{"jsonrpc":"2.0","method":"initialize","params":{},"id":1}'
 ```
 
-`-D -` prints the response headers (including any `WWW-Authenticate`); `-o /dev/null` drops the body, so you get a clean read of the status line. A `200` means your token reached the route that honors it — auth is fine, look elsewhere. A `401`/`403` — especially `WWW-Authenticate: Basic` — means your Bearer request is being judged by something that never wanted a Bearer in the first place.
+`-D -` prints the response headers, including any `WWW-Authenticate`; `-o /dev/null` drops the body, so you get a clean read of the status line. A `200` means your token reached the route that honors it; auth is fine, look elsewhere. A `401` or `403`, especially `WWW-Authenticate: Basic`, means your Bearer request is being judged by something that never wanted a Bearer in the first place.
 
 ## The handshake that points nowhere
 
-Routing fixed, auth honored, `200` on the initialize — and it *still* didn't work, this time for a reason specific to running MCP's HTTP transport behind a reverse proxy. The transport opens with a Server-Sent Events stream, and the **first event the server sends tells the client where to POST its messages.** My bridge was reachable from outside at `/mcp-bridge/mcp`, but the SSE stream advertised a bare `/mcp` as the callback. So the client connected to `/mcp-bridge/mcp`, took the session, read the endpoint event, and then POSTed its actual JSON-RPC to `/mcp` — a path Caddy had no route to the bridge for.
+Routing fixed, auth honored, `200` on the initialize, and it still didn't work, this time for a reason specific to running MCP's HTTP transport behind a reverse proxy. The transport opens with a Server-Sent Events stream, and the **first event the server sends tells the client where to POST its messages.** My bridge was reachable from outside at `/mcp-bridge/mcp`, but the SSE stream advertised a bare `/mcp` as the callback. So the client connected to `/mcp-bridge/mcp`, took the session, read the endpoint event, and then POSTed its actual JSON-RPC to `/mcp`, a path Caddy had no route to the bridge for.
 
-The handshake looked flawless and nothing happened. The tell was in the logs, and this one I did capture: the follow-up connection died in **0.002 seconds** with `context canceled` — far too fast to be the proxy rejecting it. That wasn't a rejection. That was the client cancelling its *own* request after the POST went nowhere useful.
+The handshake looked flawless and nothing happened. The tell was in the logs, and this one I did capture: the follow-up connection died in **0.002 seconds** with `context canceled`, far too fast to be the proxy rejecting it. That wasn't a rejection. That was the client cancelling its own request after the POST went nowhere useful.
 
-Two ways to close it: add a second proxy route so the advertised path (`/mcp`) also reaches the bridge, or — cleaner — make the bridge advertise its real external path so the callback matches the route the client arrived on. The general lesson is worth more than the fix: when an MCP server sits behind a reverse proxy, the **callback URL it advertises in the SSE stream has to be externally routable**, not just the URL you connected to. Mismatch them and you get a perfect handshake followed by silence.
+Two ways to close it: add a second proxy route so the advertised path (`/mcp`) also reaches the bridge, or, cleaner, make the bridge advertise its real external path so the callback matches the route the client arrived on. The general lesson matters more than the fix. When an MCP server sits behind a reverse proxy, the **callback URL it advertises in the SSE stream has to be externally routable**, not just the URL you connected to. Mismatch them and you get a perfect handshake followed by silence.
 
 ## The tool list that arrived too late
 
-Connection genuinely working, transport genuinely streaming — and *still* zero tools, for a reason that has nothing to do with auth or routing. The bridge aggregated its full catalogue (north of 200 tools, across several backends) **synchronously on every `tools/list` call**, which took around seven seconds. Claude Code registers tools during session startup and doesn't wait forever; in my case the response landed after it had already given up and opened the session with an empty tool set.
+Connection genuinely working, transport genuinely streaming, and still zero tools, for a reason that has nothing to do with auth or routing. The bridge aggregated its full catalogue (north of 200 tools, across several backends) **synchronously on every `tools/list` call**, which took around seven seconds. Claude Code registers tools during session startup and doesn't wait forever; in my case the response landed after it had already given up and opened the session with an empty tool set.
 
-To be precise about what's measured versus inferred: the seven-second response was measured. The registration window — working theory, somewhere around five seconds — was inferred from the behaviour, not read off a documented constant. The fix confirmed the theory, which is the most I'll claim for it.
+To be precise about what's measured versus inferred: the seven-second response was measured. The registration window, a working theory of somewhere around five seconds, was inferred from the behaviour, not read off a documented constant. The fix confirmed the theory, which is the most I'll claim for it.
 
-The fix is to stop doing expensive work on the request path. A naïve in-memory cache doesn't save you on its own — it only helps the *second* caller, while the first still eats the full latency at startup, which is exactly the call that races the timeout. Two things that actually work: **pre-warm** the catalogue when the server boots, after the backends initialise, so the cost moves to startup rather than first request; and, on the client side, serve `tools/list` from a **pre-fetched local snapshot**, so registration is effectively instant and never races the window at all. (More on that snapshot below — it earns its keep twice.)
+The fix is to stop doing expensive work on the request path. A naive in-memory cache doesn't save you on its own; it only helps the *second* caller, while the first still eats the full latency at startup, which is exactly the call that races the timeout. Two things that actually work: **pre-warm** the catalogue when the server boots, after the backends initialise, so the cost moves to startup rather than first request; and, on the client side, serve `tools/list` from a **pre-fetched local snapshot**, so registration is effectively instant and never races the window at all. More on that snapshot below; it earns its keep twice.
 
 ## The fix for my own access: stop arguing, dig a tunnel
 
-I could have chased the proxy config until the Bearer route answered `200` cleanly and the SSE callback resolved — and for the version that ships to someone else, that's the right long-term fix. For my own terminal I took the blunter route: stop going through the public proxy at all.
+I could have chased the proxy config until the Bearer route answered `200` cleanly and the SSE callback resolved, and for the version that ships to someone else, that's the right long-term fix. For my own terminal I took the blunter route: stop going through the public proxy at all.
 
 An SSH local forward maps a local port straight to the bridge's private port:
 
@@ -79,7 +79,7 @@ Host mcp-tunnel
   LocalForward 13001 127.0.0.1:3001
 ```
 
-Bring it up, register Claude Code against `127.0.0.1:13001` — the local forward, not the public domain. There's no proxy in front to emit a stray 401, and no path-rewriting layer to mangle the SSE callback, so both of those failure classes simply stop existing. (The `tools/list` timeout is server-side and doesn't care about the tunnel — that one still needs the pre-warm.) This isn't clever; it's "remove the layers that were answering wrong." The bridge was *meant* to be private to the internal network — the tunnel respects that boundary instead of punching a new public route through Caddy.
+Bring it up, register Claude Code against `127.0.0.1:13001`, the local forward, not the public domain. There's no proxy in front to emit a stray 401, and no path-rewriting layer to mangle the SSE callback, so both of those failure classes simply stop existing. The `tools/list` timeout is server-side and doesn't care about the tunnel; that one still needs the pre-warm. This isn't clever. It's removing the layers that were answering wrong. The bridge was meant to be private to the internal network; the tunnel respects that boundary instead of punching a new public route through Caddy.
 
 Verify by exercising the interface directly:
 
@@ -91,22 +91,19 @@ A populated `tools/list` and a successful `tools/call` confirm the path end to e
 
 ## The same idea for someone who isn't me
 
-The tunnel is fine for me and wrong for anyone else — a persistent SSH forward as a server user means handing them shell access to the VM. Someone connecting from Claude Desktop on Windows needs the same principle in different packaging: a Desktop Extension (`.dxt`) wrapping a small **stdio kernel** plus a bundled snapshot of the tool list.
+The tunnel works for me and would be wrong for anyone else. A persistent SSH forward as a server user means handing them shell access to the VM. Someone connecting from Claude Desktop on Windows needs the same principle in different packaging: a Desktop Extension (`.dxt`) wrapping a small **stdio kernel** plus a bundled snapshot of the tool list.
 
-It dodges the whole 401-discovery problem structurally — **stdio, not the HTTP transport**, so there's no HTTP request for a proxy to answer `401` and no discovery flow to mis-trigger. Claude Desktop talks JSON-RPC to the local kernel; the kernel makes the outbound call as a plain POST carrying the Bearer token, and *if the route is right*, gets a clean `200`.
+It avoids the whole 401-discovery problem structurally. **Stdio, not the HTTP transport**, so there's no HTTP request for a proxy to answer `401` and no discovery flow to mis-trigger. Claude Desktop talks JSON-RPC to the local kernel; the kernel makes the outbound call as a plain POST carrying the Bearer token, and if the route is right, gets a clean `200`.
 
-The bundled snapshot is the piece that earns its keep twice. Because `tools/list` is answered from the local snapshot rather than fetched live, it (1) never opens an SSE stream at all, so there's no advertised callback URL to route — the handshake-that-points-nowhere can't happen; and (2) returns instantly, so it can't lose the registration race the seven-second live aggregation lost. Only actual tool *invocations* touch the network. The trade is staleness — see the open edges.
+The bundled snapshot is the piece that earns its keep twice. Because `tools/list` is answered from the local snapshot rather than fetched live, it never opens an SSE stream at all, so there's no advertised callback URL to route; the handshake-that-points-nowhere can't happen. It also returns instantly, so it can't lose the registration race the seven-second live aggregation lost. Only actual tool *invocations* touch the network. The trade is staleness; see the open edges below.
 
 ## What's validated, and what isn't
 
-To be straight about it: this is a pattern I've proven on my own machine, not a finished, end-to-end-verified deliverable.
+To be straight about it, this is a pattern I've proven on my own machine, not a finished, end-to-end-verified deliverable.
 
-- **Observed and fixed:** the SSE callback mismatch (the `0.002s` / `context canceled` line was in the logs) and the `tools/list` timeout (the ~7s response was measured; the fix resolved it).
-- **Validated end to end:** the tunnel path on my own Claude Code setup — tools enumerate and call.
-- **Reasoned, not yet verified on the target:** the Desktop `.dxt` variant. The logic holds and it smoke-tests locally, but I haven't run it on the actual Windows Claude Desktop it's meant for, so "behaves identically on Windows" is an expectation, not a result.
-- **Reconstructed, not logged:** the specific 401 trigger. The discovery mechanism is certain; that a routing mismatch produced *my* 401 is the most plausible read of the topology, and the `curl -D -` above is what would have turned that inference into a fact.
-- **Inferred, not documented:** the ~5-second client registration window. Measured behaviour pointed at it; no constant confirmed it.
-- **Known open edge that matters:** a single shared Bearer token reaching the full toolset is fine for a proof and wrong for production — it wants a per-client, least-privilege token before I'd stand behind it. (Also: the bundled snapshot goes stale when server tools change, and a manifest `${__dirname}`-style reference only helps if the host actually expands it.)
+Observed and fixed: the SSE callback mismatch (the `0.002s` / `context canceled` line was in the logs) and the `tools/list` timeout (the roughly seven-second response was measured; the fix resolved it). Validated end to end: the tunnel path on my own Claude Code setup, where tools enumerate and call. Reasoned but not yet verified on the target: the Desktop `.dxt` variant. The logic holds and it smoke-tests locally, but I haven't run it on the actual Windows Claude Desktop it's meant for, so "behaves identically on Windows" is an expectation, not a result. Reconstructed, not logged: the specific 401 trigger. The discovery mechanism is certain; that a routing mismatch produced *my* 401 is the most plausible read of the topology, and the `curl -D -` above is what would have turned that inference into a fact. Inferred, not documented: the roughly five-second client registration window. Measured behaviour pointed at it; no constant confirmed it.
+
+One known open edge matters most: a single shared Bearer token reaching the full toolset is fine for a proof and wrong for production. It wants a per-client, least-privilege token before I'd stand behind it. The bundled snapshot also goes stale when server tools change, and a manifest `${__dirname}`-style reference only helps if the host actually expands it.
 
 I'd rather publish this as "here's the mechanism and exactly where I've validated it" than dress up the unknowns.
 
@@ -127,13 +124,13 @@ Claude Code (CLI)
 
 ## Takeaway
 
-"Connected" describes the transport — not the auth, and not whether any tools ever registered. If a remote MCP server connects but never yields its tools, three distinct things can be wrong and they look identical from the outside:
+"Connected" describes the transport, not the auth, and not whether any tools ever registered. If a remote MCP server connects but never yields its tools, three distinct things can be wrong and they look identical from the outside.
 
-First, **something in the path returned a 401**, which is what actually triggers OAuth discovery — if your server has no discovery metadata, that flow dead-ends silently. Run `curl -D -` against the *authenticated* endpoint before theorizing; the status line and `WWW-Authenticate` header point straight at the handler that answered, and a `Basic` challenge to a `Bearer` request means you're knocking on the wrong door.
+First, something in the path returned a 401, which is what actually triggers OAuth discovery; if your server has no discovery metadata, that flow dead-ends silently. Run `curl -D -` against the *authenticated* endpoint before theorizing. The status line and `WWW-Authenticate` header point straight at the handler that answered, and a `Basic` challenge to a `Bearer` request means you're knocking on the wrong door.
 
-Second, if the server sits behind a reverse proxy, check that the **callback URL it advertises in the SSE stream is externally routable** — a mismatch buys you a clean handshake and then a follow-up POST that goes nowhere, with the client cancelling its own request in milliseconds.
+Second, if the server sits behind a reverse proxy, check that the **callback URL it advertises in the SSE stream is externally routable**. A mismatch buys you a clean handshake and then a follow-up POST that goes nowhere, with the client cancelling its own request in milliseconds.
 
-Third, time your **`tools/list`** — aggregate slowly enough to miss the client's startup window and you get zero tools with everything else working perfectly; pre-warm it or serve it from a snapshot.
+Third, time your **`tools/list`**. Aggregate slowly enough to miss the client's startup window and you get zero tools with everything else working perfectly. Pre-warm it or serve it from a snapshot.
 
 Three causes, one symptom. Measure before you guess which one you have.
 
