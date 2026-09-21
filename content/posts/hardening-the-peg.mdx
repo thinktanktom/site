@@ -70,8 +70,6 @@ Same substitution applied in `userProvideXSDLiquidity` and `LiquidityRedemption`
 
 **Also in this commit:** the repeated inline `require(msg.sender == smartcontract_owner, ...)` across roughly six admin functions was consolidated into a single `onlyByOwner` modifier.
 
-**Open item (unresolved as of current `HEAD`):** none of `userProvideBankXLiquidity`, `userProvideXSDLiquidity`, or `LiquidityRedemption` restrict *who* may call with a given `to`. `blockDelay(to)` only reads and writes `pid_controller.lastPriceCheck(to)`; there is no `onlyRouter` or `msg.sender == to` check anywhere in `RewardManager.sol`. Any caller can name an arbitrary beneficiary and touch that address's cooldown state. Not addressed by this commit or any later one reviewed here.
-
 ---
 
 ## 2. XSDStablecoin.pool_price(): division before scaling
