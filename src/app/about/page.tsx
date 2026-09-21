@@ -106,6 +106,29 @@ export default function AboutPage() {
           </div>
         </div>
 
+        {/* Resume */}
+        <div className="mb-16">
+          <h2 className="font-mono text-xs tracking-widest uppercase text-accent mb-5">
+            Resume
+          </h2>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <a
+              href="/Thomas_Cyriac_Full_Stack_Developer.pdf"
+              download
+              className="font-mono text-sm tracking-wider px-6 py-3 bg-accent text-bg font-bold hover:bg-accent-dim transition-colors duration-200 rounded-sm text-center"
+            >
+              Download Full Stack resume ↓
+            </a>
+            <a
+              href="/Thomas_Cyriac_Smart_Contract_Engineer.pdf"
+              download
+              className="font-mono text-sm tracking-wider px-6 py-3 border border-accent text-accent hover:bg-accent hover:text-bg transition-all duration-200 rounded-sm text-center"
+            >
+              Download Smart Contract resume ↓
+            </a>
+          </div>
+        </div>
+
         {/* Currently */}
         <div className="mb-16 p-6 border border-border rounded-sm bg-surface/30">
           <h2 className="font-mono text-xs tracking-widest uppercase text-accent mb-5">
