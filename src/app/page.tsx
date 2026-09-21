@@ -42,7 +42,7 @@ export default function HomePage() {
             className="font-sans text-lg sm:text-xl text-muted leading-relaxed mb-10 max-w-[560px] animate-fade-up"
             style={{ animationDelay: '300ms' }}
           >
-            A modern day engineer with a penchant for dry humour.
+            My logo is a vervet. The story&apos;s worth hearing in person.
           </p>
 
           <div
