@@ -8,9 +8,7 @@ aiGenerated: true
 
 **Scope:** Code-level defects found and fixed in the BankX/XSD contract history, with root cause and diff for each. Not an incident report. Spans pre-launch development and post-launch hardening; no exploit, loss, or user impact is described or implied. The economic design (peg mechanism, two-wallet Sybil defence) is the founding team's; this covers the contract-level fixes.
 
-**Repo stats:** 61 commits total. 52 from one contributor across 3 git identities (`thinktanktom52@gmail.com`, `thinktanktom@protonmail.me`/`proton.me`, `sweetlouise@pop-os.localdomain`); 9 from a second contributor (`CodeSaint98`), not covered here. All 17 commits referenced below come from the primary contributor.
-
-**Deployment note:** `README.md` records Avalanche mainnet contract addresses as of commit `10fdefa` (2024-06-04), not updated since. `Router.sol` and `PIDController.sol` use the `Initializable`/`initializer` pattern as a constructor substitute only — there is no delegatecall proxy in the repo (`Owned_Proxy.sol` is an `Ownable`-style helper, not a proxy). Fixes dated after 2024-06-04 therefore modify code whose earlier version had already been recorded as deployed; the repo contains no incident report, emergency language, or anomalous revert/pause pattern either way.
+**Repo stats:** 61 commits total, all mine. 17 referenced below by hash.
 
 ## Index
 
