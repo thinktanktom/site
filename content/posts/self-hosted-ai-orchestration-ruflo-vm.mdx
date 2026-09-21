@@ -1,23 +1,20 @@
 ---
 title: "Self-Hosted AI Orchestration: How I Set Up Ruflo on a DigitalOcean VM for a Client"
 date: "2026-05-12"
-excerpt: "A complete record of getting Ruflo running on a DigitalOcean VM — from the npm path that didn't work, through five separate issues that each needed diagnosing, to a live chat UI and remote MCP connection the client can use from their own machine."
+excerpt: "A complete record of getting Ruflo running on a DigitalOcean VM: the npm path that didn't work, five separate issues that each needed diagnosing, and a live chat UI and remote MCP connection the client can use from their own machine."
 tags: ["ai", "devops", "self-hosted", "claude", "docker"]
 aiGenerated: true
 ---
 
-This post is a full narrative of building a self-hosted AI orchestration environment for a client. Not the polished version — the real one, including every dead end and the diagnosis that got past it.
+This post is a full narrative of building a self-hosted AI orchestration environment for a client, including every dead end and the diagnosis that got past it.
 
-The end result was two capabilities running on a DigitalOcean VM (Ubuntu, 2 vCPU / 4 GB RAM):
+The end result was two capabilities running on a DigitalOcean VM (Ubuntu, 2 vCPU / 4 GB RAM). First, a live web-based chat UI, backed by Claude models via Ruflo's MCP bridge, secured with HTTPS and basic auth. Second, a remote MCP connection so the client's Claude Code desktop can reach the VM's MCP bridge directly, giving agentic access to the project codebase without SSH.
 
-1. A live web-based chat UI, backed by Claude models via Ruflo's MCP bridge, secured with HTTPS and basic auth.
-2. A remote MCP connection so the client's Claude Code desktop can reach the VM's MCP bridge directly — agentic access to the project codebase without SSH.
-
-The platform was [Ruflo](https://github.com/ruvnet/ruflo) — an AI orchestration tool that bundles a chat UI fork (called ruvocal), an MCP bridge with 200+ tools, and a Claude Code orchestration layer. My fork with the changes described here is at [github.com/thinktanktom/ruflo](https://github.com/thinktanktom/ruflo).
+The platform was [Ruflo](https://github.com/ruvnet/ruflo), an AI orchestration tool that bundles a chat UI fork (called ruvocal), an MCP bridge with 200+ tools, and a Claude Code orchestration layer. My fork with the changes described here is at [github.com/thinktanktom/ruflo](https://github.com/thinktanktom/ruflo).
 
 ---
 
-## Phase 1 — Understanding Ruflo (and Where the Docs Fall Short)
+## Phase 1: Understanding Ruflo (and Where the Docs Fall Short)
 
 ### The npm Path Doesn't Work
 
@@ -28,13 +25,13 @@ npm install -g ruflo@latest
 ruflo init
 ```
 
-I ran this. It produced deprecation warnings (`inflight`, `npmlog`) and — critically — did not generate the `claude-flow.config.json` that the documentation said it would create. The config file simply wasn't there after init.
+I ran this. It produced deprecation warnings (`inflight`, `npmlog`) and, critically, did not generate the `claude-flow.config.json` that the documentation said it would create. The config file simply wasn't there after init.
 
 This was the first sign that the npm package had drifted significantly from the actual repo. Rather than trying to reconcile them, I pivoted to cloning the repo and running via Docker Compose, which is the intended production method.
 
 ### The Repo Structure Doesn't Match the Docs
 
-Once I was in the repo, the documented layout didn't match what was actually there:
+Once I was in the repo, the documented layout didn't match what was actually there.
 
 | What the docs suggest | Actual location |
 |-----------------------|-----------------|
@@ -44,11 +41,11 @@ Once I was in the repo, the documented layout didn't match what was actually the
 | Docker Compose at repo root | Nested at `ruflo/ruflo/docker-compose.yml` |
 | `OPENAI_BASE_URL` baked at build time | Injected at runtime via `entrypoint.sh` using `DOTENV_LOCAL` |
 
-The chat UI wasn't a standard HuggingFace Chat UI install — it was ruvocal, a fork. That distinction mattered because the build and runtime behaviour differed in ways that caused several of the issues below.
+The chat UI wasn't a standard HuggingFace Chat UI install; it was ruvocal, a fork. That distinction mattered because the build and runtime behaviour differed in ways that caused several of the issues below.
 
 ---
 
-## Phase 2 — Getting the Stack Running
+## Phase 2: Getting the Stack Running
 
 ### Auth: Caddy Basic Auth Over Google OIDC
 
@@ -56,13 +53,13 @@ Ruflo's documentation points to Google OIDC as the auth method. I chose Caddy ba
 
 The reasoning: OIDC requires a Google Cloud OAuth app registration, callback URL configuration, and ongoing credential management. For a single-client deployment, basic auth is faster to implement, easier to hand over, and has no external dependency. If the setup needed to scale to more users, that decision could be revisited.
 
-For the subdomain, I used DuckDNS rather than a paid domain. Caddy handles the Let's Encrypt certificate automatically once the subdomain resolves — no further TLS work needed.
+For the subdomain, I used DuckDNS rather than a paid domain. Caddy handles the Let's Encrypt certificate automatically once the subdomain resolves, so no further TLS work was needed.
 
 ### Getting the Stack Up
 
 Three issues needed resolving before the stack was cleanly operational.
 
-**Issue: Claude models not appearing in the UI.** Once the UI was accessible, the model selector was empty. The cause: the mcp-bridge does not auto-discover models from API providers. You have to explicitly register models in a `KNOWN_MODELS` array inside the bridge's source code at `src/ruvocal/mcp-bridge/index.js`:
+**Issue: Claude models not appearing in the UI.** Once the UI was accessible, the model selector was empty. The cause: the mcp-bridge does not auto-discover models from API providers. Models have to be explicitly registered in a `KNOWN_MODELS` array inside the bridge's source code at `src/ruvocal/mcp-bridge/index.js`:
 
 ```js
 // src/ruvocal/mcp-bridge/index.js
@@ -73,29 +70,29 @@ const KNOWN_MODELS = [
 ];
 ```
 
-This is not mentioned prominently in any docs. The UI loads fine without it — it just shows no models to select. ([commit `dbc60d9`](https://github.com/thinktanktom/ruflo/commit/dbc60d9c68bd25f63a74846c56b7ccce342c4da0))
+This isn't mentioned prominently in any docs. The UI loads fine without it; it just shows no models to select. ([commit `dbc60d9`](https://github.com/thinktanktom/ruflo/commit/dbc60d9c68bd25f63a74846c56b7ccce342c4da0))
 
 **Issue: Stale shell variables silently overriding `.env`.** This was the most time-consuming issue of the entire setup. Docker Compose was being given placeholder API keys (`sk-or-your-key-here`) even though the correct keys were in the `.env` file. Models registered, UI accessible, but every API call failed.
 
-The root cause was stale `export` statements in `~/.bashrc` from an earlier configuration attempt. Docker Compose loads shell environment variables before `.env` files — and shell variables take precedence with no warning.
+The root cause was stale `export` statements in `~/.bashrc` from an earlier configuration attempt. Docker Compose loads shell environment variables before `.env` files, and shell variables take precedence with no warning.
 
 ```bash
 # Diagnosis
 printenv | grep OPENROUTER
-# Output: OPENROUTER_API_KEY=sk-or-your-key-here  ← stale export from ~/.bashrc
+# Output: OPENROUTER_API_KEY=sk-or-your-key-here  <- stale export from ~/.bashrc
 
 # Fix: remove the export lines from ~/.bashrc, then:
 source ~/.bashrc
 docker compose up -d --force-recreate
 ```
 
-Docker Compose's environment variable resolution order is: **(1) shell environment → (2) `.env` file → (3) `docker-compose.yml` defaults**. Stale shell exports will always win over `.env` values, silently. ([commit `068a072`](https://github.com/thinktanktom/ruflo/commit/068a0720159a1e1dbfa92e17a9632d2516bcefc3))
+Docker Compose's environment variable resolution order runs shell environment first, then the `.env` file, then `docker-compose.yml` defaults. Stale shell exports will always win over `.env` values, silently. ([commit `068a072`](https://github.com/thinktanktom/ruflo/commit/068a0720159a1e1dbfa92e17a9632d2516bcefc3))
 
 **Issue: Chat UI hitting HuggingFace's servers.** Before the full Docker stack was adopted, ruvocal was running directly with PM2. The `.env.local` was configured to route through OpenRouter, but the chat UI kept responding with:
 
 > "You've reached your message limit. Upgrade to Hugging Face PRO..."
 
-The cause: the SvelteKit build had baked HuggingFace URLs in at compile time. Setting environment variables after the build had no effect — the built JavaScript already contained the hardcoded endpoint URL.
+The cause: the SvelteKit build had baked HuggingFace URLs in at compile time. Setting environment variables after the build had no effect; the built JavaScript already contained the hardcoded endpoint URL.
 
 The fix was to set the correct `.env.local` first, then rebuild from source:
 
@@ -111,13 +108,13 @@ USE_USER_TOKEN=false
 OPENID_CLIENT_ID=
 ```
 
-In the Docker stack, this is handled correctly — `PUBLIC_ORIGIN`, model URLs, and API keys are injected at runtime via `entrypoint.sh` using the `DOTENV_LOCAL` mechanism, not baked at build time.
+In the Docker stack, this is handled correctly. `PUBLIC_ORIGIN`, model URLs, and API keys are injected at runtime via `entrypoint.sh` using the `DOTENV_LOCAL` mechanism, not baked at build time.
 
 ---
 
-## Phase 3 — Exposing the MCP Bridge
+## Phase 3: Exposing the MCP Bridge
 
-With the stack running, the next step was giving the client's Claude Code desktop direct access to the MCP bridge on the VM — without SSH, without a VPN.
+With the stack running, the next step was giving the client's Claude Code desktop direct access to the MCP bridge on the VM, without SSH and without a VPN.
 
 ### Caddy Route with Bearer Token Auth
 
@@ -125,7 +122,7 @@ A `/mcp-bridge/*` route was added to the Caddyfile. Bearer token auth protects t
 
 ```caddy
 your-domain.example.com {
-    # MCP bridge — Bearer token auth
+    # MCP bridge: Bearer token auth
     @mcp path /mcp-bridge/*
     handle @mcp {
         @no_token {
@@ -142,7 +139,7 @@ your-domain.example.com {
         }
     }
 
-    # Chat UI — basic auth
+    # Chat UI: basic auth
     basicauth {
         {$BASIC_AUTH_USER} {$BASIC_AUTH_HASH}
     }
@@ -170,11 +167,11 @@ The client adds a single entry to `~/.claude/settings.json` on their machine:
 }
 ```
 
-All 204 MCP tools — including the custom workflow tools added below — show up natively in their Claude Code session.
+All 204 MCP tools, including the custom workflow tools added below, show up natively in their Claude Code session.
 
 ---
 
-## Phase 4 — Wiring Up the Client Workflow
+## Phase 4: Wiring Up the Client Workflow
 
 The client's project is a complex multi-component system. To give Claude agents the right context for each type of work, 12 specialist skill files were set up in `.claude/skills/`, each covering a different engineering domain: cryptography, gRPC API, EVM bridge, DAG persistence, admin auth, and so on. ([commit `c1314e5`](https://github.com/thinktanktom/ruflo/commit/c1314e589a80dbbdb75ce4d7afcf43c084ba542f))
 
@@ -190,7 +187,7 @@ bash run-lockbox-workflow.sh
 bash run-lockbox-workflow.sh 3 6
 ```
 
-Execution features: PID file locking to prevent concurrent runs, environment validation (API key, `claude` CLI, project directory), auto-resume on max-turns limit, and status JSON written to `/tmp/workflow-status.json`. ([commit `a752e76`](https://github.com/thinktanktom/ruflo/commit/a752e76b4b9623033e5709c38b6f5a7bcdc821aa))
+Execution features include PID file locking to prevent concurrent runs, environment validation (API key, `claude` CLI, project directory), auto-resume on max-turns limit, and status JSON written to `/tmp/workflow-status.json`. ([commit `a752e76`](https://github.com/thinktanktom/ruflo/commit/a752e76b4b9623033e5709c38b6f5a7bcdc821aa))
 
 ### Custom MCP Tools
 
@@ -221,27 +218,27 @@ case "get_workflow_status": {
 }
 ```
 
-Both are registered in the `core` group so they're always active. One note: status files live in `/tmp/` and won't survive a container restart — a more robust setup would write them to a mounted volume.
+Both are registered in the `core` group so they're always active. One note: status files live in `/tmp/` and won't survive a container restart. A more robust setup would write them to a mounted volume.
 
 ### The Workspace Mount
 
-The project directory is mounted into the `mcp-bridge` container at `/workspace/project` — without `:ro`, so agents can write files. Before enabling this, Git tracking was turned on inside the workspace. Any AI-made file changes show up as uncommitted diffs, giving the client a clear audit trail and an easy rollback path.
+The project directory is mounted into the `mcp-bridge` container at `/workspace/project`, without `:ro`, so agents can write files. Before enabling this, Git tracking was turned on inside the workspace. Any AI-made file changes show up as uncommitted diffs, giving the client a clear audit trail and an easy rollback path.
 
-If you're giving an agent write access to a codebase, version control is the minimum viable safety net.
+Version control is the minimum viable safety net for giving an agent write access to a codebase.
 
 ---
 
 ## Security Posture
 
-This is the section most self-hosted AI writeups skip. I'm not going to.
+Most self-hosted AI writeups skip this section. This one doesn't.
 
-### Is a bearer token a secure handover mechanism?
+### How secure is a bearer token as a handover mechanism
 
-It's acceptable but not great. A static shared secret has two structural weaknesses: it never expires unless you manually rotate it, and it grants the same level of access every time it's used, from anywhere, forever. There's no per-session audit trail and no way to revoke it without changing it for everyone simultaneously.
+It's acceptable but not great. A static shared secret has two structural weaknesses: it never expires unless rotated manually, and it grants the same level of access every time it's used, from anywhere, forever. There's no per-session audit trail and no way to revoke it without changing it for everyone simultaneously.
 
-A meaningfully better option is short-lived tokens — the client exchanges a long-lived credential for a time-bounded JWT before each session. If that token leaks it expires on its own. For a single trusted client on a fixed machine, that's non-trivial to set up.
+A meaningfully better option is short-lived tokens: the client exchanges a long-lived credential for a time-bounded JWT before each session. If that token leaks it expires on its own. For a single trusted client on a fixed machine, that's non-trivial to set up.
 
-A simpler improvement that requires no new infrastructure: if the client has a static IP, restrict the route to it in the Caddyfile:
+A simpler improvement that requires no new infrastructure: if the client has a static IP, restrict the route to it in the Caddyfile.
 
 ```caddy
 handle /mcp-bridge/* {
@@ -260,18 +257,12 @@ A leaked token is useless from any other IP.
 
 ### Blast radius if the token leaks
 
-The honest answer: it's large. The mcp-bridge exposes 204+ tools including `devtools`, `agents`, `memory`, `intelligence`, and `terminal_execute`. Anyone with the token can:
+The honest answer is that it's large. The mcp-bridge exposes 204+ tools including `devtools`, `agents`, `memory`, `intelligence`, and `terminal_execute`. Anyone with the token can execute arbitrary shell commands on the VM as the Docker process user, read and write anything in the mounted project workspace, read the container's environment variables (which include the Anthropic and OpenRouter API keys), drain those API keys by sending requests through the bridge, and exfiltrate the entire codebase.
 
-- Execute arbitrary shell commands on the VM as the Docker process user
-- Read and write anything in the mounted project workspace
-- Read the container's environment variables — which include your Anthropic and OpenRouter API keys
-- Drain those API keys by sending requests through the bridge
-- Exfiltrate the entire codebase
-
-The API key exposure is probably the most immediately damaging. The right mitigation is to scope down what the remote Claude Code connection can actually do. The client doesn't need terminal execution or agent spawning — they need file access and the workflow trigger tools. Separate the client-facing route and restrict it to safe tool groups:
+The API key exposure is probably the most immediately damaging item on that list. The right mitigation is to scope down what the remote Claude Code connection can actually do. The client doesn't need terminal execution or agent spawning; they need file access and the workflow trigger tools. Separate the client-facing route and restrict it to safe tool groups:
 
 ```caddy
-# Remote client — restricted to core tools only
+# Remote client: restricted to core tools only
 handle /mcp-bridge/client/* {
     @unauthorized not header Authorization "Bearer {$CLIENT_TOKEN}"
     respond @unauthorized 401
@@ -281,29 +272,29 @@ handle /mcp-bridge/client/* {
 }
 ```
 
-Two separate tokens — one for the internal chat UI, one for the remote client — means you can revoke them independently.
+Two separate tokens, one for the internal chat UI and one for the remote client, means they can be revoked independently.
 
 ### Git push access from the VM
 
-The workspace mount gives the mcp-bridge container write access to the project directory on the VM's filesystem. I audited whether the VM could also `git push` to the remote repository — checking for SSH keys and credential helpers — and removed the credentials. The VM can read and modify files locally, but it cannot push to the remote repo. Any AI-generated changes have to go through a pull request like everything else.
+The workspace mount gives the mcp-bridge container write access to the project directory on the VM's filesystem. I audited whether the VM could also `git push` to the remote repository, checking for SSH keys and credential helpers, and removed the credentials. The VM can read and modify files locally, but it cannot push to the remote repo. Any AI-generated changes have to go through a pull request like everything else.
 
 ### Hardening checklist
 
 In order of impact:
 
-1. **Restrict `/mcp-bridge/*` to the client's static IP** — eliminates the blast radius of a leaked token with no new infrastructure.
-2. **Remove git push credentials from the VM** — done; AI changes require a PR like everything else.
-3. **Use two separate tokens** — one for the chat UI, one for the remote client — so they can be revoked independently.
-4. **Scope the client-facing MCP route to safe tool groups** — no `terminal_execute`, no `agents`.
-5. **Enable Caddy access logging** — so you have an audit trail of every request that hits the bridge.
-6. **Rotate the bearer token on a schedule** — monthly at minimum, immediately if the client's machine is compromised.
+1. **Restrict `/mcp-bridge/*` to the client's static IP.** Eliminates the blast radius of a leaked token with no new infrastructure.
+2. **Remove git push credentials from the VM.** Done; AI changes require a PR like everything else.
+3. **Use two separate tokens,** one for the chat UI and one for the remote client, so they can be revoked independently.
+4. **Scope the client-facing MCP route to safe tool groups.** No `terminal_execute`, no `agents`.
+5. **Enable Caddy access logging** so there's an audit trail of every request that hits the bridge.
+6. **Rotate the bearer token on a schedule.** Monthly at minimum, immediately if the client's machine is compromised.
 
 ---
 
 ## The Things That Will Bite You
 
-1. **`npm install -g ruflo@latest` won't generate the config file** — go straight to Docker Compose.
-2. **The Docker Compose file is at `ruflo/ruflo/`, not the repo root** — check before running `docker compose up`.
-3. **Models must be manually added to `KNOWN_MODELS` in `mcp-bridge/index.js`** — they don't auto-discover.
-4. **Stale `export` lines in `~/.bashrc` silently override `.env`** — run `printenv | grep <key>` before debugging API calls.
-5. **The SvelteKit build bakes URLs at compile time** — set `.env.local` before `npm run build`, not after.
+1. **`npm install -g ruflo@latest` won't generate the config file.** Go straight to Docker Compose.
+2. **The Docker Compose file is at `ruflo/ruflo/`, not the repo root.** Check before running `docker compose up`.
+3. **Models must be manually added to `KNOWN_MODELS` in `mcp-bridge/index.js`.** They don't auto-discover.
+4. **Stale `export` lines in `~/.bashrc` silently override `.env`.** Run `printenv | grep <key>` before debugging API calls.
+5. **The SvelteKit build bakes URLs at compile time.** Set `.env.local` before `npm run build`, not after.
