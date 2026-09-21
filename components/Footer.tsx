@@ -1,5 +1,24 @@
 import Image from 'next/image'
-import { Github, Linkedin, ExternalLink } from 'lucide-react'
+import { Github, Linkedin, ExternalLink, Twitter } from 'lucide-react'
+
+function TelegramIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M22 2 11 13" />
+      <path d="M22 2 15 22l-4-9-9-4 20-7Z" />
+    </svg>
+  )
+}
 
 const links = [
   {
@@ -11,6 +30,16 @@ const links = [
     href: 'https://linkedin.com/in/thinktanktom',
     label: 'LinkedIn',
     Icon: Linkedin,
+  },
+  {
+    href: 'https://x.com/th1nktanktom',
+    label: 'Twitter',
+    Icon: Twitter,
+  },
+  {
+    href: 'https://t.me/th1nktanktom',
+    label: 'Telegram',
+    Icon: TelegramIcon,
   },
   {
     href: 'https://www.upwork.com/freelancers/~018a1dbf1094588c7e',
