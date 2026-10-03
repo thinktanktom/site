@@ -93,6 +93,31 @@ const components = {
       className="font-sans text-base text-text leading-[1.75] mb-5 pl-6 list-decimal space-y-1"
     />
   ),
+  // Inline annotation: highlights a phrase and links it to a numbered note in
+  // the <Notes> block at the foot of the post — same pattern as /about.
+  Annotated: ({ n, children }: { n: number; children?: React.ReactNode }) => (
+    <span className="border-b border-dotted border-accent/60">
+      {children}
+      <a
+        href={`#note-${n}`}
+        aria-label={`Note ${n}`}
+        className="no-underline hover:text-accent-dim transition-colors duration-200"
+      >
+        <sup className="font-mono text-accent text-[0.7em] ml-0.5">{n}</sup>
+      </a>
+    </span>
+  ),
+  Notes: (props: { children?: React.ReactNode }) => (
+    <div className="mt-16 pt-6 border-t border-border">
+      <div className="font-mono text-xs leading-relaxed space-y-1">{props.children}</div>
+    </div>
+  ),
+  Note: ({ n, children }: { n: number; children?: React.ReactNode }) => (
+    <p id={`note-${n}`} className="scroll-mt-32">
+      <span className="text-accent">{n}.</span>
+      <span className="text-muted"> {children}</span>
+    </p>
+  ),
   img: (props: React.ImgHTMLAttributes<HTMLImageElement>) => (
     // eslint-disable-next-line @next/next/no-img-element
     <img
