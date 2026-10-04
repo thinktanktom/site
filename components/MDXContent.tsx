@@ -96,12 +96,12 @@ const components = {
       className="font-sans text-base text-text leading-[1.75] mb-5 pl-6 list-decimal space-y-1"
     />
   ),
-  // Inline annotation: marks a phrase with an accent superscript that refers to
-  // a numbered note in the <Notes> block at the foot of the post. Identical
-  // treatment to the footnotes on /about — no highlight on the phrase itself.
+  // Inline annotation: the phrase is set in --accent with a solid accent
+  // underline, followed by an accent superscript that refers to a numbered note
+  // in the <Notes> block at the foot of the post.
   Annotated: ({ n, children }: { n: number; children?: React.ReactNode }) => (
     <>
-      {children}
+      <span className="text-accent underline underline-offset-4">{children}</span>
       <span className="text-accent">{superscripts[n] ?? n}</span>
     </>
   ),
