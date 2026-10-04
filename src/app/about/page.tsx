@@ -60,7 +60,7 @@ export default function AboutPage() {
             </p>
             <p>
               The first puzzle found me at university, where I tumbled by happy accident into image processing.
-              I read the papers. I redid the mathematics by hand<span className="text-accent">¹</span> and then helped developers at a string of startups turn that arithmetic
+              I read the papers. I redid <span className="text-accent underline underline-offset-4">the mathematics by hand</span><span className="text-accent">¹</span> and then helped developers at a string of startups turn that arithmetic
               into something that actually ran, in Python and in C++. They were splendid years, and they left me
               with one article of faith I came to hold rather fanatically: that anything a human mind had dreamt
               up, my mind could learn. Nothing lay beyond the reach of learning.
@@ -72,28 +72,30 @@ export default function AboutPage() {
             <p>
               I declined to take the hint; one cannot, after all, fire a belief. So in 2021 I joined Nord Finance
               and spent three months learning to build, test, break, and deploy. They offered me a full-time post,
-              a flattering gesture, but my freelancing had by then grown plump enough to feed itself, and I let it.
+              a flattering gesture, but my freelancing had by then grown plump enough to feed itself.
             </p>
             <p>
               That same year brought the{' '}
               <a href="https://bankx.io" target="_blank" rel="noopener noreferrer" className="text-accent underline underline-offset-4 hover:text-accent-dim transition-colors">BankX</a>
-              {' '}contract, and I have scarcely looked over my shoulder since. Its mathematics, its tokenomics,
-              its architecture were all somebody else&apos;s design, gratifyingly complicated, and mine to build,
-              which suited me fine — more than enough to occupy a restless mind for several years.
+              {' '}contract, my first big break and the most interesting and ambitious project I&apos;d taken up
+              so far. It has since been deployed on 8 chains and is in the early stages of marketing and promotion.
             </p>
             <p>
-              Restless minds still wander mid-puzzle, though. Partway through, after a break<span className="text-accent">²</span> I joined a family friend to build{' '}
-              <a href="https://ctrlbit.com" target="_blank" rel="noopener noreferrer" className="text-accent underline underline-offset-4 hover:text-accent-dim transition-colors">Ctrlbit</a>,
-              an SDWAN product for Mikrotik hardware here in India. It let me learn the magic behind the internet
-              and bend it to my own ends, which was a quiet thrill — until an import-tax change on the hardware we
-              depended on ended the venture a few months later. BankX, meanwhile, was still very much alive; it
-              still is.
+              Alongside it I&apos;ve built smart contracts in Rust as well as Solidity, a signal pipeline for a
+              futures-trading bot, agentic server boxes and workflows, and the occasional patch to
+              OpenZeppelin&apos;s open-source code.
             </p>
             <p>
-              All of which brings me, at last, to the point of this page. Solving a hard problem means outwitting
-              it. Explaining it means something stranger and better: you give the answer away, and somehow you keep
-              it too. That second thing is rarer, harder, and the only kind of work that has ever held me. It is,
-              in the end, what I actually do.
+              Outside work, I play amateur football, surf at an intermediate level, teach yoga as a certified
+              instructor, and am an avid reader of all things <span className="text-accent underline underline-offset-4">fiction and historical</span><span className="text-accent">²</span>.
+            </p>
+            <p>
+              All of which brings me, at last, to the point of this page. I grew up on science fiction, on drunk
+              inventors and mad scientists and the moral tangles their contraptions left behind. I idolised those
+              characters, and I loved most the quiet introspection each story left me with at the end. I have not
+              yet built anything that threatens the <span className="text-accent underline underline-offset-4">species</span><span className="text-accent">³</span>, but the instinct remains the
+              same: to dream of a better future, to wander toward the impossible, to build with enthusiasm, and
+              then to sit with what it all means. That is what I actually do.
             </p>
           </div>
         </div>
@@ -102,7 +104,8 @@ export default function AboutPage() {
         <div className="mb-16 pt-6 border-t border-border">
           <div className="font-mono text-xs leading-relaxed space-y-1">
             <p><span className="text-accent">1.</span><span className="text-muted"> for I have never believed an equation simply because it asked nicely</span></p>
-            <p><span className="text-accent">2.</span><span className="text-muted"> by which I mean a stretch of intense restlessness</span></p>
+            <p><span className="text-accent">2.</span><span className="text-muted"> I keep a one arms distance from self-help books</span></p>
+            <p><span className="text-accent">3.</span><span className="text-muted"> which my relations will find reassuring</span></p>
           </div>
         </div>
 
