@@ -20,7 +20,7 @@ const dmSans = DM_Sans({
 export const metadata: Metadata = {
   title: {
     default: 'thinktanktom',
-    template: '%s — thinktanktom',
+    template: '%s',
   },
   icons: {
     icon: '/ttt_icon.svg',
