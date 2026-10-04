@@ -421,4 +421,4 @@ dimensionally correct (`$/troy-oz ÷ g/troy-oz = $/g`).
 
 ### `08a6001` (2024-06-05): `CollateralPoolLibrary` visibility, `internal` to `public`
 
-The commit message ("Collateral Pool Library visibility modified") does not state a reason; no comment appears in the diff. The standard technical effect of the change: `public`/`external` library functions can be deployed once and linked externally instead of inlined into every caller's bytecode, relevant when a contract's own bytecode approaches the 24 KB (EIP-170) limit.
+The commit message ("Collateral Pool Library visibility modified") does not state a reason; no comment appears in the diff. The standard technical effect of the change: `public`/`external` library functions can be deployed once and linked externally instead of inlined into every caller's bytecode, relevant when a contract's own bytecode approaches the 24 KB (EIP-170) limit. Whether that was the motivation here is not something the repo settles: no `libraries: {...}` linking block exists in `hardhat.config.js`, and no deploy script references `CollateralPoolLibrary` for external linking, only test files do.
