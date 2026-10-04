@@ -419,10 +419,6 @@ gram_price = (silver_price * 1e4) / 311035;
 
 dimensionally correct (`$/troy-oz ÷ g/troy-oz = $/g`).
 
-**Open item:** the exact commit that corrected 283495/multiply to 311035/divide wasn't identified in this review.
-
 ### `08a6001` (2024-06-05): `CollateralPoolLibrary` visibility, `internal` to `public`
 
 The commit message ("Collateral Pool Library visibility modified") does not state a reason; no comment appears in the diff. The standard technical effect of the change: `public`/`external` library functions can be deployed once and linked externally instead of inlined into every caller's bytecode, relevant when a contract's own bytecode approaches the 24 KB (EIP-170) limit.
-
-**Open item:** no `libraries: {...}` linking block exists in `hardhat.config.js`, and no deploy script references `CollateralPoolLibrary` for external linking (only test files do). This review's repo evidence alone cannot confirm that was the actual motivation.
