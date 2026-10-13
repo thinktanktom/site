@@ -279,11 +279,3 @@ html[data-theme='light'] .border-success\/40 {
   border-color: rgb(var(--success) / 0.55);
 }
 
-/* The theme-switch fade is a colour-only transition, but honour the
-   preference rather than reason about whether 2.3.3 covers it. */
-@media (prefers-reduced-motion: reduce) {
-  html,
-  body {
-    transition: none;
-  }
-}
