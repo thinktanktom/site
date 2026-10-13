@@ -12,7 +12,7 @@ export default function HomePage() {
   const posts = getAllPosts().slice(0, 3)
 
   return (
-    <>
+    <main>
       {/* Hero */}
       <section className="min-h-screen flex flex-col items-center justify-center relative px-6 overflow-hidden">
         <div className="pixel-grid absolute inset-0 opacity-40" />
@@ -95,7 +95,6 @@ export default function HomePage() {
           )}
         </div>
       </section>
-
-    </>
+    </main>
   )
 }
