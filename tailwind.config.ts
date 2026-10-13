@@ -1,5 +1,9 @@
 import type { Config } from 'tailwindcss'
 
+// Tokens live in src/app/globals.css as space-separated RGB channel triples so
+// the <alpha-value> placeholder keeps opacity modifiers (bg-accent/10) working.
+const token = (name: string) => `rgb(var(--${name}) / <alpha-value>)`
+
 const config: Config = {
   content: [
     './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
@@ -11,13 +15,15 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        bg: '#0a0a0a',
-        surface: '#111111',
-        border: '#222222',
-        text: '#f0f0f0',
-        muted: '#808080',
-        accent: '#e8ff00',
-        'accent-dim': '#b8cc00',
+        bg: token('bg'),
+        surface: token('surface'),
+        border: token('border'),
+        text: token('text'),
+        muted: token('muted'),
+        accent: token('accent'),
+        'accent-dim': token('accent-dim'),
+        'grid-dot': token('grid-dot'),
+        success: token('success'),
       },
       fontFamily: {
         mono: ['var(--font-space-mono)', 'ui-monospace', 'monospace'],
