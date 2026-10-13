@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Menu, X } from 'lucide-react'
+import { TttWordmark } from '@components/ThemedLogo'
 
 const navLinks = [
   { href: '/writing', label: 'Writing' },
@@ -67,16 +67,12 @@ export default function Nav() {
         }`}
       >
         <nav className="max-w-chrome mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center shrink-0">
-            <Image
-              src="/ttt_side_no_byline_logo.svg"
-              alt="thinktanktom"
-              width={224}
-              height={32}
-              className="object-contain"
-              unoptimized
-              priority
-            />
+          <Link
+            href="/"
+            className="flex items-center shrink-0"
+            aria-label="thinktanktom, home"
+          >
+            <TttWordmark height={32} priority />
           </Link>
 
           {/* Desktop */}
@@ -127,15 +123,12 @@ export default function Nav() {
           className="fixed inset-0 z-[100] bg-bg flex flex-col"
         >
           <div className="flex items-center justify-between px-6 h-16">
-            <Link href="/" onClick={closeMobileMenu}>
-              <Image
-                src="/ttt_side_no_byline_logo.svg"
-                alt="thinktanktom"
-                width={224}
-                height={32}
-                className="object-contain"
-                unoptimized
-              />
+            <Link
+              href="/"
+              onClick={closeMobileMenu}
+              aria-label="thinktanktom, home"
+            >
+              <TttWordmark height={32} />
             </Link>
             <button
               ref={closeButtonRef}

@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
-import Image from 'next/image'
 import Link from 'next/link'
 import { getAllPosts } from '@lib/posts'
 import PostCard from '@components/PostCard'
+import { TttIcon } from '@components/ThemedLogo'
 
 export const metadata: Metadata = {
   alternates: { canonical: '/' },
@@ -19,15 +19,7 @@ export default function HomePage() {
 
         <div className="relative z-10 flex flex-col items-center text-center max-w-article mx-auto">
           <div className="animate-fade-up" style={{ animationDelay: '0ms' }}>
-            <Image
-              src="/ttt_icon.svg"
-              alt="thinktanktom"
-              width={96}
-              height={96}
-              className="mx-auto mb-8 object-contain"
-              unoptimized
-              priority
-            />
+            <TttIcon height={96} className="mx-auto mb-8" priority />
           </div>
 
           <h1
