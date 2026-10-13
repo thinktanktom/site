@@ -76,19 +76,15 @@ export default function Nav() {
             <TttWordmark height={32} priority />
           </Link>
 
-          {/* Desktop. Breakpoint is xl, not md: the 224px wordmark + 5 tracked
-              uppercase links + the pill already measured 904px of scrollWidth,
-              so this row overflowed the 720px available at md (768px) even
-              before the ~94px theme switcher — it was just hidden by the
-              overflow-x: hidden on html/body. Below xl the full-screen overlay
-              carries both navigation and the theme control.
-              Gaps are measured in a real browser, and measured WITH a scrollbar:
-              an earlier 26px figure for lg/gap-4 was taken without one, and a
-              classic 15px scrollbar leaves only ~11px — fine on macOS overlay
-              scrollbars, cramped everywhere else. At xl, max-w-chrome caps the
-              row and gap-6 leaves 54px; gap-8 collapses that to 6px, so it is
-              deliberately not restored. */}
-          <div className="hidden xl:flex items-center gap-6">
+          {/* Desktop. Breakpoint is lg. It was raised to xl while the Hire me
+              pill was in this row: wordmark + 5 tracked uppercase links + the
+              switcher + the pill needed more width than lg gives, and an
+              earlier lg measurement that said otherwise had been taken with
+              scrollbars hidden. Without the pill the row is 643px against the
+              961px lg leaves after padding and a classic scrollbar — 94px of
+              clearance, measured in a browser. Below lg the full-screen
+              overlay carries the navigation and the theme control. */}
+          <div className="hidden lg:flex items-center gap-6">
             {navLinks.map(({ href, label }) => (
               <Link
                 key={href}
@@ -101,21 +97,12 @@ export default function Nav() {
               </Link>
             ))}
             <ThemeSwitcher variant="compact" />
-            <a
-              href="https://www.upwork.com/freelancers/~018a1dbf1094588c7e"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-mono text-sm tracking-wider px-4 py-1.5 rounded-full bg-accent text-bg font-bold hover:bg-accent-dim transition-colors duration-200"
-            >
-              Hire me ↗
-              <span className="sr-only"> (opens in new tab)</span>
-            </a>
           </div>
 
           {/* Mobile hamburger */}
           <button
             ref={menuButtonRef}
-            className="xl:hidden text-muted hover:text-text transition-colors"
+            className="lg:hidden text-muted hover:text-text transition-colors"
             onClick={() => setMobileOpen(true)}
             aria-label="Open menu"
             aria-expanded={mobileOpen}
@@ -166,19 +153,9 @@ export default function Nav() {
                 {label}
               </Link>
             ))}
-            <a
-              href="https://www.upwork.com/freelancers/~018a1dbf1094588c7e"
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={closeMobileMenu}
-              className="font-mono text-xl tracking-wider px-8 py-3 rounded-full bg-accent text-bg font-bold hover:bg-accent-dim transition-colors duration-200"
-            >
-              Hire me ↗
-              <span className="sr-only"> (opens in new tab)</span>
-            </a>
-            {/* Appearance last: content nav, then CTA, then setting. Picking a
-                theme deliberately does NOT close the overlay, so the change can
-                be seen applying behind the control. */}
+            {/* Appearance last, after the content nav. Picking a theme
+                deliberately does NOT close the overlay, so the change can be
+                seen applying behind the control. */}
             <ThemeSwitcher variant="full" className="w-64" />
           </div>
         </div>
