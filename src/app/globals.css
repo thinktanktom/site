@@ -102,6 +102,27 @@ a {
   }
 }
 
+/* Theme-visibility utilities. Consumed by components/ThemedLogo.tsx to pick the
+   per-theme logo asset. The :not() pair is what makes funky the default when the
+   data-theme attribute is absent. */
+.only-funky,
+.only-dark,
+.only-light {
+  display: none;
+}
+
+html:not([data-theme='dark']):not([data-theme='light']) .only-funky {
+  display: block;
+}
+
+html[data-theme='dark'] .only-dark {
+  display: block;
+}
+
+html[data-theme='light'] .only-light {
+  display: block;
+}
+
 /* Hero pixel-grid dot texture */
 .pixel-grid {
   background-image: radial-gradient(circle, rgb(var(--grid-dot)) 1px, transparent 1px);

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import Image from 'next/image'
+import { TttLogoFull } from '@components/ThemedLogo'
 
 const description =
   'Thomas Cyriac — DeFi Protocol Developer, Smart Contract Engineer, Open Source Contributor.'
@@ -32,15 +32,7 @@ export default function AboutPage() {
 
         {/* Logo as title */}
         <div className="mb-16 flex justify-center">
-          <Image
-            src="/ttt_logo_full.svg"
-            alt="thinktanktom"
-            width={400}
-            height={225}
-            className="object-contain"
-            unoptimized
-            priority
-          />
+          <TttLogoFull height={225} priority />
         </div>
 
         {/* Bio */}
