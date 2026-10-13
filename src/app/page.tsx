@@ -12,7 +12,7 @@ export default function HomePage() {
   const posts = getAllPosts().slice(0, 3)
 
   return (
-    <>
+    <main>
       {/* Hero */}
       <section className="min-h-screen flex flex-col items-center justify-center relative px-6 overflow-hidden">
         <div className="pixel-grid absolute inset-0 opacity-40" />
@@ -62,6 +62,7 @@ export default function HomePage() {
               className="font-mono text-sm tracking-wider px-6 py-3 border border-accent text-accent hover:bg-accent hover:text-bg transition-all duration-200 rounded-sm"
             >
               Hire me on Upwork ↗
+              <span className="sr-only"> (opens in new tab)</span>
             </a>
           </div>
         </div>
@@ -95,7 +96,6 @@ export default function HomePage() {
           )}
         </div>
       </section>
-
-    </>
+    </main>
   )
 }

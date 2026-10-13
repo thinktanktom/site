@@ -31,6 +31,37 @@ a {
   text-decoration: none;
 }
 
+/* Visible keyboard-focus indicator (WCAG 2.4.7). The browser default outline
+   is easy to lose against near-black surfaces, so make it explicit. The colour
+   comes from @apply rather than var(--accent) on purpose: Tailwind resolves the
+   token itself, so this keeps working if the tokens ever become RGB triples. */
+:focus-visible {
+  @apply outline outline-2 outline-offset-2 outline-accent;
+  border-radius: 2px;
+}
+
+/* Respect the OS reduced-motion preference: keep every animation and
+   transition for everyone else, but collapse them to near-instant for people
+   who have asked not to be animated at. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* .animate-fade-up starts at opacity 0 and relies on the animation to
+     reveal it — pin the end state so nothing can stay invisible. */
+  .animate-fade-up {
+    opacity: 1;
+  }
+}
+
 /* Hero pixel-grid dot texture */
 .pixel-grid {
   background-image: radial-gradient(circle, #1e1e1e 1px, transparent 1px);
