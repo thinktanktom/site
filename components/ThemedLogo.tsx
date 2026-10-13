@@ -11,7 +11,6 @@ type ThemedLogoSize =
 
 export type ThemedLogoProps = ThemedLogoSize & {
   className?: string
-  priority?: boolean
   alt?: string
 }
 
@@ -62,7 +61,6 @@ function ThemedLogo({
   height,
   width,
   className,
-  priority,
   alt = 'thinktanktom',
 }: ThemedLogoProps & { variants: Variant[] }) {
   const sizeFor = (aspect: number) =>
@@ -80,12 +78,15 @@ function ThemedLogo({
             {...sizeFor(variant.aspect)}
             className="object-contain"
             unoptimized
-            /* Only the funky variant preloads. Marking all three `priority`
-               emits three rel=preload/fetchPriority=high links where two are
-               display:none, competing with the real LCP image. The other two
-               stay lazy, and a lazy img in a display:none subtree is not
-               fetched until revealed — so they cost nothing until you switch. */
-            priority={priority && variant.only === 'only-funky'}
+            /* No variant preloads. Only one is ever visible, but the theme
+               is not known at build time, so marking any of them `priority`
+               makes that one eager + preloaded in EVERY theme — the funky
+               assets were being downloaded for dark and light readers and
+               rendered hidden. The hidden variants are display:none, so a
+               lazy image inside them is never requested at all, and the
+               visible one is in the viewport and loads at layout. Measured:
+               under Fast-3G the LCP element is the h1, gated by the webfont,
+               not the mark — so there is nothing here worth preloading. */
           />
         </div>
       ))}
