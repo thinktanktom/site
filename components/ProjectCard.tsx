@@ -12,7 +12,7 @@ function formatDate(dateStr: string) {
 const statusStyles: Record<ProjectMeta['status'], string> = {
   active: 'text-accent border-accent/40 bg-accent/10',
   completed: 'text-muted border-border bg-surface/40',
-  archived: 'text-muted/60 border-border/40 bg-transparent',
+  archived: 'text-muted border-border/40 bg-transparent',
 }
 
 const statusLabel: Record<ProjectMeta['status'], string> = {

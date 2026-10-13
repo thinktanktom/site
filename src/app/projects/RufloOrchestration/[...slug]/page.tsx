@@ -95,7 +95,7 @@ export default function RufloOrchestrationDocPage({ params }: Props) {
             >
               <ChevronLeft size={14} className="shrink-0" />
               <span className="text-left">
-                <span className="block text-[10px] tracking-widest uppercase text-muted/50 mb-0.5">
+                <span className="block text-[10px] tracking-widest uppercase text-muted mb-0.5">
                   Previous
                 </span>
                 {prev.title}
@@ -111,7 +111,7 @@ export default function RufloOrchestrationDocPage({ params }: Props) {
               className="group flex items-center gap-2 font-mono text-sm text-muted hover:text-accent transition-colors duration-200 text-right"
             >
               <span className="text-right">
-                <span className="block text-[10px] tracking-widest uppercase text-muted/50 mb-0.5">
+                <span className="block text-[10px] tracking-widest uppercase text-muted mb-0.5">
                   Next
                 </span>
                 {next.title}
