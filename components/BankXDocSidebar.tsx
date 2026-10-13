@@ -45,7 +45,7 @@ function SidebarContent({ onLinkClick }: { onLinkClick?: () => void }) {
           if (isSidebarGroup(entry)) {
             return (
               <div key={i}>
-                <p className="font-mono text-[10px] tracking-widest uppercase text-muted/50 mb-2 px-3">
+                <p className="font-mono text-[10px] tracking-widest uppercase text-muted mb-2 px-3">
                   {entry.title}
                 </p>
                 <div className="space-y-0.5">
