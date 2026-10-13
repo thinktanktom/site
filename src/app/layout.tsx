@@ -56,6 +56,16 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${spaceMono.variable} ${dmSans.variable}`}>
       <body className="bg-bg text-text antialiased">
+        {/* Sets data-theme before any themed content is parsed, so there is no
+            flash of funky for dark/light users. Must stay the first child of
+            <body> and must stay synchronous. If localStorage throws (privacy
+            modes) or JS is off we fall through to funky, which is what :root
+            already holds. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('ttt-theme');if(t!=='dark'&&t!=='light')t='funky';document.documentElement.setAttribute('data-theme',t)}catch(e){document.documentElement.setAttribute('data-theme','funky')}})();`,
+          }}
+        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{

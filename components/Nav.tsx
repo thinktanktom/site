@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Menu, X } from 'lucide-react'
 import { TttWordmark } from '@components/ThemedLogo'
+import ThemeSwitcher from '@components/ThemeSwitcher'
 
 const navLinks = [
   { href: '/writing', label: 'Writing' },
@@ -75,8 +76,16 @@ export default function Nav() {
             <TttWordmark height={32} priority />
           </Link>
 
-          {/* Desktop */}
-          <div className="hidden md:flex items-center gap-8">
+          {/* Desktop. Breakpoint is lg, not md: the 224px wordmark + 5 tracked
+              uppercase links + the pill already measured 904px of scrollWidth,
+              so this row overflowed the 720px available at md (768px) even
+              before the ~94px theme switcher — it was just hidden by the
+              overflow-x: hidden on html/body. Below lg the full-screen overlay
+              carries both navigation and the theme control.
+              Gaps are measured, not guessed: gap-4 leaves 26px between wordmark
+              and first link at 1024, and xl:gap-6 leaves 54px. gap-8 collapses
+              it to 6px once max-w-chrome caps the row, so it is not restored. */}
+          <div className="hidden lg:flex items-center gap-4 xl:gap-6">
             {navLinks.map(({ href, label }) => (
               <Link
                 key={href}
@@ -88,6 +97,7 @@ export default function Nav() {
                 {label}
               </Link>
             ))}
+            <ThemeSwitcher variant="compact" />
             <a
               href="https://www.upwork.com/freelancers/~018a1dbf1094588c7e"
               target="_blank"
@@ -102,7 +112,7 @@ export default function Nav() {
           {/* Mobile hamburger */}
           <button
             ref={menuButtonRef}
-            className="md:hidden text-muted hover:text-text transition-colors"
+            className="lg:hidden text-muted hover:text-text transition-colors"
             onClick={() => setMobileOpen(true)}
             aria-label="Open menu"
             aria-expanded={mobileOpen}
@@ -163,6 +173,10 @@ export default function Nav() {
               Hire me ↗
               <span className="sr-only"> (opens in new tab)</span>
             </a>
+            {/* Appearance last: content nav, then CTA, then setting. Picking a
+                theme deliberately does NOT close the overlay, so the change can
+                be seen applying behind the control. */}
+            <ThemeSwitcher variant="full" className="w-64" />
           </div>
         </div>
       )}
