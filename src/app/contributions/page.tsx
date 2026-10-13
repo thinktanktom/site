@@ -48,7 +48,7 @@ const statusConfig: Record<
   },
   open: {
     label: 'Open',
-    className: 'text-green-400 border-green-400/40 bg-green-400/10',
+    className: 'text-success border-success/40 bg-success/10',
     Icon: GitPullRequest,
   },
   closed: {
@@ -169,7 +169,7 @@ export default function ContributionsPage() {
                 <span className="text-accent font-bold">{merged.length}</span> merged
               </span>
               <span>
-                <span className="text-green-400 font-bold">{open.length}</span> open
+                <span className="text-success font-bold">{open.length}</span> open
               </span>
               {closed.length > 0 && (
                 <span>
@@ -200,7 +200,7 @@ export default function ContributionsPage() {
           <div className="space-y-16">
             {open.length > 0 && (
               <section>
-                <h2 className="font-mono text-sm tracking-widest uppercase text-muted mb-6 pl-1 border-l-2 border-green-400">
+                <h2 className="font-mono text-sm tracking-widest uppercase text-muted mb-6 pl-1 border-l-2 border-success">
                   Open
                 </h2>
                 <div className="grid gap-4">
