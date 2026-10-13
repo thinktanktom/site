@@ -25,17 +25,48 @@ The logo (`thinktanktom_logo.png`) is a **pixel-art retro computer** with a city
 
 ### Color Palette
 
+The site has **three themes**. `funky` is the default and the brand look; `dark` is black and
+white; `light` is white and black. The theme is an attribute on `<html>` — `data-theme="funky" |
+"dark" | "light"` — and `:root` holds funky, so an absent or unrecognised attribute renders funky.
+
+Tokens are stored as **space-separated RGB channel triples, not hex**, so that Tailwind can map
+them as `rgb(var(--token) / <alpha-value>)` and the opacity modifiers already in use
+(`bg-accent/10`, `border-accent/40`, `bg-surface/60`) keep working. **Always wrap a token in
+`rgb()` when using it directly in CSS** — a bare `var(--accent)` is `232 255 0`, not a colour, and
+fails silently.
+
 ```css
-:root {
-  --bg:         #0a0a0a;   /* near-black, matches logo background */
-  --surface:    #111111;   /* slightly lighter for cards/sections */
-  --border:     #222222;   /* subtle dividers */
-  --text:       #f0f0f0;   /* off-white body text */
-  --muted:      #666666;   /* secondary / metadata text */
-  --accent:     #e8ff00;   /* electric yellow — single pop of colour */
-  --accent-dim: #b8cc00;   /* hover state for accent */
+:root {                        /* funky — the default */
+  --bg:         10 10 10;      /* #0a0a0a near-black */
+  --surface:    17 17 17;      /* #111111 cards/sections */
+  --border:     34 34 34;      /* #222222 subtle dividers */
+  --text:       240 240 240;   /* #f0f0f0 off-white body text */
+  --muted:      128 128 128;   /* #808080 secondary / metadata — AA on --bg */
+  --accent:     232 255 0;     /* #e8ff00 electric yellow */
+  --accent-dim: 184 204 0;     /* #b8cc00 hover state for accent */
+  --grid-dot:   30 30 30;      /* #1e1e1e hero pixel-grid texture */
+  --success:    74 222 128;    /* #4ade80 "open" status */
 }
 ```
+
+`dark` and `light` redefine all nine. Both are strictly neutral (R=G=B everywhere): with the
+yellow gone, **the accent is carried by luminance instead of hue** — it takes the pure endpoint
+(`#ffffff` in dark, `#000000` in light) while `--text` sits just inside it (`#e0e0e0` / `#1f1f1f`).
+That is deliberate; do not "fix" text to pure white or black, or the accent stops reading as an
+accent. See `src/app/globals.css` for the full blocks.
+
+Every informational text pair clears WCAG AA (4.5:1) in all three themes. If you change a token,
+re-check it — `--muted` on `--surface` is the tightest pair at 4.78:1 in funky.
+
+**Theming rules:**
+- Never hardcode a colour. Every colour goes through a token, including new ones — a raw hex or a
+  stock Tailwind colour (`green-400`) cannot follow the theme and will be wrong in two of three.
+- Theme-dependent CSS selectors must be anchored at `html[data-theme=…]`. In particular
+  `rehype-pretty-code` writes its *own* `data-theme` onto every `<pre>`, so an unanchored selector
+  matches the wrong element.
+- Prefer CSS over JavaScript for anything that varies by theme. The theme is applied before first
+  paint by a synchronous inline script in `layout.tsx`; anything driven by React state instead
+  will be wrong until hydration.
 
 ### Typography Scale
 
@@ -97,7 +128,9 @@ thinktanktom/
 │   ├── Nav.tsx
 │   ├── Footer.tsx
 │   ├── PostCard.tsx
-│   └── MDXContent.tsx
+│   ├── MDXContent.tsx
+│   ├── ThemeSwitcher.tsx        ← 3-way theme control (client)
+│   └── ThemedLogo.tsx           ← per-theme logo marks (server, CSS-swapped)
 ├── lib/
 │   └── posts.ts                 ← MDX reading + frontmatter utils
 ├── tailwind.config.ts
@@ -186,13 +219,52 @@ tags: ["tag1", "tag2"]
 
 **Desktop nav** (sticky, top bar):
 ```
-[TTT logo mark — 32px]   Writing   About        [Hire me ↗]
+[TTT wordmark — 32px high]   Writing  Projects  Experience  Contributions  About   [⚡☾☀]  [Hire me ↗]
 ```
 
-**Mobile nav**: hamburger → full-screen overlay with large links
+**Mobile nav**: hamburger → full-screen overlay with large links, the Hire me pill, and the
+theme control last.
 
 - Active page: nav item gets `--accent` colour
-- "Hire me" button: small pill button, `--accent` bg, black text — links to Upwork
+- "Hire me" button: small pill button, `--accent` bg, `--bg` text — links to Upwork
+- **The desktop cluster breaks at `lg`, not `md`** — this is deliberate and measured, not a typo.
+  The wordmark (224px) plus five `tracking-widest uppercase` mono links plus the pill already
+  measured 904px of `scrollWidth` against the 720px available at `md`; it overflowed and was
+  merely hidden by `overflow-x: hidden` on `html, body`. Below `lg` the full-screen overlay
+  carries both the navigation and the theme control.
+- Gaps are measured, not guessed: `gap-4` leaves 26px between wordmark and first link at 1024px,
+  and `xl:gap-6` leaves 54px. `gap-8` collapses that to 6px once `max-w-chrome` caps the row — so
+  if you are tempted to restore the original `gap-8` at `xl`, don't.
+
+---
+
+## Theme switching
+
+Three themes, selected by `data-theme` on `<html>`: `funky` (default) | `dark` | `light`.
+Persisted in `localStorage` under the key `ttt-theme`. **`prefers-color-scheme` is deliberately
+never consulted** — funky is the brand default and is neither light nor dark, so the OS preference
+cannot express the choice.
+
+- **No-flash script** — a synchronous inline script, the first child of `<body>` in `layout.tsx`,
+  reads the stored value, validates it, and sets the attribute before first paint. It must stay
+  synchronous and must stay first; anything that defers it reintroduces a flash of funky. The read
+  is wrapped in `try`/`catch` so a `localStorage` throw in a privacy mode cannot kill the page.
+  It writes only `data-theme`, an attribute React never renders, so there is no hydration mismatch
+  and `suppressHydrationWarning` is correctly *not* needed.
+- **`ThemeSwitcher.tsx`** — a 3-way segmented control (⚡ funky / ☾ dark / ☀ light), mounted in both
+  the desktop nav and the mobile overlay. The **pressed visual comes from CSS** keyed on
+  `html[data-theme]`, not from React state, so the active theme reads correctly on first paint and
+  with JS off; `aria-pressed` stays with React and a `MutationObserver` keeps the two mounted
+  instances in step. Pressed inverts background and foreground rather than shifting hue, so it
+  survives the loss of yellow (WCAG 1.4.1). Picking a theme in the overlay does **not** close it.
+- **Theme-visibility utilities** — `.only-funky` / `.only-dark` / `.only-light` toggle `display`
+  and are how `ThemedLogo` picks its asset with no JavaScript. `.only-funky` is written with a
+  `:not()` pair so it also shows when the attribute is absent, matching what `:root` renders.
+
+**Adding a fourth theme** touches five places: the token block, the `.only-*` pair and the Shiki
+selector trio in `globals.css`; the allow-list in the `layout.tsx` script; `ThemeSwitcher.tsx`;
+the three arrays in `ThemedLogo.tsx`; and the `theme` object in `MDXContent.tsx`. It also needs a
+matching logo asset set. Budget for that before promising one.
 
 ---
 
@@ -212,7 +284,11 @@ tags: ["tag1", "tag2"]
 Install and configure:
 - `next-mdx-remote` or `@next/mdx` for rendering MDX
 - `gray-matter` for parsing frontmatter
-- `rehype-pretty-code` + `shiki` for code highlighting (theme: `"one-dark-pro"`)
+- `rehype-pretty-code` + `shiki` for code highlighting. Configured with an **object** `theme`
+  keyed by theme name, so Shiki emits `--shiki-funky` / `--shiki-dark` / `--shiki-light` CSS
+  variables and the page theme picks the set: `one-dark-pro` (funky), `vesper` (dark),
+  `vitesse-light` (light). Highlighting is resolved at build time — the static export has no
+  runtime to re-highlight, which is why it has to go through CSS variables.
 - `remark-gfm` for GitHub Flavored Markdown (tables, strikethrough, etc.)
 - `reading-time` for estimated read time
 
@@ -238,7 +314,7 @@ The <Annotated n={1}>JavaScript, HTML and CSS boilerplate</Annotated> I once wro
 
 The styling is settled — **do not redesign it**:
 
-- **The phrase is highlighted**: set in `--accent` (the logo green) with a **solid** underline —
+- **The phrase is highlighted**: set in `--accent` with a **solid** underline —
   `text-accent underline underline-offset-4`. Never dotted or dashed: a perforated underline was
   explicitly rejected. Never bare/undecorated either — the accent highlight is the point.
   Known limitation, accepted: in `dark` and `light` the accent is white/black rather than a hue,
@@ -294,8 +370,18 @@ Every developer eventually builds their own website...
 3. Configure `tailwind.config.ts` to extend theme with the custom colour palette above and the two font families
 4. Build in this order: `globals.css` → `layout.tsx` → `Nav.tsx` → `Footer.tsx` → `lib/posts.ts` → home page → writing index → post page → about page
 5. Do **not** use any UI component libraries (no shadcn, no MUI) — hand-craft all components for full aesthetic control
-6. Keep `--accent` yellow usage disciplined: CTAs, active states, code accents, heading decorations only. Not scattered everywhere.
-7. The pixel-art logo is white on black — always display it on a dark background. Never invert it.
+6. Keep `--accent` usage disciplined: CTAs, active states, code accents, heading decorations only. Not scattered everywhere.
+7. **Logo marks follow the theme; the raster logo does not.** The on-page marks are transparent
+   vector glyphs rendered through `components/ThemedLogo.tsx`, which ships a per-theme asset:
+   the existing `public/ttt_*.svg` for funky, `ttt_*_dark-mono.svg` (white) for dark, and
+   `ttt_*_light-neon.svg` (near-black ink + one neon accent) for light. Pick the asset, never
+   recolour or CSS-filter a mark. The old "white on black — never invert it" rule still holds for
+   `thinktanktom_logo.png` / `ttt_logo.png` — the raster with the black ground baked in, used only
+   as the OG/Twitter card image and the favicon. Those are consumed outside the page by social
+   scrapers and browser chrome, cannot be themed, and stay dark-ground.
+   Note the three asset sets do **not** share aspect ratios (icon 1.2425 vs funky's square 1.000;
+   stacked logo 2.0594 vs 1.778). `ThemedLogo` normalises each role on a height and derives every
+   width from that variant's own `viewBox` — never pass one width/height pair across variants.
 8. Test mobile layout at 375px and 390px widths
 9. Run `next build` and fix all TypeScript errors before considering the site done
 
