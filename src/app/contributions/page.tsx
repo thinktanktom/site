@@ -1,6 +1,3 @@
-'use client'
-
-import { useEffect, useState } from 'react'
 import { ExternalLink, GitPullRequest, GitMerge, GitPullRequestClosed, type LucideIcon } from 'lucide-react'
 import { getOpenSourcePRs, getPRStatus, type PullRequest, type PRStatus } from '@lib/github'
 
@@ -122,31 +119,8 @@ function PRCard({ pr }: { pr: PullRequest }) {
   )
 }
 
-function SkeletonCard() {
-  return (
-    <div className="border border-border rounded-sm p-6 bg-surface/20 animate-pulse">
-      <div className="flex justify-between mb-3">
-        <div className="h-3 w-32 bg-border rounded" />
-        <div className="h-5 w-16 bg-border rounded-full" />
-      </div>
-      <div className="h-5 w-3/4 bg-border rounded mb-3" />
-      <div className="h-3 w-full bg-border rounded mb-2" />
-      <div className="h-3 w-2/3 bg-border rounded" />
-    </div>
-  )
-}
-
-export default function ContributionsPage() {
-  const [prs, setPrs] = useState<PullRequest[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
-
-  useEffect(() => {
-    getOpenSourcePRs()
-      .then(setPrs)
-      .catch(() => setError(true))
-      .finally(() => setLoading(false))
-  }, [])
+export default async function ContributionsPage() {
+  const prs = await getOpenSourcePRs()
 
   const merged = prs.filter((pr) => getPRStatus(pr) === 'merged')
   const open = prs.filter((pr) => getPRStatus(pr) === 'open')
@@ -160,10 +134,10 @@ export default function ContributionsPage() {
             Contributions.
           </h1>
           <p className="font-sans text-lg text-muted leading-relaxed max-w-[560px]">
-            Open source pull requests — descriptions sourced live from GitHub.
+            Open source pull requests — descriptions pulled from GitHub when the site was built.
           </p>
 
-          {!loading && !error && (
+          {prs.length > 0 && (
             <div className="flex flex-wrap gap-6 mt-8 font-mono text-sm text-muted">
               <span>
                 <span className="text-accent font-bold">{merged.length}</span> merged
@@ -180,23 +154,23 @@ export default function ContributionsPage() {
           )}
         </div>
 
-        {loading && (
-          <div className="grid gap-4">
-            {[...Array(4)].map((_, i) => <SkeletonCard key={i} />)}
-          </div>
-        )}
-
-        {error && (
-          <p className="font-mono text-sm text-muted">
-            Could not load contributions — GitHub API may be rate-limited. Try again shortly.
+        {prs.length === 0 && (
+          <p className="font-sans text-muted">
+            No contributions to show right now — see{' '}
+            <a
+              href="https://github.com/thinktanktom"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline decoration-accent underline-offset-2 hover:text-accent transition-colors duration-200"
+            >
+              GitHub
+              <span className="sr-only"> (opens in new tab)</span>
+            </a>{' '}
+            in the meantime.
           </p>
         )}
 
-        {!loading && !error && prs.length === 0 && (
-          <p className="font-sans text-muted">No contributions found — check back soon.</p>
-        )}
-
-        {!loading && !error && prs.length > 0 && (
+        {prs.length > 0 && (
           <div className="space-y-16">
             {open.length > 0 && (
               <section>
