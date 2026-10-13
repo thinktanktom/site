@@ -1,5 +1,5 @@
-import Image from 'next/image'
 import { Github, Linkedin, ExternalLink, Twitter } from 'lucide-react'
+import { TttIcon } from '@components/ThemedLogo'
 
 function TelegramIcon({ size = 18 }: { size?: number }) {
   return (
@@ -53,14 +53,7 @@ export default function Footer() {
     <footer className="border-t border-border">
       <div className="max-w-chrome mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Image
-            src="/ttt_icon.svg"
-            alt="thinktanktom"
-            width={24}
-            height={24}
-            className="object-contain"
-            unoptimized
-          />
+          <TttIcon height={24} />
           <p className="font-mono text-sm text-muted tracking-wider">
             © {new Date().getFullYear()} thinktanktom
           </p>
