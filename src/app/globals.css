@@ -203,3 +203,15 @@ html[data-theme='light'] .only-light {
   font-size: 0.875em;
 }
 
+/* ThemeSwitcher pressed state, driven off the html attribute rather than React
+   state so the active theme is visibly selected on the first paint and with JS
+   off. Mirrors the .only-* logic: no attribute (or an unknown one) reads as
+   funky, matching what :root actually renders. Specificity (0,2,1) clears both
+   .text-muted and .hover\:text-text:hover. */
+html:not([data-theme='dark']):not([data-theme='light']) .theme-btn-funky,
+html[data-theme='dark'] .theme-btn-dark,
+html[data-theme='light'] .theme-btn-light {
+  background-color: rgb(var(--accent));
+  color: rgb(var(--bg));
+}
+
