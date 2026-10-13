@@ -245,6 +245,20 @@ html[data-theme='light'] [data-rehype-pretty-code-figure] pre span {
   color: var(--shiki-light);
 }
 
+/* In light the accent is pure black, so black at 40% over white lands on
+   #999999 — 2.85:1, just under the 3:1 UI threshold. Nudge the accent borders
+   up in the light theme only (/40 → /55 = 4.74:1, /30 → /45) rather than
+   editing the utility class in eight files. */
+html[data-theme='light'] .border-accent\/40,
+html[data-theme='light'] .hover\:border-accent\/40:hover {
+  border-color: rgb(var(--accent) / 0.55);
+}
+
+html[data-theme='light'] .border-accent\/30,
+html[data-theme='light'] .hover\:border-accent\/30:hover {
+  border-color: rgb(var(--accent) / 0.45);
+}
+
 /* ThemeSwitcher pressed state, driven off the html attribute rather than React
    state so the active theme is visibly selected on the first paint and with JS
    off. Mirrors the .only-* logic: no attribute (or an unknown one) reads as
@@ -257,3 +271,19 @@ html[data-theme='light'] .theme-btn-light {
   color: rgb(var(--bg));
 }
 
+/* Match the accent-border nudge above: success at 40% over white is 2.06:1,
+   fainter than the accent border that was worth correcting. These chip borders
+   are decorative (every chip carries an icon and a text label), but leaving
+   light alone would make it arbitrarily weaker than funky and dark. */
+html[data-theme='light'] .border-success\/40 {
+  border-color: rgb(var(--success) / 0.55);
+}
+
+/* The theme-switch fade is a colour-only transition, but honour the
+   preference rather than reason about whether 2.3.3 covers it. */
+@media (prefers-reduced-motion: reduce) {
+  html,
+  body {
+    transition: none;
+  }
+}
