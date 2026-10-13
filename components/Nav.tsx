@@ -99,6 +99,7 @@ export default function Nav() {
               className="font-mono text-sm tracking-wider px-4 py-1.5 rounded-full bg-accent text-bg font-bold hover:bg-accent-dim transition-colors duration-200"
             >
               Hire me ↗
+              <span className="sr-only"> (opens in new tab)</span>
             </a>
           </div>
 
@@ -167,6 +168,7 @@ export default function Nav() {
               className="font-mono text-xl tracking-wider px-8 py-3 rounded-full bg-accent text-bg font-bold hover:bg-accent-dim transition-colors duration-200"
             >
               Hire me ↗
+              <span className="sr-only"> (opens in new tab)</span>
             </a>
           </div>
         </div>

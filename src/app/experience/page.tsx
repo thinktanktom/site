@@ -60,6 +60,7 @@ export default function ExperiencePage() {
                     className="hover:text-accent-dim transition-colors underline underline-offset-4"
                   >
                     {entry.org}
+                    <span className="sr-only"> (opens in new tab)</span>
                   </a>
                 ) : (
                   entry.org
@@ -87,6 +88,9 @@ export default function ExperiencePage() {
                     className="font-mono text-xs text-muted hover:text-accent tracking-wider transition-colors duration-200 ml-1"
                   >
                     {entry.link.label} →
+                    {entry.link.href.startsWith('http') && (
+                      <span className="sr-only"> (opens in new tab)</span>
+                    )}
                   </a>
                 )}
               </div>
@@ -135,6 +139,9 @@ export default function ExperiencePage() {
                       className="font-mono text-xs text-muted hover:text-accent tracking-wider transition-colors duration-200 ml-1"
                     >
                       {entry.link.label} →
+                      {entry.link.href.startsWith('http') && (
+                        <span className="sr-only"> (opens in new tab)</span>
+                      )}
                     </a>
                   )}
                 </div>
