@@ -62,6 +62,7 @@ export default function HomePage() {
               className="font-mono text-sm tracking-wider px-6 py-3 border border-accent text-accent hover:bg-accent hover:text-bg transition-all duration-200 rounded-sm"
             >
               Hire me on Upwork ↗
+              <span className="sr-only"> (opens in new tab)</span>
             </a>
           </div>
         </div>

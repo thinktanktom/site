@@ -74,6 +74,7 @@ function PRCard({ pr }: { pr: PullRequest }) {
         >
           {pr.repository.full_name}
           <ExternalLink size={11} />
+          <span className="sr-only"> (opens in new tab)</span>
         </a>
 
         <span
@@ -94,6 +95,8 @@ function PRCard({ pr }: { pr: PullRequest }) {
           <span className="text-muted mr-2">#{pr.number}</span>
           {pr.title}
         </h3>
+        {/* Outside the <h3> so heading navigation reads the PR title alone. */}
+        <span className="sr-only"> (opens in new tab)</span>
       </a>
 
       {description && (
