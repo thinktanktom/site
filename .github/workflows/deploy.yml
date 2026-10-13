@@ -26,6 +26,12 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          # The contributions page queries the GitHub search API at build time.
+          # Unauthenticated it is 10 req/min against a per-IP pool that Actions
+          # runners share, so CI would intermittently 403 and publish an empty
+          # page. This token is build-only and never reaches the browser.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Deploy to gh-pages
         uses: peaceiris/actions-gh-pages@v4
