@@ -32,7 +32,7 @@ export default function AboutPage() {
 
         {/* Logo as title */}
         <div className="mb-16 flex justify-center">
-          <TttLogoFull height={225} priority />
+          <TttLogoFull height={225} />
         </div>
 
         {/* Bio */}

@@ -23,7 +23,7 @@ export default function HomePage() {
                 96x96, so reserving the square and centring inside it keeps the
                 hero from shifting when the theme changes. */}
             <div className="mb-8 flex h-24 items-center justify-center">
-              <TttIcon width={96} priority />
+              <TttIcon width={96} />
             </div>
           </div>
 
