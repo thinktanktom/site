@@ -1,12 +1,23 @@
 import { MDXRemote } from 'next-mdx-remote/rsc'
 import remarkGfm from 'remark-gfm'
 import rehypePrettyCode from 'rehype-pretty-code'
-import type { BundledTheme } from 'shiki'
+import type { Options } from 'rehype-pretty-code'
 
+// An object `theme` makes rehype-pretty-code pass defaultColor:false to Shiki,
+// which emits --shiki-funky / --shiki-dark / --shiki-light per token span (and
+// the -bg pair on the <pre>) instead of a baked-in `color`. The keys become the
+// variable suffixes verbatim, so they match the data-theme values exactly. The
+// CSS that selects between them lives in src/app/globals.css, anchored at
+// html[data-theme=…] because rehype-pretty-code sets its own data-theme
+// attribute on every <pre>/<code>.
 const prettyCodeOptions = {
-  theme: 'one-dark-pro' as BundledTheme,
+  theme: {
+    funky: 'one-dark-pro',
+    dark: 'vesper',
+    light: 'vitesse-light',
+  },
   keepBackground: true,
-}
+} satisfies Options
 
 // Unicode superscript digits, as used for the footnote markers on /about
 const superscripts = ['', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹']

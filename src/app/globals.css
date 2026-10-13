@@ -203,6 +203,48 @@ html[data-theme='light'] .only-light {
   font-size: 0.875em;
 }
 
+/* Code block syntax colours. rehype-pretty-code is configured with an object
+   `theme` (see components/MDXContent.tsx), so Shiki emits --shiki-{funky,dark,light}
+   on every token span and --shiki-{…}-bg on the <pre>, with defaultColor:false —
+   meaning no fallback `color` and no prefers-color-scheme query. These selectors
+   are the only thing driving which theme is shown.
+
+   Every selector is anchored at html[data-theme=…] on purpose: rehype-pretty-code
+   puts its OWN data-theme attribute (value "one-dark-pro vesper vitesse-light") on
+   each <pre> and <code>, so an unanchored [data-theme='…'] would be ambiguous.
+
+   The background goes on the <pre> only — custom properties inherit, so painting
+   the spans too would draw a box behind every token and seam at line boundaries. */
+[data-rehype-pretty-code-figure] pre {
+  background-color: var(--shiki-funky-bg);
+}
+
+[data-rehype-pretty-code-figure] pre,
+[data-rehype-pretty-code-figure] pre span {
+  color: var(--shiki-funky);
+}
+
+html[data-theme='dark'] [data-rehype-pretty-code-figure] pre {
+  background-color: var(--shiki-dark-bg);
+}
+
+html[data-theme='dark'] [data-rehype-pretty-code-figure] pre,
+html[data-theme='dark'] [data-rehype-pretty-code-figure] pre span {
+  color: var(--shiki-dark);
+}
+
+html[data-theme='light'] [data-rehype-pretty-code-figure] pre {
+  /* vitesse-light's own background is #ffffff — identical to the light page
+     background, leaving the block delimited only by its 1px border. Use the
+     surface token so a code block reads as a distinct panel in every theme. */
+  background-color: rgb(var(--surface));
+}
+
+html[data-theme='light'] [data-rehype-pretty-code-figure] pre,
+html[data-theme='light'] [data-rehype-pretty-code-figure] pre span {
+  color: var(--shiki-light);
+}
+
 /* ThemeSwitcher pressed state, driven off the html attribute rather than React
    state so the active theme is visibly selected on the first paint and with JS
    off. Mirrors the .only-* logic: no attribute (or an unknown one) reads as
