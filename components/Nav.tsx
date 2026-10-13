@@ -73,7 +73,7 @@ export default function Nav() {
             className="flex items-center shrink-0"
             aria-label="thinktanktom, home"
           >
-            <TttWordmark height={32} priority />
+            <TttWordmark height={32} />
           </Link>
 
           {/* Desktop. Breakpoint is lg. It was raised to xl while the Hire me

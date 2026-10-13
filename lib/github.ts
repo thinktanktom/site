@@ -35,13 +35,39 @@ interface GitHubSearchIssueItem {
   labels?: Array<{ name: string; color: string }>
 }
 
+/*
+ * Runs at BUILD time, in Node, never in the browser. That is what keeps the
+ * token below out of the bundle — do not import this from a client component.
+ *
+ * Unauthenticated search is 10 requests/minute against a shared per-IP pool,
+ * and GitHub Actions runners share those IPs, so CI would intermittently get
+ * a 403 and publish an empty page. Authenticated it is 30/minute to the repo
+ * token, which one build cannot exhaust. Locally there is usually no token and
+ * the unauthenticated path is fine for a single request.
+ */
 export async function getOpenSourcePRs(): Promise<PullRequest[]> {
-  const res = await fetch(
-    'https://api.github.com/search/issues?q=type:pr+author:thinktanktom+is:public+-user:thinktanktom&sort=created&order=desc&per_page=50',
-    { headers: { Accept: 'application/vnd.github.v3+json' } }
-  )
+  const token = process.env.GITHUB_TOKEN
+  const headers: Record<string, string> = {
+    Accept: 'application/vnd.github.v3+json',
+  }
+  if (token) headers.Authorization = `Bearer ${token}`
 
-  if (!res.ok) return []
+  let res: Response
+  try {
+    res = await fetch(
+      'https://api.github.com/search/issues?q=type:pr+author:thinktanktom+is:public+-user:thinktanktom&sort=created&order=desc&per_page=50',
+      { headers }
+    )
+  } catch {
+    // The build must not fail because GitHub is unreachable.
+    console.warn('[contributions] GitHub unreachable; publishing an empty list')
+    return []
+  }
+
+  if (!res.ok) {
+    console.warn(`[contributions] GitHub returned ${res.status}; publishing an empty list`)
+    return []
+  }
 
   const data = (await res.json()) as { items?: GitHubSearchIssueItem[] }
 
