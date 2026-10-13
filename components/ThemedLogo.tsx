@@ -1,7 +1,15 @@
 import Image from 'next/image'
 
-export type ThemedLogoProps = {
-  height: number
+/* Give exactly one dimension; the other is derived from each variant's own
+   aspect ratio. Which one you pin decides what stays put when the theme
+   changes: pin the height for a lockup sitting in a row (the nav, the footer),
+   pin the width for a mark centred in a column (the hero), so the swap does
+   not nudge the layout around it. */
+type ThemedLogoSize =
+  | { height: number; width?: never }
+  | { width: number; height?: never }
+
+export type ThemedLogoProps = ThemedLogoSize & {
   className?: string
   priority?: boolean
   alt?: string
@@ -52,10 +60,15 @@ const LOGO_FULL: Variant[] = [
 function ThemedLogo({
   variants,
   height,
+  width,
   className,
   priority,
   alt = 'thinktanktom',
 }: ThemedLogoProps & { variants: Variant[] }) {
+  const sizeFor = (aspect: number) =>
+    height === undefined
+      ? { width: width as number, height: Math.round((width as number) / aspect) }
+      : { width: Math.round(height * aspect), height }
   return (
     <>
       {variants.map((variant) => (
@@ -64,8 +77,7 @@ function ThemedLogo({
           <Image
             src={variant.src}
             alt={alt}
-            width={Math.round(height * variant.aspect)}
-            height={height}
+            {...sizeFor(variant.aspect)}
             className="object-contain"
             unoptimized
             /* Only the funky variant preloads. Marking all three `priority`
