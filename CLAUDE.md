@@ -220,6 +220,43 @@ Install and configure:
 - `getAllPosts()` → sorted array of `{ slug, title, date, excerpt, tags, readTime }`
 - `getPostBySlug(slug)` → `{ frontmatter, content }` for rendering
 
+### Inline annotations (how Tom likes them)
+
+Drafts arrive as plain text with annotations written inline as `(phrase)*(note text)` — the text
+before the asterisk is the phrase to annotate, the text after it is the note. Convert each one to
+the `Annotated` / `Notes` / `Note` components in `components/MDXContent.tsx`:
+
+```mdx
+The <Annotated n={1}>JavaScript, HTML and CSS boilerplate</Annotated> I once wrote by hand…
+
+<Notes>
+
+<Note n={1}>I used Flask and SSGs as well. They all equally strain my eyes</Note>
+
+</Notes>
+```
+
+The styling is settled — **do not redesign it**:
+
+- **The phrase is highlighted**: set in `--accent` (the logo green) with a **solid** underline —
+  `text-accent underline underline-offset-4`. Never dotted or dashed: a perforated underline was
+  explicitly rejected. Never bare/undecorated either — the accent highlight is the point.
+  Known limitation, accepted: in `dark` and `light` the accent is white/black rather than a hue,
+  so an annotated phrase is set apart mainly by its underline and reads much like an inline link.
+  That is inherent to a black-and-white theme, not a styling bug — leave it alone.
+- **Use the `--accent` token**, not a hex copied out of a logo file. The logo SVGs are inconsistent
+  (`#D9DB00` in `ttt_icon.svg`/`ttt_logo.svg`/`ttt_logo_wordmark.svg`, `#E1F708` in
+  `ttt_logo_full.svg`/`ttt_logo_notag.svg`) and the token `#e8ff00` is the same green within a
+  couple of percent. It also keeps the phrase matching its own superscript marker.
+- **Marker**: a Unicode superscript (`¹²³⁴`) in `--accent` straight after the phrase, no space, not
+  a link.
+- **Notes block** at the foot of the post, matching the `/about` footnotes exactly: wrapper
+  `pt-6 border-t border-border`, inner `font-mono text-xs leading-relaxed space-y-1`, each note an
+  accent `N.` followed by muted text. (`/about` hand-rolls the same markup inline — if the
+  annotation style changes, change both.)
+- Keep the note text as written in the draft; don't pad it out. A bare author credit or a one-line
+  aside is the intended register.
+
 ---
 
 ## SEO & Meta
