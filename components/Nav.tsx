@@ -101,15 +101,6 @@ export default function Nav() {
               </Link>
             ))}
             <ThemeSwitcher variant="compact" />
-            <a
-              href="https://www.upwork.com/freelancers/~018a1dbf1094588c7e"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-mono text-sm tracking-wider px-4 py-1.5 rounded-full bg-accent text-bg font-bold hover:bg-accent-dim transition-colors duration-200"
-            >
-              Hire me ↗
-              <span className="sr-only"> (opens in new tab)</span>
-            </a>
           </div>
 
           {/* Mobile hamburger */}
@@ -166,19 +157,9 @@ export default function Nav() {
                 {label}
               </Link>
             ))}
-            <a
-              href="https://www.upwork.com/freelancers/~018a1dbf1094588c7e"
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={closeMobileMenu}
-              className="font-mono text-xl tracking-wider px-8 py-3 rounded-full bg-accent text-bg font-bold hover:bg-accent-dim transition-colors duration-200"
-            >
-              Hire me ↗
-              <span className="sr-only"> (opens in new tab)</span>
-            </a>
-            {/* Appearance last: content nav, then CTA, then setting. Picking a
-                theme deliberately does NOT close the overlay, so the change can
-                be seen applying behind the control. */}
+            {/* Appearance last, after the content nav. Picking a theme
+                deliberately does NOT close the overlay, so the change can be
+                seen applying behind the control. */}
             <ThemeSwitcher variant="full" className="w-64" />
           </div>
         </div>
