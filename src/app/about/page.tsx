@@ -76,7 +76,7 @@ export default function AboutPage() {
             </p>
             <p>
               That same year brought the{' '}
-              <a href="https://bankx.io" target="_blank" rel="noopener noreferrer" className="text-accent underline underline-offset-4 hover:text-accent-dim transition-colors">BankX<span className="sr-only"> (opens in new tab)</span></a>
+              <a href="https://bankx.io" target="_blank" rel="noopener noreferrer" className="underline decoration-accent underline-offset-2 hover:text-accent transition-colors duration-200">BankX<span className="sr-only"> (opens in new tab)</span></a>
               {' '}contract, my first big break and the most interesting and ambitious project I&apos;d taken up
               so far. It has since been deployed on 8 chains and is in the early stages of marketing and promotion.
             </p>
