@@ -49,7 +49,7 @@ function formatDate(dateStr: string) {
 const statusStyles = {
   active: 'text-accent border-accent/40 bg-accent/10',
   completed: 'text-muted border-border bg-surface/40',
-  archived: 'text-muted/60 border-border/40',
+  archived: 'text-muted border-border/40',
 }
 
 const statusLabel = {
