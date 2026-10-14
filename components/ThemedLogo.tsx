@@ -33,7 +33,17 @@ type Role = {
      INVARIANT: all variants of a role carry the SAME viewBox and the SAME
      path sequence in the same coordinates — only the ink differs, so one
      viewBox means the element box AND the ink land on the same pixels in every
-     theme. The screen stays a transparent cutout in every variant; a theme
+     theme.
+
+     Measured caveat, so the claim above is not read as more exact than it is:
+     the inline <svg> resolves 0.062px TALLER than the <img> in the wordmark
+     role only (224×32.000 vs 224×31.938). Both derive from the same one
+     aspect, but <img> gets its box from the UA's attr()-based aspect-ratio on
+     the ROUNDED width/height, while the <svg> takes it from the unrounded
+     viewBox ratio. Verified across all four themes on / and /about: nothing
+     reflows — the h1 top, the footer icon top and document scrollHeight are
+     byte-identical in every theme — and the other two roles are exact
+     (96×96, 24×24, 400×225). Do not "fix" it by rounding the viewBox. The screen stays a transparent cutout in every variant; a theme
      that fills it is a theme whose mark no longer matches the others.
 
      This is load-bearing, and the history says why. The dark/light exports
