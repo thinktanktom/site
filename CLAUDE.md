@@ -359,6 +359,38 @@ Other load-bearing choices:
 - **`success` keeps a fixed hue (152°)**, calibrated to funky's `#4ade80`. It carries meaning, not the
   key hue; "open to work" must not go red on a red seed.
 
+**Opacity modifiers on the accent are NOT covered by the gate table, and need their own rule.**
+The gates bound pairs of *solid* tokens. An alpha on the accent is only as strong as the accent's own
+contrast, and a generated accent has far less to spend than a hand-picked one: funky/dark/light put
+the accent at 17–21:1 against `--bg` (pure yellow, white, black), so `border-accent/40` still clears
+the 3:1 UI floor, while a generated accent at the same 40% lands at **1.72:1** — under the floor on
+78.7% of palettes. The accent-tinted chip was worse, because both sides move: `text-accent/80` on
+`bg-accent/10` missed WCAG AA on 58.9% of palettes, at `text-xs`.
+
+This cannot be fixed in the generator — it picks colours, and these are composites of one. So
+`globals.css` overrides them for `random` only, with **measured** alphas:
+
+| utility | random alpha | why |
+|---|---|---|
+| `border-accent/40` | `0.8` | a card/panel **boundary**, held to 3:1. Measured worst 3.26:1 over 20,000 seeds; 0.75 still failed 14 of them |
+| `border-accent/30`, `border-success/40` | `0.6` | **decorative** chip outlines (every chip carries an icon *and* a label) and already 2.37–3.36 in the shipping themes, so not held to 3:1 — only to parity with funky's 2.44:1 |
+| `bg-accent/10` | → `rgb(var(--surface))` | drops the tint so the chip pair reduces to accent-on-surface, which **is** gated |
+| `text-accent/80` | → solid `--accent` | same reason; makes the chip AA by construction rather than by luck |
+
+Two traps here, both already paid for:
+
+- **Key these on `[data-theme='random']` alone, never with `data-polarity`.** A
+  `[data-theme='random'][data-polarity='light']` selector is (0,3,1) and outranks these (0,2,1)
+  rules, silently reinstating the weaker light-theme alpha for every light palette — i.e. exactly the
+  bug the rules exist to fix.
+- **`border-border/40` is deliberately left alone** at ~1.09:1. It is a neutral decorative hairline
+  that measures the same in funky, and holding `random` to a bar the brand theme does not meet would
+  be incoherent.
+
+`accent/surface` is gated at **4.5**, not 4.2, and `ACCENT_STAGES` solves for it — because the accent
+is rendered as small text directly on `--surface` (inline code, and the chips and doc-nav items the
+random theme now routes onto an opaque surface), so AA applies to that pair too.
+
 **Storage** (all under `try`/`catch` — `localStorage` throws outright in some privacy modes):
 
 | key | value |
@@ -367,6 +399,13 @@ Other load-bearing choices:
 | `ttt-seed` | the integer seed — the source of truth |
 | `ttt-palette` | the nine resolved tokens, for the pre-paint script |
 | `ttt-palette-v` | `ENGINE_VERSION`; a cache stamped otherwise is refused |
+
+The pre-paint script **validates every cached value against an `"R G B"` pattern** before applying
+any of it, and rejects the whole palette if one value fails. Checking only that the *keys* were
+present was not enough: `setProperty` silently drops a value CSSOM refuses (anything with a
+top-level `;`), which left some tokens unset while `data-theme` was still `random` — and because the
+recovery path keys off `data-theme`, it could not see that state, so the broken palette survived
+reloads. Reproduced in a browser as black text on a near-black background.
 
 The pre-paint script **never runs the generator** — `generate()` costs ~1.5ms warm and the engine is
 ~3KB, neither of which belongs in blocking work before first paint. It pastes the cached tokens
