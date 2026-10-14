@@ -140,6 +140,20 @@ html[data-theme='random'] .only-random {
   display: block;
 }
 
+/* The random theme's logo mark: a stencil, not a recolour.
+   components/ThemedLogo.tsx renders an empty span per role and sets only the
+   per-role mask url inline; everything shared lives here so autoprefixer emits
+   the -webkit- pair for older Safari. The mono SVG contributes nothing but its
+   alpha, so the ink comes from --accent and the screen cutout stays a hole.
+   mask-size: contain is the equivalent of the <img> variants' object-contain. */
+.logo-mask {
+  display: block;
+  background-color: rgb(var(--accent));
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+}
+
 /* Hero pixel-grid dot texture */
 .pixel-grid {
   background-image: radial-gradient(circle, rgb(var(--grid-dot)) 1px, transparent 1px);
