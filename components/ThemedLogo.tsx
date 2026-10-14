@@ -1,8 +1,5 @@
 import Image from 'next/image'
 
-import { InlineMark } from './logo/InlineMark'
-import { ICON_MARK, LOGO_FULL_MARK, WORDMARK_MARK, type LogoMark } from './logo/paths'
-
 /* Give exactly one dimension; the other is derived from the role's aspect
    ratio. Which one you pin decides what stays put in the surrounding layout:
    pin the height for a lockup sitting in a row (the nav, the footer), pin the
@@ -24,11 +21,13 @@ type Variant = {
 }
 
 type Role = {
-  /* Geometry for the inline `random` variant, and the single source of the
-     role's aspect ratio — `aspect` below is computed from `mark.viewBox`, not
-     typed out, so the number the layout maths uses and the number the inline
-     mark draws with cannot drift apart. */
-  mark: LogoMark
+  /* The role's canvas, and the single source of its aspect ratio — `aspect`
+     below is computed from this rather than typed out, so the number the layout
+     maths uses and the number the artwork is drawn on cannot drift apart. */
+  viewBox: string
+  /* Single-fill asset used as the ALPHA MASK for the `random` variant. Any of
+     the mono exports would do — only their alpha matters, not their ink. */
+  maskSrc: string
   /* viewBox width / viewBox height, shared by every variant of the role.
      INVARIANT: all variants of a role carry the SAME viewBox and the SAME
      path sequence in the same coordinates — only the ink differs, so one
@@ -36,14 +35,14 @@ type Role = {
      theme.
 
      Measured caveat, so the claim above is not read as more exact than it is:
-     the inline <svg> resolves 0.062px TALLER than the <img> in the wordmark
-     role only (224×32.000 vs 224×31.938). Both derive from the same one
-     aspect, but <img> gets its box from the UA's attr()-based aspect-ratio on
-     the ROUNDED width/height, while the <svg> takes it from the unrounded
-     viewBox ratio. Verified across all four themes on / and /about: nothing
-     reflows — the h1 top, the footer icon top and document scrollHeight are
-     byte-identical in every theme — and the other two roles are exact
-     (96×96, 24×24, 400×225). Do not "fix" it by rounding the viewBox. The screen stays a transparent cutout in every variant; a theme
+     the masked element resolves 0.062px TALLER than the <img> in the wordmark
+     role only (224×32.000 vs 224×31.938). Both are handed the same size pair,
+     but <img> then has preflight's height:auto and the UA's attr()-based
+     aspect-ratio applied on top, which re-derives its height from the ROUNDED
+     width/height, while an explicitly sized span keeps what it was given.
+     Verified across all four themes on / and /about: nothing reflows — the h1
+     top, the footer icon top and document scrollHeight are byte-identical in
+     every theme — and the other two roles are exact (96×96, 24×24, 400×225). The screen stays a transparent cutout in every variant; a theme
      that fills it is a theme whose mark no longer matches the others.
 
      This is load-bearing, and the history says why. The dark/light exports
@@ -80,28 +79,36 @@ type Role = {
  * inline mark would flatten all three to one colour, which is a visible
  * regression on /about. Do not "unify" the four variants onto the inline path.
  *
- * `random`: INLINE SVG. The palette is generated at runtime, so no file can
- * carry its fill. `.only-random` reveals an inline <svg> whose paths are
- * `fill="currentColor"`, and `text-accent` points `currentColor` at the
- * `--accent` token — which is a CSS variable the randomiser rewrites, so the
- * mark follows a palette that did not exist at build time. This mark is
- * single-ink by nature; see components/logo/InlineMark.tsx for the sizing
- * rules that keep its box identical to the <img> variants'.
+ * `random`: CSS MASK. The palette is generated at runtime, so no file can carry
+ * its fill. `.only-random` reveals an empty element painted with
+ * `background-color: rgb(var(--accent))` and masked by one of the mono SVGs, so
+ * the artwork becomes a stencil and the token supplies the colour.
+ *
+ * This is NOT the forbidden "recolour a mark" — nothing is filtered or
+ * hue-shifted, and the file contributes only its alpha. It replaced an inline
+ * <svg> that did the same job with `fill="currentColor"`: correct, but it had
+ * to be rendered in EVERY theme and merely hidden, because the theme is not
+ * known at build time, so its path data cost HTML bytes for every reader
+ * (/about carried ~36KB of it). A masked element costs nothing but the rule,
+ * and because hidden elements do not load their masks, the asset is fetched
+ * only by readers actually in the random theme.
  *
  * Either way the choice is made in CSS, not JS: no wrong-logo flash on load,
  * nothing here is a client component, and it all survives the static export.
  */
 
-/** aspect ratio straight out of a mark's viewBox, so there is one number */
-function aspectOf(mark: LogoMark): number {
-  const [, , w, h] = mark.viewBox.trim().split(/[\s,]+/).map(Number)
-  if (!w || !h) throw new Error(`unusable viewBox: "${mark.viewBox}"`)
+/** aspect ratio straight out of a role's viewBox, so there is one number */
+function aspectOf(viewBox: string): number {
+  const [, , w, h] = viewBox.trim().split(/[\s,]+/).map(Number)
+  if (!w || !h) throw new Error(`unusable viewBox: "${viewBox}"`)
   return w / h
 }
 
+const ICON_VIEWBOX = '0 0 623.62 623.62'
 const ICON: Role = {
-  mark: ICON_MARK,
-  aspect: aspectOf(ICON_MARK),
+  viewBox: ICON_VIEWBOX,
+  maskSrc: '/ttt_icon_light-primary.svg',
+  aspect: aspectOf(ICON_VIEWBOX),
   variants: [
     { only: 'only-funky', src: '/ttt_icon.svg' },
     { only: 'only-dark', src: '/ttt_icon_dark-mono.svg' },
@@ -109,9 +116,11 @@ const ICON: Role = {
   ],
 }
 
+const WORDMARK_VIEWBOX = '0 0 1339.99 191.14'
 const WORDMARK: Role = {
-  mark: WORDMARK_MARK,
-  aspect: aspectOf(WORDMARK_MARK),
+  viewBox: WORDMARK_VIEWBOX,
+  maskSrc: '/ttt_horizontal_light-primary.svg',
+  aspect: aspectOf(WORDMARK_VIEWBOX),
   variants: [
     { only: 'only-funky', src: '/ttt_side_no_byline_logo.svg' },
     { only: 'only-dark', src: '/ttt_horizontal_dark-mono.svg' },
@@ -119,9 +128,11 @@ const WORDMARK: Role = {
   ],
 }
 
+const LOGO_FULL_VIEWBOX = '0 0 1920 1080'
 const LOGO_FULL: Role = {
-  mark: LOGO_FULL_MARK,
-  aspect: aspectOf(LOGO_FULL_MARK),
+  viewBox: LOGO_FULL_VIEWBOX,
+  maskSrc: '/ttt_stacked-tagline_light-primary.svg',
+  aspect: aspectOf(LOGO_FULL_VIEWBOX),
   variants: [
     { only: 'only-funky', src: '/ttt_logo_full.svg' },
     { only: 'only-dark', src: '/ttt_stacked-tagline_dark-mono.svg' },
@@ -137,9 +148,9 @@ function ThemedLogo({
   alt = 'thinktanktom',
 }: ThemedLogoProps & { role: Role }) {
   /* ONE size for every variant, computed once from the one role aspect. Every
-     variant — the three files and the inline mark — is handed this same pair,
-     which is what makes the element boxes identical and the theme switch a
-     pure repaint instead of a reflow. */
+     variant — the three files and the masked element — is handed this same
+     pair, which is what makes the element boxes identical and the theme switch
+     a pure repaint instead of a reflow. */
   const size =
     height === undefined
       ? { width: width as number, height: Math.round((width as number) / role.aspect) }
@@ -169,12 +180,23 @@ function ThemedLogo({
         </div>
       ))}
       <div className={wrap('only-random')}>
-        {/* Inline, so there is no request to make and nothing to preload; it
-            costs HTML bytes in every theme instead (the stacked mark is ~28KB
-            of path data, on one page). `text-accent` is what colours it —
-            the token, never a hardcoded hex, or it stops following the
-            randomised palette. */}
-        <InlineMark mark={role.mark} {...size} label={alt} className="text-accent" />
+        {/* An empty box: the colour is `background-color` from the --accent
+            token (never a hardcoded hex, or it stops following the palette) and
+            the shape is the mask. The shared mask-* declarations live on
+            `.logo-mask` in globals.css so autoprefixer can add the -webkit-
+            pair; only the per-role url is inline. role="img" + aria-label
+            because the element has no content of its own to name it. */}
+        <span
+          role="img"
+          aria-label={alt}
+          className="logo-mask"
+          style={{
+            width: size.width,
+            height: size.height,
+            maskImage: `url(${role.maskSrc})`,
+            WebkitMaskImage: `url(${role.maskSrc})`,
+          }}
+        />
       </div>
     </>
   )
