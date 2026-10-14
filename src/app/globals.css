@@ -8,7 +8,16 @@
    directly in CSS.
 
    :root holds the "funky" palette, which is also the default when no
-   data-theme attribute is present (JS off, blocked, or pre-script). */
+   data-theme attribute is present (JS off, blocked, or pre-script).
+
+   There is a fourth theme, "random", with no token block here on purpose: its
+   nine values are generated at runtime by lib/palette and written as INLINE
+   custom properties on <html>, which beat any stylesheet rule. That is also why
+   switching away from random has to REMOVE those properties (see clearPalette
+   in lib/palette/apply.ts) -- leaving them would pin the named theme to the last
+   random palette. The random theme also publishes data-polarity="dark"|"light"
+   on <html>, because some rules below need to know which end it sits at and a
+   generated palette cannot be matched by a static attribute value alone. */
 :root {
   --bg:         10 10 10;
   --surface:    17 17 17;
@@ -107,11 +116,15 @@ a {
    data-theme attribute is absent. */
 .only-funky,
 .only-dark,
-.only-light {
+.only-light,
+.only-random {
   display: none;
 }
 
-html:not([data-theme='dark']):not([data-theme='light']) .only-funky {
+/* The :not() chain is what makes funky the default when the attribute is
+   absent. Every new theme has to be excluded here too, or it would reveal the
+   funky mark as well as its own. */
+html:not([data-theme='dark']):not([data-theme='light']):not([data-theme='random']) .only-funky {
   display: block;
 }
 
@@ -120,6 +133,10 @@ html[data-theme='dark'] .only-dark {
 }
 
 html[data-theme='light'] .only-light {
+  display: block;
+}
+
+html[data-theme='random'] .only-random {
   display: block;
 }
 
@@ -245,17 +262,50 @@ html[data-theme='light'] [data-rehype-pretty-code-figure] pre span {
   color: var(--shiki-light);
 }
 
+/* The random theme has no Shiki theme of its own and cannot get one: Shiki runs
+   at BUILD time and the static export has no runtime to re-highlight with. So a
+   random palette borrows the dark or light token set by its polarity, which the
+   pre-paint script publishes as data-polarity. Code stays legible and tonally
+   correct; it just does not carry the key hue. Accepted limitation -- the
+   alternative is shipping a client-side highlighter.
+
+   These win over the unanchored funky rules above on specificity (0,3,1 vs
+   0,1,1), which is what keeps a random palette off the one-dark-pro set. */
+html[data-theme='random'][data-polarity='dark'] [data-rehype-pretty-code-figure] pre {
+  background-color: var(--shiki-dark-bg);
+}
+
+html[data-theme='random'][data-polarity='dark'] [data-rehype-pretty-code-figure] pre,
+html[data-theme='random'][data-polarity='dark'] [data-rehype-pretty-code-figure] pre span {
+  color: var(--shiki-dark);
+}
+
+html[data-theme='random'][data-polarity='light'] [data-rehype-pretty-code-figure] pre {
+  /* Same reasoning as the light theme: vitesse-light's own background is
+     #ffffff, so use the surface token to keep the block reading as a panel. */
+  background-color: rgb(var(--surface));
+}
+
+html[data-theme='random'][data-polarity='light'] [data-rehype-pretty-code-figure] pre,
+html[data-theme='random'][data-polarity='light'] [data-rehype-pretty-code-figure] pre span {
+  color: var(--shiki-light);
+}
+
 /* In light the accent is pure black, so black at 40% over white lands on
    #999999 — 2.85:1, just under the 3:1 UI threshold. Nudge the accent borders
    up in the light theme only (/40 → /55 = 4.74:1, /30 → /45) rather than
    editing the utility class in eight files. */
 html[data-theme='light'] .border-accent\/40,
-html[data-theme='light'] .hover\:border-accent\/40:hover {
+html[data-theme='light'] .hover\:border-accent\/40:hover,
+html[data-theme='random'][data-polarity='light'] .border-accent\/40,
+html[data-theme='random'][data-polarity='light'] .hover\:border-accent\/40:hover {
   border-color: rgb(var(--accent) / 0.55);
 }
 
 html[data-theme='light'] .border-accent\/30,
-html[data-theme='light'] .hover\:border-accent\/30:hover {
+html[data-theme='light'] .hover\:border-accent\/30:hover,
+html[data-theme='random'][data-polarity='light'] .border-accent\/30,
+html[data-theme='random'][data-polarity='light'] .hover\:border-accent\/30:hover {
   border-color: rgb(var(--accent) / 0.45);
 }
 
@@ -264,9 +314,10 @@ html[data-theme='light'] .hover\:border-accent\/30:hover {
    off. Mirrors the .only-* logic: no attribute (or an unknown one) reads as
    funky, matching what :root actually renders. Specificity (0,2,1) clears both
    .text-muted and .hover\:text-text:hover. */
-html:not([data-theme='dark']):not([data-theme='light']) .theme-btn-funky,
+html:not([data-theme='dark']):not([data-theme='light']):not([data-theme='random']) .theme-btn-funky,
 html[data-theme='dark'] .theme-btn-dark,
-html[data-theme='light'] .theme-btn-light {
+html[data-theme='light'] .theme-btn-light,
+html[data-theme='random'] .theme-btn-random {
   background-color: rgb(var(--accent));
   color: rgb(var(--bg));
 }
@@ -275,7 +326,8 @@ html[data-theme='light'] .theme-btn-light {
    fainter than the accent border that was worth correcting. These chip borders
    are decorative (every chip carries an icon and a text label), but leaving
    light alone would make it arbitrarily weaker than funky and dark. */
-html[data-theme='light'] .border-success\/40 {
+html[data-theme='light'] .border-success\/40,
+html[data-theme='random'][data-polarity='light'] .border-success\/40 {
   border-color: rgb(var(--success) / 0.55);
 }
 
