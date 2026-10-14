@@ -35,6 +35,11 @@ export default function ThemeSwitcher({
   // and React must not fight it. Buttons are full-size from the first paint,
   // so resolving the theme causes no layout shift.
   const [theme, setTheme] = useState<Theme | null>(null)
+  /* Re-rolling does not change aria-pressed -- the dice is already pressed --
+     so without a live region a screen-reader user gets no feedback at all that
+     anything happened. The seed is included because it is the one thing that
+     distinguishes one palette from another and is what makes it reproducible. */
+  const [announcement, setAnnouncement] = useState('')
 
   useEffect(() => {
     const read = () => {
@@ -95,10 +100,14 @@ export default function ThemeSwitcher({
       const palette = generate(seed)
       applyPalette(palette.tokens, palette.polarity)
       persistPalette(palette)
+      setAnnouncement(
+        `${palette.polarity} palette applied, seed ${palette.seed}`,
+      )
     } else {
       // Inline custom properties beat the stylesheet, so a named theme cannot
       // take effect until the random palette's properties are removed.
       clearPalette()
+      setAnnouncement('')
       try {
         localStorage.setItem(THEME_KEY, next)
       } catch {
@@ -135,6 +144,9 @@ export default function ThemeSwitcher({
       aria-label="Colour theme"
       className={`${wrapper} ${className}`.trim()}
     >
+      <span role="status" aria-live="polite" className="sr-only">
+        {announcement}
+      </span>
       {themes.map(({ id, Icon, label }) => {
         const pressed = theme === id
         const isRandom = id === 'random'
