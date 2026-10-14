@@ -534,34 +534,32 @@ Every developer eventually builds their own website...
      of inertia: funky's `ttt_logo_full.svg` is the one mark with **three inks** (#E1F708 computer,
      #F6F4F1 / #FFFFFF wordmark and tagline). Routing it through the single-ink inline path would
      flatten all three to one colour — a visible regression on `/about`. Do not "unify" the variants.
-   - **`random`: inline SVG.** A runtime-generated palette has no file that could carry its fill, so
-     this variant inlines the geometry with `fill="currentColor"` and points `currentColor` at the
-     `--accent` token via `text-accent`. Geometry lives in `components/logo/paths.ts`, which is
-     **generated** — run `node components/logo/extract-paths.mjs`, never hand-edit it.
+   - **`random`: CSS mask.** A runtime-generated palette has no file that could carry its fill, so
+     this variant is an **empty `<span>`** painted `background-color: rgb(var(--accent))` and
+     stencilled by one of the mono SVGs: `.logo-mask` in `globals.css` holds the shared
+     `mask-repeat/position/size` (autoprefixer adds the `-webkit-` pair), and only the per-role
+     `mask-image` url is inline. The file contributes **nothing but its alpha**, so the screen
+     cutout stays a hole and the ink comes from the token.
 
-   **The inline mark costs HTML bytes on every page, in every theme.** It is always rendered and
-   merely hidden by CSS, because the theme is not known at build time. Measured gzip, against the
-   pre-feature build: `/` 7,212 → 12,038 bytes (the wordmark twice plus the icon twice) and
-   `/about` 7,742 → 26,665 bytes, of which roughly 14KB is the 40-path stacked mark alone. Keep the
-   geometry out of the CLIENT bundle (see the note in `Nav.tsx` — a client component importing a
-   logo drags `paths.ts` into every page's JavaScript), but the HTML cost is inherent to this design.
-   If `/about` needs that back, the alternative worth trying is `mask-image: url(<the mono svg>)`
-   with `background-color: rgb(var(--accent))`: the marks are single-ink, so the file works directly
-   as an alpha mask, the transparent screen stays transparent because it has no path, and nothing is
-   inlined or filtered. That was not done here only because the inline path was already built and
-   verified.
+   An inline `<svg>` with `fill="currentColor"` was built first and did the same job correctly, but
+   it had to be rendered in **every** theme and merely hidden, because the theme is not known at
+   build time — so its path data cost HTML bytes for every reader, including the ones who never pick
+   `random`. Measured gzip: `/about` 26,665 bytes with the inline mark against **8,425** with the
+   mask (7,742 before the feature), and `/` 12,038 against **7,839**. A mask also costs no request
+   in the other three themes, because a `display: none` element does not load its mask.
 
-   **Never recolour or CSS-filter a file variant** to fake the inline behaviour: `currentColor` on
-   inline paths is the only sanctioned mechanism. (This supersedes the former blanket "pick the asset,
-   never recolour" rule, which a themeable palette cannot satisfy — the *reason* behind it survives and
-   gets stricter, since there is now one generated geometry per role instead of three files that could
-   drift apart.) The old "white on black — never invert it" rule still holds for
+   **Never recolour or CSS-`filter` a file variant**, and never hue-shift one. A mask is not a
+   recolour: nothing about the file's own colour is read. (This supersedes the former blanket "pick
+   the asset, never recolour" rule, which a themeable palette cannot satisfy — the *reason* behind it
+   survives, since the mask reuses the very same asset the `light` theme ships rather than adding a
+   fourth copy of the geometry to keep in sync.) The old "white on black — never invert it" rule
+   still holds for
    `thinktanktom_logo.png` / `ttt_logo.png` — the raster with the black ground baked in, used only
    as the OG/Twitter card image and the favicon. Those are consumed outside the page by social
    scrapers and browser chrome, cannot be themed, and stay dark-ground.
-   **All three variants of a role must carry the same `viewBox`.** The path sequence is identical
-   across the three files and sits in identical coordinates; only the fill differs. The screen is a
-   transparent cutout in all three — do not fill it. A white screen fill in the light mark was
+   **Every variant of a role must carry the same `viewBox`.** The path sequence is identical across
+   the files and sits in identical coordinates; only the fill differs, and the mask reads just the
+   alpha. The screen is a transparent cutout in all of them — do not fill it. A white screen fill in the light mark was
    tried and reverted: it read as a faint lighter rectangle against the scrolled nav's
    `bg-surface/90`. The dark/light exports originally shipped cropped tight to the ink (icon
    `22.68 89.48 578.24 465.37`, stacked `75.71 123.4 1768.61 858.81`) while funky's masters carry
@@ -574,6 +572,19 @@ Every developer eventually builds their own website...
    (`0 0 623.62 623.62`, `0 0 1920 1080`, `0 0 1339.99 191.14`) and `ThemedLogo` holds **one**
    aspect per role, no per-variant scaling. Re-export an asset and re-read its `viewBox` against
    the funky master before trusting it.
+   **Which `public/` asset each variant uses**, so the set can be checked at a glance rather than
+   reconstructed from the component. Do not add an asset without a reference.
+
+   | role | funky | dark | light + `random` mask |
+   |---|---|---|---|
+   | icon | `ttt_icon.svg` | `ttt_icon_dark-mono.svg` | `ttt_icon_light-primary.svg` |
+   | wordmark | `ttt_side_no_byline_logo.svg` | `ttt_horizontal_dark-mono.svg` | `ttt_horizontal_light-primary.svg` |
+   | full logo | `ttt_logo_full.svg` | `ttt_stacked-tagline_dark-mono.svg` | `ttt_stacked-tagline_light-primary.svg` |
+
+   Plus `ttt_logo.png` — the dark-ground raster for OG/Twitter cards and the favicon, referenced
+   from `layout.tsx` metadata and every route's `generateMetadata`. The `random` mask deliberately
+   reuses the `light` asset rather than shipping a tenth file; only its alpha is read.
+
 8. Test mobile layout at 375px and 390px widths. Use
    `Emulation.setDeviceMetricsOverride` over CDP, **not** `--window-size`: headless chromium
    reported a 500px CSS viewport for both 375 and 390, so a `--window-size` check silently tests
