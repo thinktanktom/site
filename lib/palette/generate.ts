@@ -41,8 +41,12 @@ const DARK_PROBABILITY = 0.72
  */
 const ACCENT_STAGES = [
   { bgMin: 6.5, surfaceMin: 6.0, chromaMin: 0.085 },
-  { bgMin: 4.5, surfaceMin: 4.2, chromaMin: 0.085 },
-  { bgMin: 4.5, surfaceMin: 4.2, chromaMin: 0 },
+  // surfaceMin is 4.5, not 4.2, because the accent is rendered as small text
+  // directly on --surface (inline code, and the chips/doc-nav items that the
+  // random theme routes onto an opaque surface) -- so WCAG AA applies to this
+  // pair, not just to accent-on-bg.
+  { bgMin: 4.5, surfaceMin: 4.5, chromaMin: 0.085 },
+  { bgMin: 4.5, surfaceMin: 4.5, chromaMin: 0 },
 ] as const
 
 /** `success` keeps a fixed hue: it carries meaning, not the key hue. */
@@ -151,12 +155,17 @@ export function generate(seed: number): GeneratedPalette {
   const accentDim = oklch(dimL, dimChroma(dimL), accentHue)
 
   // Calibrated to funky's own #4ade80 (measured L=0.800 C=0.182 H=152).
-  const successL = solveL(5.5, bg, SUCCESS_HUE, () => 0.182, dark)
-  const success = oklch(
-    successL,
-    Math.min(0.182, maxChroma(successL, SUCCESS_HUE) * 0.9),
-    SUCCESS_HUE,
-  )
+  //
+  // The solver and the emitter MUST use the same chroma function. They did not:
+  // the solver evaluated candidates at a flat 0.182 while the emitter applied
+  // the 0.9 gamut margin, so wherever maxChroma fell below 0.202 the colour
+  // shipped was not the one whose contrast had been solved -- success/bg missed
+  // its 5.5 target on 77.5% of seeds (never by much, and never near the 4.5
+  // gate, but wrong for no reason).
+  const successChroma = (L: number): number =>
+    Math.min(0.182, maxChroma(L, SUCCESS_HUE) * 0.9)
+  const successL = solveL(5.5, bg, SUCCESS_HUE, successChroma, dark)
+  const success = oklch(successL, successChroma(successL), SUCCESS_HUE)
 
   return {
     seed,

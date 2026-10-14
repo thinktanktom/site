@@ -175,7 +175,7 @@ describe('known-value regression', () => {
       accent: '#289ef7',
       'accent-dim': '#1f83cd',
       'grid-dot': '#1f2327',
-      success: '#299c56',
+      success: '#299d56',
     })
     expect(p.polarity).toBe('dark')
     expect(p.harmony).toBe('mono')

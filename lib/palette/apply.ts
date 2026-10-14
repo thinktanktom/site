@@ -22,7 +22,7 @@ export const VERSION_KEY = 'ttt-palette-v'
  * Trusting a stale cache instead would be worse: it would pin readers to a
  * palette the engine no longer generates.
  */
-export const ENGINE_VERSION = '1'
+export const ENGINE_VERSION = '2'
 
 /** The serialised shape in localStorage. Values are "R G B" channel triples. */
 export type CachedPalette = Record<string, string> & { polarity: Polarity }

@@ -30,7 +30,7 @@ export const GATES: readonly Gate[] = [
   // WCAG AA is the hard floor. The staged search in generate() *prefers* 6.5:1
   // and degrades to this only where chroma and contrast genuinely oppose.
   { a: 'accent', b: 'bg', role: 'hero name, links, inline code', min: 4.5, max: Infinity },
-  { a: 'accent', b: 'surface', role: 'inline code on a card', min: 4.2, max: Infinity },
+  { a: 'accent', b: 'surface', role: 'inline code, chips, doc nav', min: 4.5, max: Infinity },
   { a: 'accent-dim', b: 'bg', role: 'hover state, also used as text', min: 4.5, max: Infinity },
   { a: 'success', b: 'bg', role: 'open-to-work status chip', min: 4.5, max: Infinity },
   // Windows, not floors. A floor alone lets a divider become a stripe and the
