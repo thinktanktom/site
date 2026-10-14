@@ -39,7 +39,7 @@ export default function HomePage() {
             className="font-sans text-lg sm:text-xl text-muted leading-relaxed mb-10 max-w-[560px] animate-fade-up"
             style={{ animationDelay: '300ms' }}
           >
-            My logo is a vervet. The story&apos;s worth hearing in person.
+            My logo is a vervet. A good engineer knows his monkeys.
           </p>
 
           <div
