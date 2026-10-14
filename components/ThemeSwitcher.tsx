@@ -110,14 +110,23 @@ export default function ThemeSwitcher({
     setTheme(next)
   }
 
+  /* The full variant is a 2x2 GRID, not a row, and that is a measured
+     constraint rather than a preference. It is used once -- in the mobile
+     overlay, inside a w-64 (256px) box -- and four labelled buttons in one row
+     measure 417px of content. flex-1 does not rescue it, because a flex item's
+     default min-width is auto, so the buttons refuse to shrink below their
+     label and simply spill outside the pill and off-screen. (Three buttons
+     already overflowed at 304px before this theme was added; the fourth is what
+     made it visible.) Two columns give each button ~120px for ~100px of
+     content, measured at both 375px and 390px. */
   const wrapper =
     variant === 'full'
-      ? 'flex items-stretch gap-0.5 rounded-full border border-border p-0.5'
+      ? 'grid grid-cols-2 gap-1 rounded-2xl border border-border p-1'
       : 'inline-flex items-center gap-0.5 rounded-full border border-border p-0.5'
 
   const button =
     variant === 'full'
-      ? 'flex flex-1 items-center justify-center gap-2 rounded-full px-4 py-2 font-mono text-sm tracking-wider uppercase transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg'
+      ? 'flex min-w-0 items-center justify-center gap-2 rounded-xl px-3 py-2 font-mono text-sm tracking-wider uppercase transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg'
       : 'rounded-full p-1.5 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg'
 
   return (
