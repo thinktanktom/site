@@ -12,6 +12,7 @@ import {
   readSeed,
 } from '@lib/palette/apply'
 
+
 export type Theme = 'funky' | 'dark' | 'light' | 'random'
 
 const themes = [
@@ -92,12 +93,12 @@ export default function ThemeSwitcher({
 
   const select = (next: Theme) => {
     if (next === 'random') {
-      // Pressing 🎲 while random is already active re-rolls. Otherwise restore
-      // the palette the reader last had, so returning to random is not a
-      // surprise — only an explicit re-roll changes it.
-      const seed =
-        theme === 'random' ? randomSeed() : (readSeed() ?? randomSeed())
-      const palette = generate(seed)
+      // The dice ALWAYS rolls a new palette, whether or not random is already
+      // active — pressing a dice and getting the palette you already had is not
+      // what a dice means. Getting a previous look back is what the three named
+      // themes are for. (A reload is different: that restores the stored seed,
+      // because a page load is not a press.)
+      const palette = generate(randomSeed())
       applyPalette(palette.tokens, palette.polarity)
       persistPalette(palette)
       setAnnouncement(
@@ -156,11 +157,9 @@ export default function ThemeSwitcher({
             type="button"
             onClick={() => select(id)}
             aria-pressed={pressed}
-            // The dice is the one control whose action changes while pressed,
-            // so say so rather than leaving the label stale.
-            title={
-              isRandom && pressed ? 'Roll a new palette' : `${label} theme`
-            }
+            // The dice's action does not change once it is pressed: it always
+            // rolls. So its name says that in every state.
+            title={isRandom ? 'Roll a new palette' : `${label} theme`}
             // The pressed *visual* is driven from CSS off html[data-theme],
             // not from React state, so the active theme reads correctly on the
             // very first paint and with JS disabled. `.theme-btn-*` rules live
@@ -171,10 +170,10 @@ export default function ThemeSwitcher({
           >
             <Icon size={16} aria-hidden="true" />
             {variant === 'full' ? (
-              <span>{isRandom && pressed ? 'Re-roll' : label}</span>
+              <span>{label}</span>
             ) : (
               <span className="sr-only">
-                {isRandom && pressed ? 'Roll a new palette' : label}
+                {isRandom ? 'Roll a new palette' : label}
               </span>
             )}
           </button>

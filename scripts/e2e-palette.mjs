@@ -152,8 +152,12 @@ const SNAP = `(() => {
     colorScheme: h.style.getPropertyValue('color-scheme').trim(),
     bodyBg: getComputedStyle(document.body).backgroundColor,
     randomMarkVisible: vis('nav .only-random'), funkyMarkVisible: vis('nav .only-funky'),
-    inlineSvgInk: (() => { const w = document.querySelector('nav .only-random'); if (!w) return null;
-      const s = w.querySelector('svg'); return s ? getComputedStyle(s).color : null })(),
+    maskInk: (() => { const m = document.querySelector('nav .only-random .logo-mask');
+      return m ? getComputedStyle(m).backgroundColor : null })(),
+    maskImage: (() => { const m = document.querySelector('nav .only-random .logo-mask');
+      if (!m) return null; const cs = getComputedStyle(m);
+      return cs.maskImage || cs.webkitMaskImage || '' })(),
+    inlineSvgInHtml: !!document.querySelector('nav .only-random svg'),
     navOverflow: nav ? nav.scrollWidth - nav.clientWidth : null,
     pressed: (() => { const g = document.querySelector('[role="group"][aria-label="Colour theme"]');
       return g ? [...g.querySelectorAll('button')].map((b) => b.getAttribute('aria-pressed')) : null })(),
@@ -204,8 +208,12 @@ check('color-scheme matches polarity', s.colorScheme === s.polarity, `${s.colorS
 check('page actually repaints', s.bodyBg === `rgb(${s.inlineBg.replace(/ /g, ', ')})`, `body=${s.bodyBg} token=${s.inlineBg}`)
 check('random mark visible, funky hidden', s.randomMarkVisible && !s.funkyMarkVisible,
   `random=${s.randomMarkVisible} funky=${s.funkyMarkVisible}`)
-check('inline mark inked by --accent', s.inlineSvgInk === `rgb(${s.inlineAccent.replace(/ /g, ', ')})`,
-  `ink=${s.inlineSvgInk} accent=${s.inlineAccent}`)
+check('masked mark is painted with --accent', s.maskInk === `rgb(${s.inlineAccent.replace(/ /g, ', ')})`,
+  `background=${s.maskInk} accent=${s.inlineAccent}`)
+check('masked mark actually carries a mask image', !!s.maskImage && s.maskImage !== 'none',
+  `mask-image=${s.maskImage}`)
+check('no logo path geometry is inlined in the HTML', !s.inlineSvgInHtml,
+  `inline svg present=${s.inlineSvgInHtml}`)
 check('seed + 9-token cache + stamp persisted',
   s.storedTheme === 'random' && +s.storedSeed > 0 && s.cachedKeys === 10 && s.storedV === EXPECTED_V,
   `seed=${s.storedSeed} cachedKeys=${s.cachedKeys} v=${s.storedV}`)
@@ -267,6 +275,28 @@ const code = await evalJs(`(() => {
 check('a code block IS present to test', !code.none, JSON.stringify(code))
 check('code block borrows a Shiki set by polarity',
   !code.none && code.bg !== 'rgba(0, 0, 0, 0)' && !!code.color && code.color !== 'rgb(0, 0, 0)', JSON.stringify(code))
+
+// 7b. The dice ALWAYS rolls, even when arriving from a named theme. Pressing a
+// dice and getting back the palette you already had is not what a dice means;
+// a previous look is what the three named themes are for.
+await goto(ORIGIN + '/')
+const seedBeforeNamed = await evalJs(`localStorage.getItem('ttt-seed')`)
+await evalJs(pick(0)) // funky
+await new Promise((r) => setTimeout(r, 300))
+await evalJs(diceClick)
+await new Promise((r) => setTimeout(r, 400))
+const afterNamed = await evalJs(SNAP)
+check('dice rolls a NEW palette when arriving from a named theme',
+  !!seedBeforeNamed && afterNamed.storedSeed !== seedBeforeNamed && afterNamed.theme === 'random',
+  `seed ${seedBeforeNamed} -> ${afterNamed.storedSeed}`)
+
+// and two presses in a row give two different palettes
+const first = afterNamed.storedSeed
+await evalJs(diceClick)
+await new Promise((r) => setTimeout(r, 400))
+const second = await evalJs(SNAP)
+check('two consecutive presses give two different palettes',
+  second.storedSeed !== first, `${first} -> ${second.storedSeed}`)
 
 // 8. The alpha-composited accent utilities. These are the one family the
 // generator cannot bound -- it picks colours, and these are composites of one --
