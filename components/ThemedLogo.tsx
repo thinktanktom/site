@@ -22,12 +22,11 @@ type Variant = {
 
 type Role = {
   /* viewBox width / viewBox height, shared by every variant of the role.
-     INVARIANT: all three assets of a role carry the SAME viewBox, and the
-     path geometry inside them is identical in identical coordinates — only
-     the fills differ. (The light variant carries one extra path: the screen
-     cutout, filled white. Its `d` is a subpath of the body outline, so it
-     adds no extent.) One viewBox plus shared geometry means the element box
-     AND the ink land on the same pixels in all three themes.
+     INVARIANT: all three assets of a role carry the SAME viewBox and the
+     SAME path sequence in the same coordinates — only the fill differs, so
+     one viewBox means the element box AND the ink land on the same pixels in
+     all three themes. The screen stays a transparent cutout in every variant;
+     a theme that fills it is a theme whose mark no longer matches the others.
 
      This is load-bearing, and the history says why. The dark/light exports
      originally shipped cropped tight to the ink while funky's masters carry
