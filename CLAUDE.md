@@ -374,23 +374,26 @@ Every developer eventually builds their own website...
 7. **Logo marks follow the theme; the raster logo does not.** The on-page marks are transparent
    vector glyphs rendered through `components/ThemedLogo.tsx`, which ships a per-theme asset:
    the existing `public/ttt_*.svg` for funky, `ttt_*_dark-mono.svg` (white) for dark, and
-   `ttt_*_light-neon.svg` (near-black ink + one neon accent) for light. Pick the asset, never
-   recolour or CSS-filter a mark. The old "white on black — never invert it" rule still holds for
+   `ttt_*_light-primary.svg` (near-black ink) for light. Pick the asset, never recolour or
+   CSS-filter a mark. The old "white on black — never invert it" rule still holds for
    `thinktanktom_logo.png` / `ttt_logo.png` — the raster with the black ground baked in, used only
    as the OG/Twitter card image and the favicon. Those are consumed outside the page by social
    scrapers and browser chrome, cannot be themed, and stay dark-ground.
-   **All three variants of a role must carry the same `viewBox`.** The artwork is byte-identical
-   across the three files and sits in identical coordinates; only the fill differs. The dark/light
-   exports originally shipped cropped tight to the ink (icon `22.68 89.48 578.24 465.37`, stacked
-   `75.71 123.4 1768.61 858.81`) while funky's masters carry padding, so sizing each file by its
-   own aspect drew the mark ~8% (icon) and ~26% (stacked) too large outside funky. Scaling each
-   variant down by its ink/canvas fraction — the first attempt — equalised the ink but left the
-   element boxes unequal, which reflowed any container without a reserved height (`/about`
-   collapsed 45.83px and carried the page with it), and could not fix position regardless, because
-   funky's padding is vertically **asymmetric** (icon top 89.45 vs bottom 68.95; stacked 123 vs
-   97). The viewBoxes are now normalised to funky's canvas (`0 0 623.62 623.62`, `0 0 1920 1080`,
-   `0 0 1339.99 191.14`) and `ThemedLogo` holds **one** aspect per role, no per-variant scaling.
-   Re-export an asset and re-read its `viewBox` against the funky master before trusting it.
+   **All three variants of a role must carry the same `viewBox`.** The path sequence is identical
+   across the three files and sits in identical coordinates; only the fill differs. The screen is a
+   transparent cutout in all three — do not fill it. A white screen fill in the light mark was
+   tried and reverted: it read as a faint lighter rectangle against the scrolled nav's
+   `bg-surface/90`. The dark/light exports originally shipped cropped tight to the ink (icon
+   `22.68 89.48 578.24 465.37`, stacked `75.71 123.4 1768.61 858.81`) while funky's masters carry
+   padding, so sizing each file by its own aspect drew the mark ~8% (icon) and ~26% (stacked) too
+   large outside funky. Scaling each variant down by its ink/canvas fraction — the first attempt —
+   equalised the ink but left the element boxes unequal, which reflowed any container without a
+   reserved height (`/about` collapsed 45.83px and carried the page with it), and could not fix
+   position regardless, because funky's padding is vertically **asymmetric** (icon top 89.45 vs
+   bottom 68.95; stacked 123 vs 97). The viewBoxes are now normalised to funky's canvas
+   (`0 0 623.62 623.62`, `0 0 1920 1080`, `0 0 1339.99 191.14`) and `ThemedLogo` holds **one**
+   aspect per role, no per-variant scaling. Re-export an asset and re-read its `viewBox` against
+   the funky master before trusting it.
 8. Test mobile layout at 375px and 390px widths
 9. Run `next build` and fix all TypeScript errors before considering the site done
 
