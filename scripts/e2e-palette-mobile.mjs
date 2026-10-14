@@ -35,7 +35,18 @@ const server = createServer(async (req, res) => {
   try {
     let rel = decodeURIComponent(req.url.split('?')[0]).replace(/\/+$/, '') || '/'
     let p = join(ROOT, rel)
-    try { if ((await stat(p)).isDirectory()) p = join(p, 'index.html') } catch { if (!extname(p)) p += '.html' }
+    // Next's static export writes BOTH out/projects.html (the page) and
+    // out/projects/ (its sub-routes), and that directory has no index.html.
+    // So a directory hit must fall back to "<dir>.html" rather than 404 --
+    // which it silently did, and the page then looked broken rather than missing.
+    try {
+      if ((await stat(p)).isDirectory()) {
+        const index = join(p, 'index.html')
+        try { await stat(index); p = index } catch { p += '.html' }
+      }
+    } catch {
+      if (!extname(p)) p += '.html'
+    }
     const b = await readFile(p); res.writeHead(200, {'content-type': T[extname(p)]||'application/octet-stream'}); res.end(b)
   } catch { res.writeHead(404); res.end('nf'); console.error('  [404] '+req.url) }
 })
