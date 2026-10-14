@@ -22,10 +22,11 @@ type Variant = {
 
 type Role = {
   /* viewBox width / viewBox height, shared by every variant of the role.
-     INVARIANT: all three assets of a role carry the SAME viewBox. The artwork
-     inside them is byte-identical in identical coordinates — only the fill
-     differs — so one viewBox means the element box AND the ink land on the
-     same pixels in all three themes.
+     INVARIANT: all three assets of a role carry the SAME viewBox and the
+     SAME path sequence in the same coordinates — only the fill differs, so
+     one viewBox means the element box AND the ink land on the same pixels in
+     all three themes. The screen stays a transparent cutout in every variant;
+     a theme that fills it is a theme whose mark no longer matches the others.
 
      This is load-bearing, and the history says why. The dark/light exports
      originally shipped cropped tight to the ink while funky's masters carry
@@ -60,7 +61,7 @@ const ICON: Role = {
   variants: [
     { only: 'only-funky', src: '/ttt_icon.svg' },
     { only: 'only-dark', src: '/ttt_icon_dark-mono.svg' },
-    { only: 'only-light', src: '/ttt_icon_light-neon.svg' },
+    { only: 'only-light', src: '/ttt_icon_light-primary.svg' },
   ],
 }
 
@@ -69,7 +70,7 @@ const WORDMARK: Role = {
   variants: [
     { only: 'only-funky', src: '/ttt_side_no_byline_logo.svg' },
     { only: 'only-dark', src: '/ttt_horizontal_dark-mono.svg' },
-    { only: 'only-light', src: '/ttt_horizontal_light-neon.svg' },
+    { only: 'only-light', src: '/ttt_horizontal_light-primary.svg' },
   ],
 }
 
@@ -78,7 +79,7 @@ const LOGO_FULL: Role = {
   variants: [
     { only: 'only-funky', src: '/ttt_logo_full.svg' },
     { only: 'only-dark', src: '/ttt_stacked-tagline_dark-mono.svg' },
-    { only: 'only-light', src: '/ttt_stacked-tagline_light-neon.svg' },
+    { only: 'only-light', src: '/ttt_stacked-tagline_light-primary.svg' },
   ],
 }
 
