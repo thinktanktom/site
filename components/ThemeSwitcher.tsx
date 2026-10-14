@@ -60,6 +60,14 @@ export default function ThemeSwitcher({
         applyPalette(palette.tokens, palette.polarity)
         persistPalette(palette)
         document.documentElement.setAttribute('data-theme', 'random')
+        // Sync React too. read() above already ran and saw the pre-paint
+        // script's funky fallback, and the MutationObserver is not attached
+        // until below, so without this the DOM says random while state says
+        // funky: aria-pressed lands on the wrong button (contradicting the CSS
+        // pressed visual), the dice announces "Random theme" instead of
+        // "Re-roll", and the next press restores the stored seed instead of
+        // re-rolling.
+        setTheme('random')
       }
     } catch {
       // localStorage throws outright in some privacy modes — funky is already
