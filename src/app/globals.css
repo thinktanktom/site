@@ -8,7 +8,16 @@
    directly in CSS.
 
    :root holds the "funky" palette, which is also the default when no
-   data-theme attribute is present (JS off, blocked, or pre-script). */
+   data-theme attribute is present (JS off, blocked, or pre-script).
+
+   There is a fourth theme, "random", with no token block here on purpose: its
+   nine values are generated at runtime by lib/palette and written as INLINE
+   custom properties on <html>, which beat any stylesheet rule. That is also why
+   switching away from random has to REMOVE those properties (see clearPalette
+   in lib/palette/apply.ts) -- leaving them would pin the named theme to the last
+   random palette. The random theme also publishes data-polarity="dark"|"light"
+   on <html>, because some rules below need to know which end it sits at and a
+   generated palette cannot be matched by a static attribute value alone. */
 :root {
   --bg:         10 10 10;
   --surface:    17 17 17;
@@ -107,11 +116,15 @@ a {
    data-theme attribute is absent. */
 .only-funky,
 .only-dark,
-.only-light {
+.only-light,
+.only-random {
   display: none;
 }
 
-html:not([data-theme='dark']):not([data-theme='light']) .only-funky {
+/* The :not() chain is what makes funky the default when the attribute is
+   absent. Every new theme has to be excluded here too, or it would reveal the
+   funky mark as well as its own. */
+html:not([data-theme='dark']):not([data-theme='light']):not([data-theme='random']) .only-funky {
   display: block;
 }
 
@@ -121,6 +134,24 @@ html[data-theme='dark'] .only-dark {
 
 html[data-theme='light'] .only-light {
   display: block;
+}
+
+html[data-theme='random'] .only-random {
+  display: block;
+}
+
+/* The random theme's logo mark: a stencil, not a recolour.
+   components/ThemedLogo.tsx renders an empty span per role and sets only the
+   per-role mask url inline; everything shared lives here so autoprefixer emits
+   the -webkit- pair for older Safari. The mono SVG contributes nothing but its
+   alpha, so the ink comes from --accent and the screen cutout stays a hole.
+   mask-size: contain is the equivalent of the <img> variants' object-contain. */
+.logo-mask {
+  display: block;
+  background-color: rgb(var(--accent));
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
 }
 
 /* Hero pixel-grid dot texture */
@@ -245,6 +276,35 @@ html[data-theme='light'] [data-rehype-pretty-code-figure] pre span {
   color: var(--shiki-light);
 }
 
+/* The random theme has no Shiki theme of its own and cannot get one: Shiki runs
+   at BUILD time and the static export has no runtime to re-highlight with. So a
+   random palette borrows the dark or light token set by its polarity, which the
+   pre-paint script publishes as data-polarity. Code stays legible and tonally
+   correct; it just does not carry the key hue. Accepted limitation -- the
+   alternative is shipping a client-side highlighter.
+
+   These win over the unanchored funky rules above on specificity (0,3,1 vs
+   0,1,1), which is what keeps a random palette off the one-dark-pro set. */
+html[data-theme='random'][data-polarity='dark'] [data-rehype-pretty-code-figure] pre {
+  background-color: var(--shiki-dark-bg);
+}
+
+html[data-theme='random'][data-polarity='dark'] [data-rehype-pretty-code-figure] pre,
+html[data-theme='random'][data-polarity='dark'] [data-rehype-pretty-code-figure] pre span {
+  color: var(--shiki-dark);
+}
+
+html[data-theme='random'][data-polarity='light'] [data-rehype-pretty-code-figure] pre {
+  /* Same reasoning as the light theme: vitesse-light's own background is
+     #ffffff, so use the surface token to keep the block reading as a panel. */
+  background-color: rgb(var(--surface));
+}
+
+html[data-theme='random'][data-polarity='light'] [data-rehype-pretty-code-figure] pre,
+html[data-theme='random'][data-polarity='light'] [data-rehype-pretty-code-figure] pre span {
+  color: var(--shiki-light);
+}
+
 /* In light the accent is pure black, so black at 40% over white lands on
    #999999 — 2.85:1, just under the 3:1 UI threshold. Nudge the accent borders
    up in the light theme only (/40 → /55 = 4.74:1, /30 → /45) rather than
@@ -264,11 +324,74 @@ html[data-theme='light'] .hover\:border-accent\/30:hover {
    off. Mirrors the .only-* logic: no attribute (or an unknown one) reads as
    funky, matching what :root actually renders. Specificity (0,2,1) clears both
    .text-muted and .hover\:text-text:hover. */
-html:not([data-theme='dark']):not([data-theme='light']) .theme-btn-funky,
+html:not([data-theme='dark']):not([data-theme='light']):not([data-theme='random']) .theme-btn-funky,
 html[data-theme='dark'] .theme-btn-dark,
-html[data-theme='light'] .theme-btn-light {
+html[data-theme='light'] .theme-btn-light,
+html[data-theme='random'] .theme-btn-random {
   background-color: rgb(var(--accent));
   color: rgb(var(--bg));
+}
+
+/* ---------------------------------------------------------------------------
+   The random theme and TRANSLUCENT accent utilities.
+
+   NOTE these are keyed on [data-theme='random'] alone, never on data-polarity.
+   A [data-theme='random'][data-polarity='light'] selector is (0,3,1) and would
+   outrank these (0,2,1) rules, silently reinstating the weaker light-theme
+   alpha for every light palette -- which is exactly the bug these rules exist
+   to fix. The measured alphas below hold for both polarities.
+
+   An alpha on the accent is only as strong as the accent's own contrast, and a
+   GENERATED accent has far less of it to spend than a hand-picked one. funky,
+   dark and light put the accent at 17-21:1 against bg (it is pure yellow, white
+   or black), so 40% alpha still lands at 3.47-4.74:1. A generated accent only
+   has to clear 4.5-6.5:1, so the same 40% lands at 1.72:1 -- below the 3:1
+   non-text UI floor on 78.7% of palettes, measured over 20,000 seeds. The
+   existing light-theme /40 -> /55 nudge does not rescue it either: /55 still
+   only reaches 2.17:1.
+
+   This cannot be fixed in the generator, because the generator picks colours and
+   these are alpha composites of one. So the random theme raises the alpha until
+   the composite clears its floor on every seed. Measured minimum over 20,000
+   seeds: /40 -> 0.80 gives 3.26:1 (0 failures; 0.75 still failed 14).
+   --------------------------------------------------------------------------- */
+html[data-theme='random'] .border-accent\/40,
+html[data-theme='random'] .hover\:border-accent\/40:hover {
+  border-color: rgb(var(--accent) / 0.8);
+}
+
+/* /30 and success/40 are decorative (every chip they outline carries an icon and
+   a text label) and are ALREADY under 3:1 in the three shipping themes, so they
+   are not held to the UI floor. They are nudged only to keep a random palette
+   from being arbitrarily fainter than funky: 0.6 lands at 2.34:1, which is where
+   funky's /30 already sits (2.44:1). */
+html[data-theme='random'] .border-accent\/30,
+html[data-theme='random'] .hover\:border-accent\/30:hover {
+  border-color: rgb(var(--accent) / 0.6);
+}
+
+html[data-theme='random'] .border-success\/40 {
+  border-color: rgb(var(--success) / 0.6);
+}
+
+/* The accent-tinted chip is the other alpha trap, and a worse one, because BOTH
+   sides move: bg-accent/10 pulls the background toward the accent, and
+   text-accent/80 then pulls the text toward that same tinted background. The
+   pair measures 2.97:1 at worst and misses AA on 58.9% of palettes -- and these
+   are font-mono text-xs, so AA 4.5 applies. No gate on the solid colours can
+   bound it.
+
+   So in the random theme the tint is dropped and the text goes solid: the pair
+   reduces to accent-on-surface, which IS gated (>= 4.5, and ACCENT_STAGES
+   solves for it), making it AA by construction rather than by luck. Costs the
+   faint accent wash on project chips and the active doc-nav item in this theme
+   only. */
+html[data-theme='random'] .bg-accent\/10 {
+  background-color: rgb(var(--surface));
+}
+
+html[data-theme='random'] .text-accent\/80 {
+  color: rgb(var(--accent));
 }
 
 /* Match the accent-border nudge above: success at 40% over white is 2.06:1,
