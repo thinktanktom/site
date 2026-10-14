@@ -21,12 +21,29 @@ type Variant = {
 }
 
 type Role = {
+  /* The role's canvas, and the single source of its aspect ratio — `aspect`
+     below is computed from this rather than typed out, so the number the layout
+     maths uses and the number the artwork is drawn on cannot drift apart. */
+  viewBox: string
+  /* Single-fill asset used as the ALPHA MASK for the `random` variant. Any of
+     the mono exports would do — only their alpha matters, not their ink. */
+  maskSrc: string
   /* viewBox width / viewBox height, shared by every variant of the role.
-     INVARIANT: all three assets of a role carry the SAME viewBox and the
-     SAME path sequence in the same coordinates — only the fill differs, so
-     one viewBox means the element box AND the ink land on the same pixels in
-     all three themes. The screen stays a transparent cutout in every variant;
-     a theme that fills it is a theme whose mark no longer matches the others.
+     INVARIANT: all variants of a role carry the SAME viewBox and the SAME
+     path sequence in the same coordinates — only the ink differs, so one
+     viewBox means the element box AND the ink land on the same pixels in every
+     theme.
+
+     Measured caveat, so the claim above is not read as more exact than it is:
+     the masked element resolves 0.062px TALLER than the <img> in the wordmark
+     role only (224×32.000 vs 224×31.938). Both are handed the same size pair,
+     but <img> then has preflight's height:auto and the UA's attr()-based
+     aspect-ratio applied on top, which re-derives its height from the ROUNDED
+     width/height, while an explicitly sized span keeps what it was given.
+     Verified across all four themes on / and /about: nothing reflows — the h1
+     top, the footer icon top and document scrollHeight are byte-identical in
+     every theme — and the other two roles are exact (96×96, 24×24, 400×225). The screen stays a transparent cutout in every variant; a theme
+     that fills it is a theme whose mark no longer matches the others.
 
      This is load-bearing, and the history says why. The dark/light exports
      originally shipped cropped tight to the ink while funky's masters carry
@@ -42,22 +59,56 @@ type Role = {
      removes both failures at the source instead of compensating for them.
 
      Re-export an asset and re-read its viewBox against the funky master before
-     trusting it; a tight crop sneaking back in is exactly the old bug. */
+     trusting it; a tight crop sneaking back in is exactly the old bug.
+     `node components/logo/extract-paths.mjs` asserts the inline geometry's
+     viewBox against funky's master and refuses to write if they diverge — it
+     cannot check the dark/light *files*, so those still need eyes. */
   aspect: number
+  /* the themes whose mark is a prebuilt, fill-baked SVG file */
   variants: Variant[]
 }
 
 /*
- * Theme-aware logo marks.
+ * Theme-aware logo marks — a deliberate dual path.
  *
- * The SVG marks have hardcoded fills and cannot follow `data-theme`, so every
- * variant is rendered and CSS reveals exactly one (`.only-funky` / `.only-dark`
- * / `.only-light` toggle `display`). No JS, so no wrong-logo flash on load and
- * nothing here needs to be a client component.
+ * `funky` / `dark` / `light`: ASSET SWAP. Every variant is rendered and CSS
+ * reveals exactly one (`.only-funky` / `.only-dark` / `.only-light` toggle
+ * `display`). These stay as files on purpose, not out of inertia: funky's
+ * `ttt_logo_full.svg` is the one mark with THREE inks (#E1F708 computer,
+ * #F6F4F1 and #FFFFFF wordmark/tagline). Routing it through a single-ink
+ * inline mark would flatten all three to one colour, which is a visible
+ * regression on /about. Do not "unify" the four variants onto the inline path.
+ *
+ * `random`: CSS MASK. The palette is generated at runtime, so no file can carry
+ * its fill. `.only-random` reveals an empty element painted with
+ * `background-color: rgb(var(--accent))` and masked by one of the mono SVGs, so
+ * the artwork becomes a stencil and the token supplies the colour.
+ *
+ * This is NOT the forbidden "recolour a mark" — nothing is filtered or
+ * hue-shifted, and the file contributes only its alpha. It replaced an inline
+ * <svg> that did the same job with `fill="currentColor"`: correct, but it had
+ * to be rendered in EVERY theme and merely hidden, because the theme is not
+ * known at build time, so its path data cost HTML bytes for every reader
+ * (/about carried ~36KB of it). A masked element costs nothing but the rule,
+ * and because hidden elements do not load their masks, the asset is fetched
+ * only by readers actually in the random theme.
+ *
+ * Either way the choice is made in CSS, not JS: no wrong-logo flash on load,
+ * nothing here is a client component, and it all survives the static export.
  */
 
+/** aspect ratio straight out of a role's viewBox, so there is one number */
+function aspectOf(viewBox: string): number {
+  const [, , w, h] = viewBox.trim().split(/[\s,]+/).map(Number)
+  if (!w || !h) throw new Error(`unusable viewBox: "${viewBox}"`)
+  return w / h
+}
+
+const ICON_VIEWBOX = '0 0 623.62 623.62'
 const ICON: Role = {
-  aspect: 623.62 / 623.62,
+  viewBox: ICON_VIEWBOX,
+  maskSrc: '/ttt_icon_light-primary.svg',
+  aspect: aspectOf(ICON_VIEWBOX),
   variants: [
     { only: 'only-funky', src: '/ttt_icon.svg' },
     { only: 'only-dark', src: '/ttt_icon_dark-mono.svg' },
@@ -65,8 +116,11 @@ const ICON: Role = {
   ],
 }
 
+const WORDMARK_VIEWBOX = '0 0 1339.99 191.14'
 const WORDMARK: Role = {
-  aspect: 1339.99 / 191.14,
+  viewBox: WORDMARK_VIEWBOX,
+  maskSrc: '/ttt_horizontal_light-primary.svg',
+  aspect: aspectOf(WORDMARK_VIEWBOX),
   variants: [
     { only: 'only-funky', src: '/ttt_side_no_byline_logo.svg' },
     { only: 'only-dark', src: '/ttt_horizontal_dark-mono.svg' },
@@ -74,8 +128,11 @@ const WORDMARK: Role = {
   ],
 }
 
+const LOGO_FULL_VIEWBOX = '0 0 1920 1080'
 const LOGO_FULL: Role = {
-  aspect: 1920 / 1080,
+  viewBox: LOGO_FULL_VIEWBOX,
+  maskSrc: '/ttt_stacked-tagline_light-primary.svg',
+  aspect: aspectOf(LOGO_FULL_VIEWBOX),
   variants: [
     { only: 'only-funky', src: '/ttt_logo_full.svg' },
     { only: 'only-dark', src: '/ttt_stacked-tagline_dark-mono.svg' },
@@ -90,15 +147,20 @@ function ThemedLogo({
   className,
   alt = 'thinktanktom',
 }: ThemedLogoProps & { role: Role }) {
+  /* ONE size for every variant, computed once from the one role aspect. Every
+     variant — the three files and the masked element — is handed this same
+     pair, which is what makes the element boxes identical and the theme switch
+     a pure repaint instead of a reflow. */
   const size =
     height === undefined
       ? { width: width as number, height: Math.round((width as number) / role.aspect) }
       : { width: Math.round(height * role.aspect), height }
+  /* the class goes on the wrapper because `.only-*` toggles `display` */
+  const wrap = (only: string) => (className ? `${only} ${className}` : only)
   return (
     <>
       {role.variants.map((variant) => (
-        /* the class goes on the wrapper because `.only-*` toggles `display` */
-        <div key={variant.only} className={className ? `${variant.only} ${className}` : variant.only}>
+        <div key={variant.only} className={wrap(variant.only)}>
           <Image
             src={variant.src}
             alt={alt}
@@ -117,6 +179,25 @@ function ThemedLogo({
           />
         </div>
       ))}
+      <div className={wrap('only-random')}>
+        {/* An empty box: the colour is `background-color` from the --accent
+            token (never a hardcoded hex, or it stops following the palette) and
+            the shape is the mask. The shared mask-* declarations live on
+            `.logo-mask` in globals.css so autoprefixer can add the -webkit-
+            pair; only the per-role url is inline. role="img" + aria-label
+            because the element has no content of its own to name it. */}
+        <span
+          role="img"
+          aria-label={alt}
+          className="logo-mask"
+          style={{
+            width: size.width,
+            height: size.height,
+            maskImage: `url(${role.maskSrc})`,
+            WebkitMaskImage: `url(${role.maskSrc})`,
+          }}
+        />
+      </div>
     </>
   )
 }
