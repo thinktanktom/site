@@ -474,10 +474,10 @@ The styling is settled — **do not redesign it**:
   Known limitation, accepted: in `dark` and `light` the accent is white/black rather than a hue,
   so an annotated phrase is set apart mainly by its underline and reads much like an inline link.
   That is inherent to a black-and-white theme, not a styling bug — leave it alone.
-- **Use the `--accent` token**, not a hex copied out of a logo file. The logo SVGs are inconsistent
-  (`#D9DB00` in `ttt_icon.svg`/`ttt_logo.svg`/`ttt_logo_wordmark.svg`, `#E1F708` in
-  `ttt_logo_full.svg`/`ttt_logo_notag.svg`) and the token `#e8ff00` is the same green within a
-  couple of percent. It also keeps the phrase matching its own superscript marker.
+- **Use the `--accent` token**, not a hex copied out of a logo file. The funky logo assets do not
+  agree with each other on the yellow — they differ by a couple of percent, and from the token — so a
+  hex lifted from whichever file you happened to open will be subtly wrong somewhere else. The token
+  is the single source of truth, and it keeps an annotated phrase matching its own superscript marker.
 - **Marker**: a Unicode superscript (`¹²³⁴`) in `--accent` straight after the phrase, no space, not
   a link.
 - **Notes block** at the foot of the post, matching the `/about` footnotes exactly: wrapper
@@ -584,6 +584,12 @@ Every developer eventually builds their own website...
    Plus `ttt_logo.png` — the dark-ground raster for OG/Twitter cards and the favicon, referenced
    from `layout.tsx` metadata and every route's `generateMetadata`. The `random` mask deliberately
    reuses the `light` asset rather than shipping a tenth file; only its alpha is read.
+
+   That table is the whole list. **Four assets were deleted on 2026-10-14** once nothing referenced
+   them — `ttt_logo_side.svg`, `ttt_logo.svg`, `ttt_logo_notag.svg` and `ttt_logo_wordmark.svg`,
+   40,933 bytes, with `ttt_logo.svg` a byte-identical duplicate of `ttt_icon.svg` (same md5). They
+   were reachable as URLs under the published export, so that was a deliberate URL-breaking change
+   rather than a cleanup oversight. Do not re-add them "for completeness".
 
 8. Test mobile layout at 375px and 390px widths. Use
    `Emulation.setDeviceMetricsOverride` over CDP, **not** `--window-size`: headless chromium
