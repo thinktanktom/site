@@ -1,5 +1,8 @@
 import Image from 'next/image'
 
+import { InlineMark } from './logo/InlineMark'
+import { ICON_MARK, LOGO_FULL_MARK, WORDMARK_MARK, type LogoMark } from './logo/paths'
+
 /* Give exactly one dimension; the other is derived from the role's aspect
    ratio. Which one you pin decides what stays put in the surrounding layout:
    pin the height for a lockup sitting in a row (the nav, the footer), pin the
@@ -21,12 +24,17 @@ type Variant = {
 }
 
 type Role = {
+  /* Geometry for the inline `random` variant, and the single source of the
+     role's aspect ratio — `aspect` below is computed from `mark.viewBox`, not
+     typed out, so the number the layout maths uses and the number the inline
+     mark draws with cannot drift apart. */
+  mark: LogoMark
   /* viewBox width / viewBox height, shared by every variant of the role.
-     INVARIANT: all three assets of a role carry the SAME viewBox and the
-     SAME path sequence in the same coordinates — only the fill differs, so
-     one viewBox means the element box AND the ink land on the same pixels in
-     all three themes. The screen stays a transparent cutout in every variant;
-     a theme that fills it is a theme whose mark no longer matches the others.
+     INVARIANT: all variants of a role carry the SAME viewBox and the SAME
+     path sequence in the same coordinates — only the ink differs, so one
+     viewBox means the element box AND the ink land on the same pixels in every
+     theme. The screen stays a transparent cutout in every variant; a theme
+     that fills it is a theme whose mark no longer matches the others.
 
      This is load-bearing, and the history says why. The dark/light exports
      originally shipped cropped tight to the ink while funky's masters carry
@@ -42,22 +50,48 @@ type Role = {
      removes both failures at the source instead of compensating for them.
 
      Re-export an asset and re-read its viewBox against the funky master before
-     trusting it; a tight crop sneaking back in is exactly the old bug. */
+     trusting it; a tight crop sneaking back in is exactly the old bug.
+     `node components/logo/extract-paths.mjs` asserts the inline geometry's
+     viewBox against funky's master and refuses to write if they diverge — it
+     cannot check the dark/light *files*, so those still need eyes. */
   aspect: number
+  /* the themes whose mark is a prebuilt, fill-baked SVG file */
   variants: Variant[]
 }
 
 /*
- * Theme-aware logo marks.
+ * Theme-aware logo marks — a deliberate dual path.
  *
- * The SVG marks have hardcoded fills and cannot follow `data-theme`, so every
- * variant is rendered and CSS reveals exactly one (`.only-funky` / `.only-dark`
- * / `.only-light` toggle `display`). No JS, so no wrong-logo flash on load and
- * nothing here needs to be a client component.
+ * `funky` / `dark` / `light`: ASSET SWAP. Every variant is rendered and CSS
+ * reveals exactly one (`.only-funky` / `.only-dark` / `.only-light` toggle
+ * `display`). These stay as files on purpose, not out of inertia: funky's
+ * `ttt_logo_full.svg` is the one mark with THREE inks (#E1F708 computer,
+ * #F6F4F1 and #FFFFFF wordmark/tagline). Routing it through a single-ink
+ * inline mark would flatten all three to one colour, which is a visible
+ * regression on /about. Do not "unify" the four variants onto the inline path.
+ *
+ * `random`: INLINE SVG. The palette is generated at runtime, so no file can
+ * carry its fill. `.only-random` reveals an inline <svg> whose paths are
+ * `fill="currentColor"`, and `text-accent` points `currentColor` at the
+ * `--accent` token — which is a CSS variable the randomiser rewrites, so the
+ * mark follows a palette that did not exist at build time. This mark is
+ * single-ink by nature; see components/logo/InlineMark.tsx for the sizing
+ * rules that keep its box identical to the <img> variants'.
+ *
+ * Either way the choice is made in CSS, not JS: no wrong-logo flash on load,
+ * nothing here is a client component, and it all survives the static export.
  */
 
+/** aspect ratio straight out of a mark's viewBox, so there is one number */
+function aspectOf(mark: LogoMark): number {
+  const [, , w, h] = mark.viewBox.trim().split(/[\s,]+/).map(Number)
+  if (!w || !h) throw new Error(`unusable viewBox: "${mark.viewBox}"`)
+  return w / h
+}
+
 const ICON: Role = {
-  aspect: 623.62 / 623.62,
+  mark: ICON_MARK,
+  aspect: aspectOf(ICON_MARK),
   variants: [
     { only: 'only-funky', src: '/ttt_icon.svg' },
     { only: 'only-dark', src: '/ttt_icon_dark-mono.svg' },
@@ -66,7 +100,8 @@ const ICON: Role = {
 }
 
 const WORDMARK: Role = {
-  aspect: 1339.99 / 191.14,
+  mark: WORDMARK_MARK,
+  aspect: aspectOf(WORDMARK_MARK),
   variants: [
     { only: 'only-funky', src: '/ttt_side_no_byline_logo.svg' },
     { only: 'only-dark', src: '/ttt_horizontal_dark-mono.svg' },
@@ -75,7 +110,8 @@ const WORDMARK: Role = {
 }
 
 const LOGO_FULL: Role = {
-  aspect: 1920 / 1080,
+  mark: LOGO_FULL_MARK,
+  aspect: aspectOf(LOGO_FULL_MARK),
   variants: [
     { only: 'only-funky', src: '/ttt_logo_full.svg' },
     { only: 'only-dark', src: '/ttt_stacked-tagline_dark-mono.svg' },
@@ -90,15 +126,20 @@ function ThemedLogo({
   className,
   alt = 'thinktanktom',
 }: ThemedLogoProps & { role: Role }) {
+  /* ONE size for every variant, computed once from the one role aspect. Every
+     variant — the three files and the inline mark — is handed this same pair,
+     which is what makes the element boxes identical and the theme switch a
+     pure repaint instead of a reflow. */
   const size =
     height === undefined
       ? { width: width as number, height: Math.round((width as number) / role.aspect) }
       : { width: Math.round(height * role.aspect), height }
+  /* the class goes on the wrapper because `.only-*` toggles `display` */
+  const wrap = (only: string) => (className ? `${only} ${className}` : only)
   return (
     <>
       {role.variants.map((variant) => (
-        /* the class goes on the wrapper because `.only-*` toggles `display` */
-        <div key={variant.only} className={className ? `${variant.only} ${className}` : variant.only}>
+        <div key={variant.only} className={wrap(variant.only)}>
           <Image
             src={variant.src}
             alt={alt}
@@ -117,6 +158,14 @@ function ThemedLogo({
           />
         </div>
       ))}
+      <div className={wrap('only-random')}>
+        {/* Inline, so there is no request to make and nothing to preload; it
+            costs HTML bytes in every theme instead (the stacked mark is ~28KB
+            of path data, on one page). `text-accent` is what colours it —
+            the token, never a hardcoded hex, or it stops following the
+            randomised palette. */}
+        <InlineMark mark={role.mark} {...size} label={alt} className="text-accent" />
+      </div>
     </>
   )
 }
