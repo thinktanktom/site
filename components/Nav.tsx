@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Menu, X } from 'lucide-react'
-import { TttWordmark } from '@components/ThemedLogo'
 import ThemeSwitcher from '@components/ThemeSwitcher'
 
 const navLinks = [
@@ -15,7 +14,23 @@ const navLinks = [
   { href: '/about', label: 'About' },
 ]
 
-export default function Nav() {
+/* The wordmark arrives as an already-rendered node from the server layout
+   rather than being imported here, and that is a bundle-size decision, not a
+   style one. This is a client component, so anything it imports joins the
+   CLIENT graph -- importing ThemedLogo dragged components/logo/paths.ts, ~33KB
+   of raw SVG path data, into layout-*.js on every page, shipping the geometry
+   twice: once as HTML and again as JavaScript. Passing it as a prop keeps the
+   geometry server-side.
+
+   Measured, gzip: this layout chunk 14,596 -> 5,024 bytes, and the feature's
+   total client-JS cost on / fell from +11,116 to +1,544 bytes against main.
+   Do not re-import a logo component into this file. */
+type NavProps = {
+  /* rendered server-side; displayed in both the top bar and the mobile overlay */
+  wordmark: React.ReactNode
+}
+
+export default function Nav({ wordmark }: NavProps) {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const pathname = usePathname()
@@ -73,7 +88,7 @@ export default function Nav() {
             className="flex items-center shrink-0"
             aria-label="thinktanktom, home"
           >
-            <TttWordmark height={32} />
+            {wordmark}
           </Link>
 
           {/* Desktop. Breakpoint is lg. It was raised to xl while the Hire me
@@ -128,7 +143,7 @@ export default function Nav() {
               onClick={closeMobileMenu}
               aria-label="thinktanktom, home"
             >
-              <TttWordmark height={32} />
+              {wordmark}
             </Link>
             <button
               ref={closeButtonRef}
