@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Space_Mono, DM_Sans } from 'next/font/google'
 import './globals.css'
 import Nav from '@components/Nav'
+import { TttWordmark } from '@components/ThemedLogo'
 import Footer from '@components/Footer'
 
 const spaceMono = Space_Mono({
@@ -104,7 +105,7 @@ export default function RootLayout({
             ]),
           }}
         />
-        <Nav />
+        <Nav wordmark={<TttWordmark height={32} />} />
         {children}
         <Footer />
       </body>
