@@ -1,14 +1,24 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Zap, Moon, Sun } from 'lucide-react'
+import { Zap, Moon, Sun, Dices } from 'lucide-react'
+import { generate } from '@lib/palette/generate'
+import {
+  THEME_KEY,
+  applyPalette,
+  clearPalette,
+  persistPalette,
+  randomSeed,
+  readSeed,
+} from '@lib/palette/apply'
 
-export type Theme = 'funky' | 'dark' | 'light'
+export type Theme = 'funky' | 'dark' | 'light' | 'random'
 
 const themes = [
   { id: 'funky' as Theme, Icon: Zap, label: 'Funky' },
   { id: 'dark' as Theme, Icon: Moon, label: 'Dark' },
   { id: 'light' as Theme, Icon: Sun, label: 'Light' },
+  { id: 'random' as Theme, Icon: Dices, label: 'Random' },
 ]
 
 type ThemeSwitcherProps = {
@@ -29,9 +39,33 @@ export default function ThemeSwitcher({
   useEffect(() => {
     const read = () => {
       const t = document.documentElement.dataset.theme
-      setTheme(t === 'dark' || t === 'light' ? t : 'funky')
+      setTheme(
+        t === 'dark' || t === 'light' || t === 'random' ? t : 'funky',
+      )
     }
     read()
+
+    // Recover from a refused palette cache. The pre-paint script falls through
+    // to funky when the cache is stale, partial or unparseable, but the stored
+    // theme is still 'random' — so if those disagree, regenerate from the seed.
+    // This is the one case where the engine runs on the client, and it is a
+    // frame late by design: see the note in layout.tsx.
+    try {
+      if (
+        localStorage.getItem(THEME_KEY) === 'random' &&
+        document.documentElement.dataset.theme !== 'random'
+      ) {
+        const seed = readSeed() ?? randomSeed()
+        const palette = generate(seed)
+        applyPalette(palette.tokens, palette.polarity)
+        persistPalette(palette)
+        document.documentElement.setAttribute('data-theme', 'random')
+      }
+    } catch {
+      // localStorage throws outright in some privacy modes — funky is already
+      // applied and is a correct resting state.
+    }
+
     // The desktop control and the mobile overlay are separate instances, so a
     // change made in one has to be observed rather than assumed — otherwise
     // the other's aria-pressed goes stale. The attribute is the one source of
@@ -44,13 +78,27 @@ export default function ThemeSwitcher({
   }, [])
 
   const select = (next: Theme) => {
-    document.documentElement.setAttribute('data-theme', next)
-    try {
-      localStorage.setItem('ttt-theme', next)
-    } catch {
-      // localStorage throws outright in some privacy modes — the attribute is
-      // already set, so the theme still applies for this session.
+    if (next === 'random') {
+      // Pressing 🎲 while random is already active re-rolls. Otherwise restore
+      // the palette the reader last had, so returning to random is not a
+      // surprise — only an explicit re-roll changes it.
+      const seed =
+        theme === 'random' ? randomSeed() : (readSeed() ?? randomSeed())
+      const palette = generate(seed)
+      applyPalette(palette.tokens, palette.polarity)
+      persistPalette(palette)
+    } else {
+      // Inline custom properties beat the stylesheet, so a named theme cannot
+      // take effect until the random palette's properties are removed.
+      clearPalette()
+      try {
+        localStorage.setItem(THEME_KEY, next)
+      } catch {
+        // the attribute below still applies the theme for this session
+      }
     }
+
+    document.documentElement.setAttribute('data-theme', next)
     setTheme(next)
   }
 
@@ -72,13 +120,18 @@ export default function ThemeSwitcher({
     >
       {themes.map(({ id, Icon, label }) => {
         const pressed = theme === id
+        const isRandom = id === 'random'
         return (
           <button
             key={id}
             type="button"
             onClick={() => select(id)}
             aria-pressed={pressed}
-            title={`${label} theme`}
+            // The dice is the one control whose action changes while pressed,
+            // so say so rather than leaving the label stale.
+            title={
+              isRandom && pressed ? 'Roll a new palette' : `${label} theme`
+            }
             // The pressed *visual* is driven from CSS off html[data-theme],
             // not from React state, so the active theme reads correctly on the
             // very first paint and with JS disabled. `.theme-btn-*` rules live
@@ -89,9 +142,11 @@ export default function ThemeSwitcher({
           >
             <Icon size={16} aria-hidden="true" />
             {variant === 'full' ? (
-              <span>{label}</span>
+              <span>{isRandom && pressed ? 'Re-roll' : label}</span>
             ) : (
-              <span className="sr-only">{label}</span>
+              <span className="sr-only">
+                {isRandom && pressed ? 'Roll a new palette' : label}
+              </span>
             )}
           </button>
         )

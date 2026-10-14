@@ -60,10 +60,23 @@ export default function RootLayout({
             flash of funky for dark/light users. Must stay the first child of
             <body> and must stay synchronous. If localStorage throws (privacy
             modes) or JS is off we fall through to funky, which is what :root
-            already holds. */}
+            already holds.
+
+            The random theme is restored from a CACHE of its nine resolved
+            tokens, never by running the generator: generate() measures ~1.5ms
+            warm and the engine is ~3KB, both of which are too much to spend
+            synchronously before first paint on every page load. A version
+            stamp (V) guards staleness -- a cache written by a different engine
+            version is refused and we fall through to funky, which the real
+            engine then corrects from the stored seed after hydration.
+
+            Still writes only data-theme, data-polarity and inline custom
+            properties, none of which React renders, so there is still no
+            hydration mismatch and suppressHydrationWarning is correctly
+            absent. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('ttt-theme');if(t!=='dark'&&t!=='light')t='funky';document.documentElement.setAttribute('data-theme',t)}catch(e){document.documentElement.setAttribute('data-theme','funky')}})();`,
+            __html: `(function(){var K=['bg','surface','border','text','muted','accent','accent-dim','grid-dot','success'],V='1';try{var t=localStorage.getItem('ttt-theme');if(t!=='dark'&&t!=='light'&&t!=='random')t='funky';if(t==='random'){var ok=false;if(localStorage.getItem('ttt-palette-v')===V){var p=JSON.parse(localStorage.getItem('ttt-palette')||'null');if(p){ok=true;for(var i=0;i<K.length;i++){if(!p[K[i]]){ok=false;break}}if(ok){var s=document.documentElement.style;for(var j=0;j<K.length;j++)s.setProperty('--'+K[j],p[K[j]]);var pol=p.polarity==='light'?'light':'dark';s.setProperty('color-scheme',pol);document.documentElement.setAttribute('data-polarity',pol)}}}if(!ok)t='funky'}document.documentElement.setAttribute('data-theme',t)}catch(e){document.documentElement.setAttribute('data-theme','funky')}})();`,
           }}
         />
         <script

@@ -44,6 +44,10 @@ export function applyPalette(
     el.style.setProperty(`--${name}`, triple(tokens[name]))
   }
   el.style.setProperty('color-scheme', polarity)
+  // Published as an attribute as well as a property because CSS has to branch
+  // on it: the Shiki token set and the light-polarity accent-border nudges in
+  // globals.css cannot be selected by a generated colour, only by this.
+  el.setAttribute('data-polarity', polarity)
 }
 
 /**
@@ -58,6 +62,7 @@ export function clearPalette(el: HTMLElement = document.documentElement): void {
     el.style.removeProperty(`--${name}`)
   }
   el.style.removeProperty('color-scheme')
+  el.removeAttribute('data-polarity')
 }
 
 /** Serialise a generated palette into the cache shape. */

@@ -10,6 +10,13 @@ import type { Options } from 'rehype-pretty-code'
 // CSS that selects between them lives in src/app/globals.css, anchored at
 // html[data-theme=…] because rehype-pretty-code sets its own data-theme
 // attribute on every <pre>/<code>.
+//
+// There is deliberately NO 'random' key here, even though the site has a
+// fourth theme. Shiki runs at build time and a randomly generated palette does
+// not exist then, so it cannot have a theme of its own. Instead globals.css
+// maps html[data-theme='random'] onto the dark or light variable set by its
+// data-polarity. Adding a key here would emit a fourth set of variables that
+// nothing could ever select.
 const prettyCodeOptions = {
   theme: {
     funky: 'one-dark-pro',
