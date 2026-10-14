@@ -1,10 +1,10 @@
 import Image from 'next/image'
 
-/* Give exactly one dimension; the other is derived from each variant's own
-   aspect ratio. Which one you pin decides what stays put when the theme
-   changes: pin the height for a lockup sitting in a row (the nav, the footer),
-   pin the width for a mark centred in a column (the hero), so the swap does
-   not nudge the layout around it. */
+/* Give exactly one dimension; the other is derived from the role's aspect
+   ratio. Which one you pin decides what stays put in the surrounding layout:
+   pin the height for a lockup sitting in a row (the nav, the footer), pin the
+   width for a mark centred in a column (the hero). Every variant of a role
+   renders at the same box either way — see the note on Role. */
 type ThemedLogoSize =
   | { height: number; width?: never }
   | { width: number; height?: never }
@@ -18,23 +18,33 @@ type Variant = {
   /* the `.only-*` utility that reveals this variant (defined in globals.css) */
   only: string
   src: string
-  /* viewBox width / viewBox height — the other dimension is derived from it,
-     never guessed. Transcribed from each file's own viewBox (3rd and 4th
-     values — the new assets have a non-zero min-x/min-y, which is not part of
-     the ratio). Re-export an asset and this must be re-read from it. */
-  aspect: number
-  /* Fraction of the requested box this variant is drawn at, so that the
-     visible MARK comes out the same size in every theme. The funky SVGs wrap
-     the artwork in a padded canvas while the themed ones are cropped to it, so
-     drawing them all at one box size makes the themed marks ~8% larger.
-     Measured, not guessed: the ink is byte-identical across the three icon
-     files at 578.2 x 465.22 user units, and funky's canvas is 623.62 square.
-     1 for funky (it defines the box) and ink/canvas for the themed pair. */
-  scaleW: number
-  scaleH: number
 }
 
-const FULL = { scaleW: 1, scaleH: 1 }
+type Role = {
+  /* viewBox width / viewBox height, shared by every variant of the role.
+     INVARIANT: all three assets of a role carry the SAME viewBox. The artwork
+     inside them is byte-identical in identical coordinates — only the fill
+     differs — so one viewBox means the element box AND the ink land on the
+     same pixels in all three themes.
+
+     This is load-bearing, and the history says why. The dark/light exports
+     originally shipped cropped tight to the ink while funky's masters carry
+     padding, so sizing each file by its own aspect drew the mark ~8% (icon)
+     and ~26% (stacked logo) too large outside funky. The first fix kept the
+     mismatched assets and scaled each variant down by its ink/canvas fraction.
+     That equalised the ink but left the element boxes different sizes, which
+     reflowed every container that does not reserve a fixed height — /about
+     collapsed 45.83px and moved the whole page with it — and could not fix
+     position anyway, because funky's padding is vertically ASYMMETRIC (icon
+     top 89.45 vs bottom 68.95 user units; stacked 123 vs 97), so a centred
+     tight crop still sat 1.58px high in the hero. Normalising the viewBoxes
+     removes both failures at the source instead of compensating for them.
+
+     Re-export an asset and re-read its viewBox against the funky master before
+     trusting it; a tight crop sneaking back in is exactly the old bug. */
+  aspect: number
+  variants: Variant[]
+}
 
 /*
  * Theme-aware logo marks.
@@ -43,85 +53,55 @@ const FULL = { scaleW: 1, scaleH: 1 }
  * variant is rendered and CSS reveals exactly one (`.only-funky` / `.only-dark`
  * / `.only-light` toggle `display`). No JS, so no wrong-logo flash on load and
  * nothing here needs to be a client component.
- *
- * The three themes' assets share neither aspect ratio nor padding, so the size
- * you pass describes the FUNKY box and each variant is drawn at the fraction
- * of it that makes the visible mark match. Never hardcode a width/height pair
- * across variants.
  */
 
-/* Icon: funky pads a 623.62 square around ink of 578.2 x 465.22; the themed
-   files are cropped to that ink. */
-const ICON: Variant[] = [
-  { only: 'only-funky', src: '/ttt_icon.svg', aspect: 1, ...FULL },
-  {
-    only: 'only-dark',
-    src: '/ttt_icon_dark-mono.svg',
-    aspect: 578.24 / 465.37,
-    scaleW: 578.24 / 623.62,
-    scaleH: 465.37 / 623.62,
-  },
-  {
-    only: 'only-light',
-    src: '/ttt_icon_light-neon.svg',
-    aspect: 578.24 / 465.37,
-    scaleW: 578.24 / 623.62,
-    scaleH: 465.37 / 623.62,
-  },
-]
+const ICON: Role = {
+  aspect: 623.62 / 623.62,
+  variants: [
+    { only: 'only-funky', src: '/ttt_icon.svg' },
+    { only: 'only-dark', src: '/ttt_icon_dark-mono.svg' },
+    { only: 'only-light', src: '/ttt_icon_light-neon.svg' },
+  ],
+}
 
-/* Wordmark: all three are already cropped identically (measured ink
-   1340.01 x 191.11 in every file), so no correction is needed here. */
-const WORDMARK: Variant[] = [
-  { only: 'only-funky', src: '/ttt_side_no_byline_logo.svg', aspect: 1339.99 / 191.14, ...FULL },
-  { only: 'only-dark', src: '/ttt_horizontal_dark-mono.svg', aspect: 1340.02 / 191.17, ...FULL },
-  { only: 'only-light', src: '/ttt_horizontal_light-neon.svg', aspect: 1340.02 / 191.17, ...FULL },
-]
+const WORDMARK: Role = {
+  aspect: 1339.99 / 191.14,
+  variants: [
+    { only: 'only-funky', src: '/ttt_side_no_byline_logo.svg' },
+    { only: 'only-dark', src: '/ttt_horizontal_dark-mono.svg' },
+    { only: 'only-light', src: '/ttt_horizontal_light-neon.svg' },
+  ],
+}
 
-/* Stacked logo: same padding story as the icon. funky draws into a 1920x1080
-   canvas whose visible ink measures 1768.6 x 859 — the themed viewBox exactly. */
-const LOGO_FULL: Variant[] = [
-  { only: 'only-funky', src: '/ttt_logo_full.svg', aspect: 1920 / 1080, ...FULL },
-  {
-    only: 'only-dark',
-    src: '/ttt_stacked-tagline_dark-mono.svg',
-    aspect: 1768.61 / 858.81,
-    scaleW: 1768.61 / 1920,
-    scaleH: 858.81 / 1080,
-  },
-  {
-    only: 'only-light',
-    src: '/ttt_stacked-tagline_light-neon.svg',
-    aspect: 1768.61 / 858.81,
-    scaleW: 1768.61 / 1920,
-    scaleH: 858.81 / 1080,
-  },
-]
+const LOGO_FULL: Role = {
+  aspect: 1920 / 1080,
+  variants: [
+    { only: 'only-funky', src: '/ttt_logo_full.svg' },
+    { only: 'only-dark', src: '/ttt_stacked-tagline_dark-mono.svg' },
+    { only: 'only-light', src: '/ttt_stacked-tagline_light-neon.svg' },
+  ],
+}
 
 function ThemedLogo({
-  variants,
+  role,
   height,
   width,
   className,
   alt = 'thinktanktom',
-}: ThemedLogoProps & { variants: Variant[] }) {
-  const sizeFor = ({ aspect, scaleW, scaleH }: Variant) => {
-    if (height === undefined) {
-      const w = Math.round((width as number) * scaleW)
-      return { width: w, height: Math.round(w / aspect) }
-    }
-    const h = Math.round(height * scaleH)
-    return { width: Math.round(h * aspect), height: h }
-  }
+}: ThemedLogoProps & { role: Role }) {
+  const size =
+    height === undefined
+      ? { width: width as number, height: Math.round((width as number) / role.aspect) }
+      : { width: Math.round(height * role.aspect), height }
   return (
     <>
-      {variants.map((variant) => (
+      {role.variants.map((variant) => (
         /* the class goes on the wrapper because `.only-*` toggles `display` */
         <div key={variant.only} className={className ? `${variant.only} ${className}` : variant.only}>
           <Image
             src={variant.src}
             alt={alt}
-            {...sizeFor(variant)}
+            {...size}
             className="object-contain"
             unoptimized
             /* No variant preloads. Only one is ever visible, but the theme
@@ -141,13 +121,13 @@ function ThemedLogo({
 }
 
 export function TttIcon(props: ThemedLogoProps) {
-  return <ThemedLogo variants={ICON} {...props} />
+  return <ThemedLogo role={ICON} {...props} />
 }
 
 export function TttWordmark(props: ThemedLogoProps) {
-  return <ThemedLogo variants={WORDMARK} {...props} />
+  return <ThemedLogo role={WORDMARK} {...props} />
 }
 
 export function TttLogoFull(props: ThemedLogoProps) {
-  return <ThemedLogo variants={LOGO_FULL} {...props} />
+  return <ThemedLogo role={LOGO_FULL} {...props} />
 }
