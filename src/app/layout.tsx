@@ -71,13 +71,23 @@ export default function RootLayout({
             version is refused and we fall through to funky, which the real
             engine then corrects from the stored seed after hydration.
 
+            Each cached value is matched against an "R G B" pattern before any
+            of it is applied, and the whole palette is rejected if one value
+            fails. Checking only that the KEYS were present was not enough: a
+            value CSSOM refuses (setProperty silently drops anything with a
+            top-level semicolon) left some tokens unset while data-theme was
+            still set to random -- and because the recovery path in
+            ThemeSwitcher keys off data-theme, it could not see that state and
+            the broken palette survived reloads. Reproduced as black text on a
+            near-black background. Validating here is what lets that self-heal.
+
             Still writes only data-theme, data-polarity and inline custom
             properties, none of which React renders, so there is still no
             hydration mismatch and suppressHydrationWarning is correctly
             absent. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){var K=['bg','surface','border','text','muted','accent','accent-dim','grid-dot','success'],V='1';try{var t=localStorage.getItem('ttt-theme');if(t!=='dark'&&t!=='light'&&t!=='random')t='funky';if(t==='random'){var ok=false;if(localStorage.getItem('ttt-palette-v')===V){var p=JSON.parse(localStorage.getItem('ttt-palette')||'null');if(p){ok=true;for(var i=0;i<K.length;i++){if(!p[K[i]]){ok=false;break}}if(ok){var s=document.documentElement.style;for(var j=0;j<K.length;j++)s.setProperty('--'+K[j],p[K[j]]);var pol=p.polarity==='light'?'light':'dark';s.setProperty('color-scheme',pol);document.documentElement.setAttribute('data-polarity',pol)}}}if(!ok)t='funky'}document.documentElement.setAttribute('data-theme',t)}catch(e){document.documentElement.setAttribute('data-theme','funky')}})();`,
+            __html: `(function(){var K=['bg','surface','border','text','muted','accent','accent-dim','grid-dot','success'],V='2',RE=/^[0-9]{1,3} [0-9]{1,3} [0-9]{1,3}$/;try{var t=localStorage.getItem('ttt-theme');if(t!=='dark'&&t!=='light'&&t!=='random')t='funky';if(t==='random'){var ok=false;if(localStorage.getItem('ttt-palette-v')===V){var p=JSON.parse(localStorage.getItem('ttt-palette')||'null');if(p){ok=true;for(var i=0;i<K.length;i++){if(!RE.test(p[K[i]])){ok=false;break}}if(ok){var s=document.documentElement.style;for(var j=0;j<K.length;j++)s.setProperty('--'+K[j],p[K[j]]);var pol=p.polarity==='light'?'light':'dark';s.setProperty('color-scheme',pol);document.documentElement.setAttribute('data-polarity',pol)}}}if(!ok)t='funky'}document.documentElement.setAttribute('data-theme',t)}catch(e){document.documentElement.setAttribute('data-theme','funky')}})();`,
           }}
         />
         <script

@@ -201,6 +201,53 @@ describe('the random cache handshake', () => {
     expect(r.props.get('color-scheme')).toBe('dark')
   })
 
+  /* Values, not just keys. Checking only that each key was PRESENT let a value
+     CSSOM refuses through: setProperty silently drops anything with a top-level
+     semicolon, so some tokens went unset while data-theme was still set to
+     random -- and the recovery path keys off data-theme, so it could not see
+     that state and the broken palette survived reloads. Reproduced in a browser
+     as black text on a near-black background. */
+  it.each([
+    ['a declaration-escape attempt', 'red; background:url(http://evil/x)'],
+    ['a var() self-reference', 'var(--text)'],
+    ['a rule-close attempt', '}html{display:none}'],
+    ['too few channels', '10 20'],
+    ['too many channels', '10 20 30 40'],
+    ['a four-digit channel', '10 20 3000'],
+    ['a float channel', '10.5 20 30'],
+    ['a named colour', 'rebeccapurple'],
+    ['a hex colour', '#ff0000'],
+    ['an empty value', ''],
+    ['leading whitespace', ' 10 20 30'],
+  ])('refuses %s in any token and paints nothing', (_label, bad) => {
+    const good = toCache(generate(777)) as unknown as Record<string, string>
+    for (const name of TOKEN_NAMES) {
+      const r = run({
+        'ttt-theme': 'random',
+        'ttt-palette': JSON.stringify({ ...good, [name]: bad }),
+        'ttt-palette-v': ENGINE_VERSION,
+      })
+      expect(r.theme, `--${name} = ${JSON.stringify(bad)}`).toBe('funky')
+      // partial application is the specific failure being prevented
+      expect(r.props.size, `--${name} = ${JSON.stringify(bad)}`).toBe(0)
+    }
+  })
+
+  it('still accepts every value the real toCache() produces', () => {
+    // The flip side: the validator must not be so strict it rejects the
+    // producer. Channels are 0-255 integers, so "0 0 0" and "255 255 255" are
+    // both legal and must pass.
+    for (const seed of [1, 777, 2048, 31337, 99999]) {
+      const r = run({
+        'ttt-theme': 'random',
+        'ttt-palette': JSON.stringify(toCache(generate(seed))),
+        'ttt-palette-v': ENGINE_VERSION,
+      })
+      expect(r.theme, `seed ${seed}`).toBe('random')
+      expect(r.props.size, `seed ${seed}`).toBe(TOKEN_NAMES.length + 1)
+    }
+  })
+
   it('applies a light-polarity palette as light', () => {
     // seed 2048 is light; assert the fixture still is, so the test stays honest
     const palette = generate(2048)
