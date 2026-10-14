@@ -1,10 +1,10 @@
 import Image from 'next/image'
 
-/* Give exactly one dimension; the other is derived from each variant's own
-   aspect ratio. Which one you pin decides what stays put when the theme
-   changes: pin the height for a lockup sitting in a row (the nav, the footer),
-   pin the width for a mark centred in a column (the hero), so the swap does
-   not nudge the layout around it. */
+/* Give exactly one dimension; the other is derived from the role's aspect
+   ratio. Which one you pin decides what stays put in the surrounding layout:
+   pin the height for a lockup sitting in a row (the nav, the footer), pin the
+   width for a mark centred in a column (the hero). All three theme variants
+   render at the same size either way — see the note on Role below. */
 type ThemedLogoSize =
   | { height: number; width?: never }
   | { width: number; height?: never }
@@ -19,11 +19,20 @@ type Variant = {
   /* the `.only-*` utility that reveals this variant (defined in globals.css) */
   only: string
   src: string
-  /* viewBox width / viewBox height — the width is derived from it, never
-     guessed. Transcribed from each file's own viewBox (3rd and 4th values —
-     the new assets have a non-zero min-x/min-y, which is not part of the
-     ratio). Re-export an asset and this must be re-read from it. */
+}
+
+type Role = {
+  /* viewBox width / viewBox height, shared by every variant of the role.
+     INVARIANT: all three assets of a role carry the SAME viewBox — identical
+     artwork on an identical canvas, differing only in fill. That is what makes
+     the mark render at the same size and the same offset in all three themes.
+     The dark/light exports originally shipped cropped tight to the ink while
+     funky's masters carry padding, which scaled the art up 8% (icon) and 26%
+     (stacked logo) on a theme switch; their viewBoxes were widened to funky's
+     canvas to fix it. Re-export an asset and you must re-check its viewBox
+     against the funky master, not just transcribe it here. */
   aspect: number
+  variants: Variant[]
 }
 
 /*
@@ -33,51 +42,56 @@ type Variant = {
  * variant is rendered and CSS reveals exactly one (`.only-funky` / `.only-dark`
  * / `.only-light` toggle `display`). No JS, so no wrong-logo flash on load and
  * nothing here needs to be a client component.
- *
- * The three themes' assets do NOT share aspect ratios, so each role is
- * normalised on a shared HEIGHT and each variant's width comes from its own
- * viewBox. Never hardcode a width/height pair across variants.
  */
 
-const ICON: Variant[] = [
-  { only: 'only-funky', src: '/ttt_icon.svg', aspect: 623.62 / 623.62 },
-  { only: 'only-dark', src: '/ttt_icon_dark-mono.svg', aspect: 578.24 / 465.37 },
-  { only: 'only-light', src: '/ttt_icon_light-neon.svg', aspect: 578.24 / 465.37 },
-]
+const ICON: Role = {
+  aspect: 623.62 / 623.62,
+  variants: [
+    { only: 'only-funky', src: '/ttt_icon.svg' },
+    { only: 'only-dark', src: '/ttt_icon_dark-mono.svg' },
+    { only: 'only-light', src: '/ttt_icon_light-neon.svg' },
+  ],
+}
 
-const WORDMARK: Variant[] = [
-  { only: 'only-funky', src: '/ttt_side_no_byline_logo.svg', aspect: 1339.99 / 191.14 },
-  { only: 'only-dark', src: '/ttt_horizontal_dark-mono.svg', aspect: 1340.02 / 191.17 },
-  { only: 'only-light', src: '/ttt_horizontal_light-neon.svg', aspect: 1340.02 / 191.17 },
-]
+const WORDMARK: Role = {
+  aspect: 1339.99 / 191.14,
+  variants: [
+    { only: 'only-funky', src: '/ttt_side_no_byline_logo.svg' },
+    { only: 'only-dark', src: '/ttt_horizontal_dark-mono.svg' },
+    { only: 'only-light', src: '/ttt_horizontal_light-neon.svg' },
+  ],
+}
 
-const LOGO_FULL: Variant[] = [
-  { only: 'only-funky', src: '/ttt_logo_full.svg', aspect: 1920 / 1080 },
-  { only: 'only-dark', src: '/ttt_stacked-tagline_dark-mono.svg', aspect: 1768.61 / 858.81 },
-  { only: 'only-light', src: '/ttt_stacked-tagline_light-neon.svg', aspect: 1768.61 / 858.81 },
-]
+const LOGO_FULL: Role = {
+  aspect: 1920 / 1080,
+  variants: [
+    { only: 'only-funky', src: '/ttt_logo_full.svg' },
+    { only: 'only-dark', src: '/ttt_stacked-tagline_dark-mono.svg' },
+    { only: 'only-light', src: '/ttt_stacked-tagline_light-neon.svg' },
+  ],
+}
 
 function ThemedLogo({
-  variants,
+  role,
   height,
   width,
   className,
   priority,
   alt = 'thinktanktom',
-}: ThemedLogoProps & { variants: Variant[] }) {
-  const sizeFor = (aspect: number) =>
+}: ThemedLogoProps & { role: Role }) {
+  const size =
     height === undefined
-      ? { width: width as number, height: Math.round((width as number) / aspect) }
-      : { width: Math.round(height * aspect), height }
+      ? { width: width as number, height: Math.round((width as number) / role.aspect) }
+      : { width: Math.round(height * role.aspect), height }
   return (
     <>
-      {variants.map((variant) => (
+      {role.variants.map((variant) => (
         /* the class goes on the wrapper because `.only-*` toggles `display` */
         <div key={variant.only} className={className ? `${variant.only} ${className}` : variant.only}>
           <Image
             src={variant.src}
             alt={alt}
-            {...sizeFor(variant.aspect)}
+            {...size}
             className="object-contain"
             unoptimized
             /* Only the funky variant preloads. Marking all three `priority`
@@ -94,13 +108,13 @@ function ThemedLogo({
 }
 
 export function TttIcon(props: ThemedLogoProps) {
-  return <ThemedLogo variants={ICON} {...props} />
+  return <ThemedLogo role={ICON} {...props} />
 }
 
 export function TttWordmark(props: ThemedLogoProps) {
-  return <ThemedLogo variants={WORDMARK} {...props} />
+  return <ThemedLogo role={WORDMARK} {...props} />
 }
 
 export function TttLogoFull(props: ThemedLogoProps) {
-  return <ThemedLogo variants={LOGO_FULL} {...props} />
+  return <ThemedLogo role={LOGO_FULL} {...props} />
 }

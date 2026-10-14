@@ -19,9 +19,9 @@ export default function HomePage() {
 
         <div className="relative z-10 flex flex-col items-center text-center max-w-article mx-auto">
           <div className="animate-fade-up" style={{ animationDelay: '0ms' }}>
-            {/* Fixed 96x96 box: the themed marks are 96x77 against funky's
-                96x96, so reserving the square and centring inside it keeps the
-                hero from shifting when the theme changes. */}
+            {/* All three variants share funky's square canvas, so the mark is
+                96x96 in every theme; the fixed box keeps the hero from
+                shifting even if an asset is re-exported. */}
             <div className="mb-8 flex h-24 items-center justify-center">
               <TttIcon width={96} priority />
             </div>
