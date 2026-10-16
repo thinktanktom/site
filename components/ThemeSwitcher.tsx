@@ -28,6 +28,19 @@ type ThemeSwitcherProps = {
   className?: string
 }
 
+/* Resolve a seed and put the result on the page, applied and persisted in one
+   step. Both callers below need exactly this -- the stale-cache recovery in the
+   effect and the dice in select() -- and they only differ in how they choose
+   the seed. Keeping it one function is not just deduplication: applying without
+   persisting would paint a palette the next load cannot restore, which is the
+   bug this whole feature exists to prevent. */
+function applySeed(seed: number) {
+  const palette = generate(seed)
+  applyPalette(palette.tokens, palette.polarity)
+  persistPalette(palette)
+  return palette
+}
+
 export default function ThemeSwitcher({
   variant = 'compact',
   className = '',
@@ -73,10 +86,7 @@ export default function ThemeSwitcher({
         localStorage.getItem(THEME_KEY) === 'random' &&
         document.documentElement.dataset.theme !== 'random'
       ) {
-        const seed = readSeed() ?? randomSeed()
-        const palette = generate(seed)
-        applyPalette(palette.tokens, palette.polarity)
-        persistPalette(palette)
+        applySeed(readSeed() ?? randomSeed())
         document.documentElement.setAttribute('data-theme', 'random')
         // Sync React too. read() above already ran and saw the pre-paint
         // script's funky fallback, and the MutationObserver is not attached
@@ -135,9 +145,7 @@ export default function ThemeSwitcher({
          before. */
       const live = document.documentElement.dataset.theme === 'random'
       const restored = live ? null : readSeed()
-      const palette = generate(restored ?? randomSeed())
-      applyPalette(palette.tokens, palette.polarity)
-      persistPalette(palette)
+      const palette = applySeed(restored ?? randomSeed())
       /* Re-rolling does not move aria-pressed, so this live region is the only
          feedback a screen-reader user gets. It has to distinguish the two
          actions: "applied" for a palette they have never seen and "restored"
@@ -190,6 +198,19 @@ export default function ThemeSwitcher({
       ? 'flex min-w-0 items-center justify-center gap-2 rounded-xl px-3 py-2 font-mono text-sm tracking-wider uppercase transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg'
       : 'rounded-full p-1.5 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg'
 
+  /* The dice's action is state-dependent -- it restores on the way in and rolls
+     once random is live -- so its name has to say which one it will do. Named
+     once here because the title and the compact variant's sr-only text must not
+     be able to disagree about what the button does.
+
+     `diceRestores` is React state, so this is one frame behind on first paint;
+     that is acceptable for a name (there is no click handler before hydration
+     either) and it costs no hydration mismatch, because the server and the
+     first client render agree on false. */
+  const diceName = diceRestores
+    ? 'Restore your last palette'
+    : 'Roll a new palette'
+
   return (
     <div
       role="group"
@@ -208,20 +229,7 @@ export default function ThemeSwitcher({
             type="button"
             onClick={() => select(id)}
             aria-pressed={pressed}
-            /* The dice's action is now state-dependent -- it restores on the
-               way in and rolls once random is live -- so its name has to say
-               which one it will do. `diceRestores` is React state, so this is
-               one frame behind on first paint; that is acceptable for a name
-               (there is no click handler before hydration either) and it costs
-               no hydration mismatch, because the server and the first client
-               render agree on false. */
-            title={
-              isRandom
-                ? diceRestores
-                  ? 'Restore your last palette'
-                  : 'Roll a new palette'
-                : `${label} theme`
-            }
+            title={isRandom ? diceName : `${label} theme`}
             // The pressed *visual* is driven from CSS off html[data-theme],
             // not from React state, so the active theme reads correctly on the
             // very first paint and with JS disabled. `.theme-btn-*` rules live
@@ -234,13 +242,7 @@ export default function ThemeSwitcher({
             {variant === 'full' ? (
               <span>{label}</span>
             ) : (
-              <span className="sr-only">
-                {isRandom
-                  ? diceRestores
-                    ? 'Restore your last palette'
-                    : 'Roll a new palette'
-                  : label}
-              </span>
+              <span className="sr-only">{isRandom ? diceName : label}</span>
             )}
           </button>
         )
