@@ -52,7 +52,7 @@ export default function AboutPage() {
             </p>
             <p>
               The first puzzle found me at university, where I tumbled by happy accident into image processing.
-              I read the papers. I redid <span className="text-accent underline underline-offset-4">the mathematics by hand</span><span className="text-accent">¹</span> and then helped developers at a string of startups turn that arithmetic
+              I read the papers. I redid <a id="ref-1" href="#note-1" className="annot"><span className="annot-phrase">the mathematics by hand</span>¹<span className="sr-only"> (see note 1)</span></a> and then helped developers at a string of startups turn that arithmetic
               into something that actually ran, in Python and in C++. They were splendid years, and they left me
               with one article of faith I came to hold rather fanatically: that anything a human mind had dreamt
               up, my mind could learn. Nothing lay beyond the reach of learning.
@@ -79,25 +79,28 @@ export default function AboutPage() {
             </p>
             <p>
               Outside work, I play amateur football, surf at an intermediate level, teach yoga as a certified
-              instructor, and am an avid reader of all things <span className="text-accent underline underline-offset-4">fiction and historical</span><span className="text-accent">²</span>.
+              instructor, and am an avid reader of all things <a id="ref-2" href="#note-2" className="annot"><span className="annot-phrase">fiction and historical</span>²<span className="sr-only"> (see note 2)</span></a>.
             </p>
             <p>
               All of which brings me, at last, to the point of this page. I grew up on science fiction, on drunk
               inventors and mad scientists and the moral tangles their contraptions left behind. I idolised those
               characters, and I loved most the quiet introspection each story left me with at the end. I have not
-              yet built anything that threatens the <span className="text-accent underline underline-offset-4">species</span><span className="text-accent">³</span>, but the instinct remains the
+              yet built anything that threatens the <a id="ref-3" href="#note-3" className="annot"><span className="annot-phrase">species</span>³<span className="sr-only"> (see note 3)</span></a>, but the instinct remains the
               same: to dream of a better future, to wander toward the impossible, to build with enthusiasm, and
               then to sit with what it all means. That is what I actually do.
             </p>
           </div>
         </div>
 
-        {/* Footnotes */}
+        {/* Footnotes. Hand-rolled here, but deliberately the same markup as the
+            Annotated / Notes / Note components in components/MDXContent.tsx —
+            including the #ref-N ↔ #note-N anchor round trip. Change one, change
+            both. scroll-mt-24 (96px) clears the fixed 64px nav. */}
         <div className="mb-16 pt-6 border-t border-border">
           <div className="font-mono text-xs leading-relaxed space-y-1">
-            <p><span className="text-accent">1.</span><span className="text-muted"> for I have never believed an equation simply because it asked nicely</span></p>
-            <p><span className="text-accent">2.</span><span className="text-muted"> I keep a one arms distance from self-help books</span></p>
-            <p><span className="text-accent">3.</span><span className="text-muted"> which my relations will find reassuring</span></p>
+            <p id="note-1" className="annot-note"><a href="#ref-1" className="annot" aria-label="Back to annotation 1 in the text">1.</a><span className="text-muted"> for I have never believed an equation simply because it asked nicely</span></p>
+            <p id="note-2" className="annot-note"><a href="#ref-2" className="annot" aria-label="Back to annotation 2 in the text">2.</a><span className="text-muted"> I keep a one arms distance from self-help books</span></p>
+            <p id="note-3" className="annot-note"><a href="#ref-3" className="annot" aria-label="Back to annotation 3 in the text">3.</a><span className="text-muted"> which my relations will find reassuring</span></p>
           </div>
         </div>
 
