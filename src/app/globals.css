@@ -112,8 +112,41 @@ html {
   text-underline-offset: 4px;
 }
 
+/* The note you actually landed on. With eight notes stacked a few pixels
+   apart, arriving at the right scroll position is not the same as knowing
+   which line was the destination — :target says which.
+
+   It PERSISTS rather than flashing, which also makes it self-clearing: the
+   moment you take the back-link, :target moves to #ref-N and the note
+   un-highlights on its own. An @keyframes flash would additionally not re-fire
+   when the same marker is clicked twice, because :target never changes.
+   It costs no JavaScript and comes free to a shared /writing/post#note-3 link.
+
+   Padding and the compensating negative margin are on the BASE class, not on
+   :target, so the strip is reserved at all times and highlighting cannot
+   reflow the note. The accent rule is an inset box-shadow for the same reason
+   — a real border-left would change layout. -0.75rem fits the 1.5rem gutter
+   even at 375px.
+
+   The tint is `--surface`, deliberately NOT an accent alpha. Note text is
+   `--muted`, and muted-on-surface is a pair the generator solves for (4.5 min,
+   lib/palette/validate.ts) — so this is AA by construction in every palette,
+   including random. An accent-tinted background would be the exact composite
+   hazard documented in the randomizer section: both sides move, and nothing in
+   the gate table bounds the result. The accent appears only as the opaque
+   3px strip, echoing the `3px solid --accent` left border already used by h2,
+   h3 and blockquote. */
 .annot-note {
   scroll-margin-top: var(--anchor-offset);
+  padding-left: 0.75rem;
+  margin-left: -0.75rem;
+  border-radius: 2px;
+  transition: background-color 200ms ease, box-shadow 200ms ease;
+}
+
+.annot-note:target {
+  background-color: rgb(var(--surface));
+  box-shadow: inset 3px 0 0 rgb(var(--accent));
 }
 
 a {

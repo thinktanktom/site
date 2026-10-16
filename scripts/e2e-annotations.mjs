@@ -169,6 +169,21 @@ for (const page of PAGES) {
       }),
     }})()`)
 
+  // The resting geometry and paint of every note BEFORE anything is targeted.
+  // The :target highlight must not move a note (padding is reserved on the base
+  // class precisely so it cannot), so these are the baseline to compare against.
+  const resting = await json(`(()=>{
+    const out={};
+    document.querySelectorAll('.annot-note').forEach(p=>{
+      const r=p.getBoundingClientRect(), cs=getComputedStyle(p);
+      out[p.id]={ x:Math.round(r.x), w:Math.round(r.width),
+                  textX:Math.round(p.querySelector('a').getBoundingClientRect().x),
+                  bg:cs.backgroundColor, shadow:cs.boxShadow };
+    });
+    return { notes:out, bodyBg:getComputedStyle(document.body).backgroundColor,
+             surface:getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() };
+  })()`)
+
   // Round trip each annotation: marker down to the note, note number back up.
   const trips = []
   for (let n = 1; n <= shape.refCount; n++) {
@@ -183,6 +198,35 @@ for (const page of PAGES) {
                vh:de.clientHeight, hash:location.hash,
                atPageBottom: Math.ceil(window.scrollY+de.clientHeight)>=de.scrollHeight-2 };
     })()`)
+
+    // The :target highlight. Transition is 200ms; poll for it rather than
+    // assuming it has finished, same discipline as the scroll.
+    const hl = await (async () => {
+      let last = null
+      for (let i = 0; i < 40; i++) {
+        await new Promise(r=>setTimeout(r,50))
+        const cur = await json(`(()=>{
+          const el=document.getElementById('note-${n}'), cs=getComputedStyle(el);
+          const r=el.getBoundingClientRect();
+          const others=[...document.querySelectorAll('.annot-note')].filter(p=>p.id!=='note-${n}');
+          return {
+            bg:cs.backgroundColor, shadow:cs.boxShadow,
+            x:Math.round(r.x), w:Math.round(r.width),
+            textX:Math.round(el.querySelector('a').getBoundingClientRect().x),
+            // exactly one note may be highlighted at a time
+            othersHighlighted:others.filter(p=>{
+              const c=getComputedStyle(p);
+              return c.backgroundColor!==getComputedStyle(document.body).backgroundColor && c.backgroundColor!=='rgba(0, 0, 0, 0)';
+            }).map(p=>p.id),
+            // the note text must stay AA-legible on whatever the tint is
+            textColor:getComputedStyle(el.querySelector('span')).color,
+          };
+        })()`)
+        if (last && cur.bg === last.bg && cur.shadow === last.shadow) return cur
+        last = cur
+      }
+      return last
+    })()
 
     // Where the reference already sits BEFORE clicking back. If it is already
     // parked clear of the nav and on screen, the browser correctly scrolls
@@ -200,15 +244,39 @@ for (const page of PAGES) {
       return { top:Math.round(r.top), bottom:Math.round(r.bottom), navBottom:Math.round(nav.bottom),
                vh:document.documentElement.clientHeight, hash:location.hash };
     })()`)
-    trips.push({ n, yDown, yBack, down, back, preBack })
+    // Taking the back-link moves :target to #ref-N, so the note must stop
+    // being highlighted on its own -- that self-clearing is the whole reason
+    // the highlight persists rather than flashing.
+    const cleared = await (async () => {
+      let last = null
+      for (let i = 0; i < 40; i++) {
+        await new Promise(r=>setTimeout(r,50))
+        const cur = await json(`(()=>{
+          const cs=getComputedStyle(document.getElementById('note-${n}'));
+          return { bg:cs.backgroundColor, shadow:cs.boxShadow };
+        })()`)
+        if (last && cur.bg === last.bg && cur.shadow === last.shadow) return cur
+        last = cur
+      }
+      return last
+    })()
+    trips.push({ n, yDown, yBack, down, back, preBack, hl, cleared })
   }
-  out.push({ page: page.url, label: page.label, expected: page.count, shape, trips })
+  out.push({ page: page.url, label: page.label, expected: page.count, shape, trips, resting })
 }
 
 ws.close(); die()
 
 // ---- report ----
+// WCAG 2.x relative luminance / contrast ratio, on the computed rgb() strings
+// Chromium hands back. Returns null rather than guessing on a transparent or
+// otherwise unparseable colour, so a bad read cannot masquerade as a pass.
+const rgb = (s) => { const m = /^rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\)$/.exec(s); if (!m) return null; if (m[4] !== undefined && Number(m[4]) < 1) return null; return [Number(m[1]), Number(m[2]), Number(m[3])] }
+const lum = (c) => { const f = c.map(v => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4) }); return 0.2126 * f[0] + 0.7152 * f[1] + 0.0722 * f[2] }
+const contrast = (fg, bg) => { const a = rgb(fg), b = rgb(bg); if (!a || !b) return null; const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x); return (hi + 0.05) / (lo + 0.05) }
+
 const f = []
+const crs = []
 for (const r of out) {
   const P = r.page + ': '
   if (r.fatal) { f.push(P + r.fatal); continue }
@@ -247,6 +315,28 @@ for (const r of out) {
     if (d.top < d.navBottom && !d.atPageBottom) f.push(P + 'note ' + t.n + ': lands under the nav (top ' + d.top + ' < nav bottom ' + d.navBottom + ')')
     if (d.bottom <= 0 || d.top >= d.vh) f.push(P + 'note ' + t.n + ': offscreen after jump')
 
+    // ---- the :target highlight ----
+    const rest = r.resting.notes['note-' + t.n]
+    const surfaceRgb = 'rgb(' + r.resting.surface.split(/\s+/).join(', ') + ')'
+    if (!t.hl) f.push(P + 'note ' + t.n + ': could not read highlight state')
+    else {
+      if (t.hl.bg === rest.bg) f.push(P + 'note ' + t.n + ': :target did not change the background (still ' + t.hl.bg + ')')
+      if (t.hl.bg !== surfaceRgb) f.push(P + 'note ' + t.n + ': highlight tint is ' + t.hl.bg + ', expected --surface ' + surfaceRgb)
+      if (!/inset/.test(t.hl.shadow)) f.push(P + 'note ' + t.n + ': no inset accent rule on the highlight (' + t.hl.shadow + ')')
+      // An outset shadow or a real border would reflow the note. The padding is
+      // reserved on the base class so that highlighting cannot move anything.
+      if (t.hl.textX !== rest.textX) f.push(P + 'note ' + t.n + ': highlight SHIFTED the text ' + (t.hl.textX - rest.textX) + 'px (' + rest.textX + ' -> ' + t.hl.textX + ')')
+      if (t.hl.x !== rest.x || t.hl.w !== rest.w) f.push(P + 'note ' + t.n + ': highlight changed the note box (' + rest.x + 'x' + rest.w + ' -> ' + t.hl.x + 'x' + t.hl.w + ')')
+      if (t.hl.othersHighlighted.length) f.push(P + 'note ' + t.n + ': ' + t.hl.othersHighlighted.length + ' other note(s) highlighted too: ' + t.hl.othersHighlighted.join(','))
+      // Note text is --muted and the tint is --surface; muted-on-surface is a
+      // gated pair (4.5 min, lib/palette/validate.ts) so this must clear AA.
+      const cr = contrast(t.hl.textColor, t.hl.bg)
+      if (cr !== null && cr < 4.5) f.push(P + 'note ' + t.n + ': text on the highlight is ' + cr.toFixed(2) + ':1, under WCAG AA')
+      if (cr !== null) crs.push(cr)
+    }
+    if (t.cleared && t.cleared.bg !== rest.bg) f.push(P + 'note ' + t.n + ': highlight did not clear after taking the back-link (' + t.cleared.bg + ' vs resting ' + rest.bg + ')')
+    if (t.cleared && /inset/.test(t.cleared.shadow)) f.push(P + 'note ' + t.n + ': accent rule survived the back-link')
+
     if (b.hash !== '#ref-' + t.n) f.push(P + 'back ' + t.n + ': hash is ' + b.hash)
     if (b.top < b.navBottom) f.push(P + 'back ' + t.n + ': lands under the nav (top ' + b.top + ' < nav bottom ' + b.navBottom + ')')
     if (b.bottom <= 0 || b.top >= b.vh) f.push(P + 'back ' + t.n + ': offscreen after jump')
@@ -260,8 +350,9 @@ console.log(JSON.stringify(out.map(r => r.fatal ? r : ({
   hitTargets: r.shape.style.map(s => s.hitW + 'x' + s.hitH),
   jumps: r.trips.map(t => ({ n: t.n, down: { y: t.yDown, topRelNav: t.down.top - t.down.navBottom }, back: { y: t.yBack, topRelNav: t.back.top - t.back.navBottom } })),
 })), null, 1))
-// per annotation: 5 style + 4 a11y + 1 back-label + 8 round-trip; plus 4
-// whole-page checks (count, ref/note parity, duplicate ids, accent)
-const checks = out.reduce((a, r) => a + (r.fatal ? 0 : r.shape.refCount * 18 + 4), 0)
+// per annotation: 5 style + 4 a11y + 1 back-label + 8 round-trip + 9 highlight;
+// plus 4 whole-page checks (count, ref/note parity, duplicate ids, accent)
+const checks = out.reduce((a, r) => a + (r.fatal ? 0 : r.shape.refCount * 27 + 4), 0)
+if (crs.length) console.log('worst note-on-highlight contrast: ' + Math.min(...crs).toFixed(2) + ':1 (WCAG AA floor 4.5)')
 console.log(f.length ? '\nFAIL:\n  ' + f.join('\n  ') : '\nPASS ' + checks + ' checks: annotation round trip clears the nav on both pages')
 process.exit(f.length ? 1 : 0)
