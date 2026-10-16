@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Zap, Dices } from 'lucide-react'
+import { Contrast, Dices } from 'lucide-react'
 import { generate } from '@lib/palette/generate'
 import {
   THEME_KEY,
@@ -18,13 +18,13 @@ import {
 } from '@lib/palette/favicon'
 
 
-export type Theme = 'funky' | 'random'
+export type Theme = 'dark-mono' | 'random'
 
-/* Two themes: funky, the brand default held by :root, and random, generated at
+/* Two themes: dark-mono, the brand default held by :root, and random, generated at
    runtime from a seed. The dice is LAST on purpose -- both e2e harnesses reach
    it as b[b.length - 1]. */
 const themes = [
-  { id: 'funky' as Theme, Icon: Zap, label: 'Funky' },
+  { id: 'dark-mono' as Theme, Icon: Contrast, label: 'Mono' },
   { id: 'random' as Theme, Icon: Dices, label: 'Random' },
 ]
 
@@ -78,10 +78,10 @@ export default function ThemeSwitcher({
   useEffect(() => {
     const read = () => {
       const t = document.documentElement.dataset.theme
-      // Anything that is not 'random' reads as funky, which mirrors both the
+      // Anything that is not 'random' reads as dark-mono, which mirrors both the
       // pre-paint script's validation and what :root actually renders.
       const isRandom = t === 'random'
-      setTheme(isRandom ? 'random' : 'funky')
+      setTheme(isRandom ? 'random' : 'dark-mono')
       // Mirrors select()'s own test exactly: restore only when random is not
       // live AND there is something stored to restore.
       setDiceRestores(!isRandom && readSeed() !== null)
@@ -89,7 +89,7 @@ export default function ThemeSwitcher({
     read()
 
     // Recover from a refused palette cache. The pre-paint script falls through
-    // to funky when the cache is stale, partial or unparseable, but the stored
+    // to dark-mono when the cache is stale, partial or unparseable, but the stored
     // theme is still 'random' — so if those disagree, regenerate from the seed.
     // This is the one case where the engine runs on the client, and it is a
     // frame late by design: see the note in layout.tsx.
@@ -103,14 +103,14 @@ export default function ThemeSwitcher({
         applySeed(readSeed() ?? randomSeed())
         document.documentElement.setAttribute('data-theme', 'random')
         // Sync React too. read() above already ran and saw the pre-paint
-        // script's funky fallback, and the MutationObserver is not attached
+        // script's dark-mono fallback, and the MutationObserver is not attached
         // until below, so without this the DOM says random while state says
-        // funky: aria-pressed lands on the wrong button (contradicting the CSS
+        // dark-mono: aria-pressed lands on the wrong button (contradicting the CSS
         // pressed visual), the dice announces "Random theme" instead of
         // "Re-roll", and the next press restores the stored seed instead of
         // re-rolling.
         setTheme('random')
-        /* Same reason, and it is not theoretical: read() above saw funky WITH a
+        /* Same reason, and it is not theoretical: read() above saw dark-mono WITH a
            stored seed, so it set this true, and no mutation record ever arrives
            to correct it. The dice then advertised "Restore your last palette"
            on a page that had just recovered INTO random, where the next press
@@ -121,13 +121,13 @@ export default function ThemeSwitcher({
         setDiceRestores(false)
       }
     } catch {
-      // localStorage throws outright in some privacy modes — funky is already
+      // localStorage throws outright in some privacy modes — dark-mono is already
       // applied and is a correct resting state.
     }
 
     /* Catch the tab icon up on load. The pre-paint script restores a cached
        palette without running the engine, so on a reload none of the paths that
-       repaint the icon have fired and the markup's static funky icon would sit
+       repaint the icon have fired and the markup's static dark-mono icon would sit
        in the tab over a random page. Guarded on `recovered` because the
        recovery branch above already went through applySeed, which paints. */
     if (!recovered && document.documentElement.dataset.theme === 'random') {
@@ -148,7 +148,7 @@ export default function ThemeSwitcher({
   const select = (next: Theme) => {
     if (next === 'random') {
       /* The dice RESTORES on the way in and ROLLS once random is already live.
-         So a reader who picked a palette, wandered off to funky and came back
+         So a reader who picked a palette, wandered off to dark-mono and came back
          gets their palette back rather than a stranger's; pressing again from
          there rolls, and every roll overwrites what is stored.
 
@@ -162,7 +162,7 @@ export default function ThemeSwitcher({
          A first-ever visitor has no stored seed, so readSeed() is null and the
          ?? falls through to a roll — the empty-storage case needs no branch of
          its own. The consequence accepted deliberately: there is no longer any
-         single press that yields a FRESH palette from funky. You get your old
+         single press that yields a FRESH palette from dark-mono. You get your old
          one back, then press again. A reload and a first press now do the same
          thing, which is the more coherent model than the split that was here
          before. */
@@ -180,7 +180,7 @@ export default function ThemeSwitcher({
           : `${palette.polarity} palette restored, seed ${palette.seed}`,
       )
     } else {
-      // Inline custom properties beat the stylesheet, so funky cannot take
+      // Inline custom properties beat the stylesheet, so dark-mono cannot take
       // effect until the random palette's properties are removed.
       clearPalette()
       // The icon has no stylesheet to fall back to, so unlike the tokens it has

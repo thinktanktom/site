@@ -6,17 +6,27 @@
  * three hand-designed palettes through it: if funky, dark or light fails a gate,
  * the gate is wrong, not the palette.
  *
- * Only funky still SHIPS. `dark` and `light` were removed as page themes, so
- * they no longer have a token block in globals.css and there is nothing left to
- * cross-check them against — the stylesheet block at the foot of this file is
- * narrowed to `:root` for that reason. They are kept as REFERENCE palettes
- * because they are the calibration evidence: the two achromatic endpoints that
- * bound the neutral end of the gate table's range. Running them is what shows
- * the gates are not merely tuned to funky. See fixtures.ts.
+ * `dark` is the one that SHIPS, as of 2026-10-16: it is the dark-mono palette
+ * held by `:root` in globals.css, and the stylesheet cross-check at the foot of
+ * this file is pointed at it. `funky` shipped as the default until that date and
+ * `light` long before; both are kept as REFERENCE palettes because they are the
+ * calibration evidence, not history.
+ *
+ * Which of the three is shipping does not change what this file is for. funky in
+ * particular must stay: its #e8ff00 sits at the exact sRGB gamut edge for its
+ * hue (C/maxC = 1.00) and is the ONLY evidence for CHROMA_CEIL, and its accent
+ * measures 1.02:1 against its own text, which is why "the accent must not
+ * collapse into the text" is a chroma floor and not a contrast gate. Running all
+ * three is what shows the gates are not merely tuned to whichever one ships.
+ * See fixtures.ts.
  *
  * `checkChroma` is deliberately NOT passed. dark and light are achromatic by
  * design (accent is pure #ffffff / #000000), so the chroma floor is a
- * generator-only rule — see the comment on ValidateOptions in validate.ts.
+ * generator-only rule — see the comment on ValidateOptions in validate.ts. Note
+ * this now applies to the SHIPPING default: dark-mono fails the chroma floor on
+ * purpose, and solves the same problem the floor exists for by taking the pure
+ * endpoint instead (21:1 against its own bg). That is not a contradiction, it is
+ * why the rule is scoped to the generator.
  */
 
 import { readFileSync } from 'node:fs'
@@ -90,13 +100,14 @@ describe('the chroma floor is generator-only', () => {
   }
 })
 
-describe('the funky fixture matches the shipping stylesheet', () => {
+describe('the dark fixture matches the shipping stylesheet', () => {
   // The calibration table is only evidence if it is the same table the site
   // ships. Parsed, not imported, because globals.css is not a module.
   //
-  // funky only: it is the one palette here that still has a token block. dark
-  // and light are reference palettes with no stylesheet to agree with, so the
-  // describe() blocks above are the whole of what keeps them honest.
+  // `dark` only: it is the one palette here that has a token block, since
+  // dark-mono became the default. funky and light are reference palettes with no
+  // stylesheet to agree with, so the describe() blocks above are the whole of
+  // what keeps them honest.
   const css = readFileSync(
     fileURLToPath(new URL('../../../src/app/globals.css', import.meta.url)),
     'utf8',
@@ -119,21 +130,34 @@ describe('the funky fixture matches the shipping stylesheet', () => {
     return out
   }
 
-  it('funky', () => {
+  it('dark-mono', () => {
     const parsed = parse(':root {')
     // Every token present, so a renamed token cannot pass by being absent.
     expect(Object.keys(parsed).sort()).toEqual([...TOKEN_NAMES].sort())
     for (const token of TOKEN_NAMES) {
-      expect(parsed[token], `--${token} in funky`).toEqual([
-        ...CALIBRATION_PALETTES.funky[token],
+      expect(parsed[token], `--${token} in dark-mono`).toEqual([
+        ...CALIBRATION_PALETTES.dark[token],
       ])
     }
   })
 
-  it('carries no token block for the removed dark and light themes', () => {
-    // The removal itself, asserted. A reinstated block would outrank :root for
-    // anyone whose stored ttt-theme is still a stale 'dark' or 'light'.
+  it('carries no token block for any removed theme', () => {
+    // The removals themselves, asserted. A reinstated block would outrank :root
+    // for anyone whose stored ttt-theme is still a stale value — and all three
+    // of these are values a returning reader can still be carrying.
     expect(css).not.toContain("html[data-theme='dark']")
     expect(css).not.toContain("html[data-theme='light']")
+    expect(css).not.toContain("html[data-theme='funky']")
+  })
+
+  it('no longer references funky anywhere in the stylesheet selectors', () => {
+    /* Prose may still mention funky — it is the calibration reference and the
+       history is worth keeping — but no SELECTOR or custom property may, or some
+       rule is still trying to style a theme that cannot be selected. Checks the
+       two shapes that actually broke things: the `.only-*`/`.theme-btn-*` pair
+       and the Shiki variable set. */
+    expect(css).not.toContain('.only-funky')
+    expect(css).not.toContain('.theme-btn-funky')
+    expect(css).not.toContain('--shiki-funky')
   })
 })

@@ -108,7 +108,7 @@ for (const W of [375, 390]) {
       textWraps: btns.filter(b=>b.getBoundingClientRect().height>44).length
     }})())`))
 
-  // The dice is the LAST button in the control (funky is first), so this still
+  // The dice is the LAST button in the control (the dark-mono button is first), so this still
   // resolves correctly now that there are two rather than four.
   const dice = `(()=>{const ov=document.getElementById('mobile-nav');const g=ov.querySelector('[aria-label="Colour theme"]');
     const b=[...g.querySelectorAll('button')];b[b.length-1].click();return 1})()`

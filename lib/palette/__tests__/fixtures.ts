@@ -9,18 +9,31 @@ export const palette = (p: Record<TokenName, readonly [number, number, number]>)
 
 /**
  * The three hand-designed palettes the generator's gate table was calibrated
- * against. ONLY `funky` still ships: it is the site's default, held by `:root` in
- * src/app/globals.css, and the only one of the three with a stylesheet block to
- * cross-check against (calibration.test.ts does exactly that).
+ * against. ONLY `dark` still ships: as of 2026-10-16 it is the site's default
+ * under the name **dark-mono**, held by `:root` in src/app/globals.css, and the
+ * only one of the three with a stylesheet block to cross-check against
+ * (calibration.test.ts does exactly that).
  *
- * `dark` and `light` were removed as page themes, but are kept here deliberately,
- * because they are the calibration evidence and not merely history. They are the
- * two hand-designed ACHROMATIC endpoints — accent is pure #ffffff and pure
- * #000000, C = 0.000 — and they are the reason the "the accent must not collapse
- * into the text" rule is a CHROMA FLOOR rather than a contrast gate: as a
- * contrast gate it would reject them, and funky's own accent measures 1.02:1
- * against its text. Drop them and the gate table loses the two palettes that
- * bound the neutral end of its range. Nothing in the shipped site renders them.
+ * `funky` and `light` are not page themes any more, but all three are kept here
+ * deliberately, because they are the calibration evidence and not merely
+ * history:
+ *
+ * - `funky` shipped as the default until 2026-10-16 and is the sole evidence for
+ *   CHROMA_CEIL: its #e8ff00 sits at the exact sRGB gamut edge for its hue
+ *   (C/maxC = 1.00), which is what makes "as vivid as the gamut allows" the rule
+ *   and the gamut the cap. Its accent also measures 1.02:1 against its own text,
+ *   so it is the palette that proves "the accent must not collapse into the
+ *   text" has to be a chroma floor and not a contrast gate.
+ * - `dark` and `light` are the two ACHROMATIC endpoints — accent pure #ffffff and
+ *   pure #000000, C = 0.000 — and they bound the neutral end of the range. As a
+ *   contrast gate the accent/text rule would reject them outright.
+ *
+ * So the set is not "the shipped one plus two leftovers": it is three palettes
+ * spanning gamut-edge-chromatic to fully neutral, and running all three is what
+ * shows the gates are not merely tuned to whichever one happens to ship. Note
+ * `dark` therefore FAILS the chroma floor while being the default — deliberately;
+ * the floor is generator-only, and dark-mono solves the same problem by taking
+ * the pure endpoint (21:1 against its own bg).
  *
  * Hardcoded on purpose: this is the calibration reference, so it must not be
  * derived from a stylesheet it is checking.
