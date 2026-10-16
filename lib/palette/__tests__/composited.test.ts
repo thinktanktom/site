@@ -6,16 +6,17 @@
  * composites of a token against another token, and an alpha on the accent is
  * only as strong as the accent's own contrast.
  *
- * That gap mattered. funky puts the accent at 17-21:1 against bg (it is pure
- * yellow), so 40% alpha still clears the 3:1 non-text UI floor. A GENERATED
- * accent only has to clear 4.5-6.5:1, so the same 40% landed at 1.72:1 -- under
- * the floor on 78.7% of palettes -- and the accent-tinted chip, where both the
+ * That gap mattered. dark-mono puts the accent at 21:1 against bg (pure white),
+ * and funky's pure yellow was 17-21:1, so 40% alpha clears the 3:1 non-text UI
+ * floor for either. A GENERATED accent only has to clear 4.5-6.5:1, so the same
+ * 40% landed at 1.72:1 -- under the floor on 78.7% of palettes -- and the
  * text and its background move toward the accent, missed WCAG AA on 58.9%.
  *
- * The dark and light entries used below come from CALIBRATION_PALETTES and are
- * no longer page themes; they are kept as the two achromatic reference palettes
- * (see fixtures.ts). Only the [data-theme='random'] rules are read back out of
- * globals.css, because they are the only alpha overrides the site still ships.
+ * The entries used below come from CALIBRATION_PALETTES. `dark` IS the shipping
+ * default as of 2026-10-16 (it is the dark-mono palette in `:root`); `funky` and
+ * `light` are reference palettes only (see fixtures.ts). Only the
+ * [data-theme='random'] rules are read back out of globals.css, because they are
+ * the only alpha overrides the site ships.
  *
  * The fix lives in globals.css, not in the generator, because the generator
  * picks colours and these are composites of one. These tests read the alphas
@@ -103,8 +104,8 @@ describe('border-accent/40 — the 3:1 non-text UI floor', () => {
   })
 
   it('is already fine at 0.4 for a hand-picked accent, which is why the gap hid', () => {
-    // funky's accent is pure yellow and the dark reference palette's was pure
-    // white -- both far enough from bg that 40% alpha still clears the floor.
+    // dark-mono's accent is pure white and funky's was pure yellow -- both far
+    // enough from bg that 40% alpha still clears the floor.
     // That is why nobody noticed until the accent started being generated.
     for (const name of ['funky', 'dark'] as const) {
       const theme = CALIBRATION_PALETTES[name]
@@ -163,19 +164,25 @@ describe('the accent-tinted chip — WCAG AA on small text', () => {
 })
 
 describe('decorative accent borders', () => {
-  it('keeps /30 and success/40 roughly where funky already sits', () => {
-    // These outline chips that always carry an icon AND a text label, and they
-    // are already under 3:1 in funky itself, so they are not held to the UI
-    // floor. The nudge exists only so a random palette is not arbitrarily
-    // fainter than funky, whose /30 measures 2.44:1.
+  it('keeps /30 and success/40 roughly where the shipped default sits', () => {
+    /* These outline chips that always carry an icon AND a text label, and they
+       are already under 3:1 in the default theme itself, so they are not held to
+       the UI floor. The nudge exists only so a random palette is not arbitrarily
+       fainter than the default.
+
+       Measured against `dark` because that is the palette :root now holds
+       (dark-mono): its /30 is 2.48:1. funky's was 2.44:1 — the two land within
+       0.04 of each other because both accents are near-maximum luminance on a
+       near-black ground, which is why swapping the default did not move this
+       bar. */
     const alpha30 = randomAlphaFor('border-accent/30', 'accent')
-    const funky30 = contrast(
-      over(CALIBRATION_PALETTES.funky.accent, CALIBRATION_PALETTES.funky.bg, 0.3),
-      CALIBRATION_PALETTES.funky.bg,
+    const default30 = contrast(
+      over(CALIBRATION_PALETTES.dark.accent, CALIBRATION_PALETTES.dark.bg, 0.3),
+      CALIBRATION_PALETTES.dark.bg,
     )
     const { value } = worstOf((p) =>
       contrast(over(p.tokens.accent, p.tokens.bg, alpha30), p.tokens.bg),
     )
-    expect(value).toBeGreaterThan(funky30 - 0.6)
+    expect(value).toBeGreaterThan(default30 - 0.6)
   })
 })

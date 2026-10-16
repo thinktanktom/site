@@ -50,9 +50,10 @@ content/projects/BankX_project_files/
 /logo/
 /logo.zip
 
-# Dark-theme logo marks — kept locally, removed from the repo when the dark
-# theme was dropped (2026-10-16). Nothing references them; the *_light-primary
-# marks stay tracked because the random theme uses them as mask stencils.
-/public/ttt_icon_dark-mono.svg
-/public/ttt_horizontal_dark-mono.svg
-/public/ttt_stacked-tagline_dark-mono.svg
+
+# NOTE the three *_dark-mono.svg marks under public/ are deliberately TRACKED.
+# They were ignored here between 2026-10-16 (when the dark theme was dropped)
+# and later the same day, when dark-mono became the DEFAULT theme and
+# ThemedLogo started serving them. They are required for the build: ignoring
+# them again ships a site with no logo. The *_light-primary marks stay tracked
+# too, as the random theme's mask stencils and the favicon's stencil.
