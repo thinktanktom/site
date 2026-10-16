@@ -437,6 +437,102 @@ const chip = await evalJs(`(() => {
     c.chipContrast === undefined || c.chipContrast >= 4.5, `chipContrast=${c.chipContrast}`)
 }
 
+/* 9. The browser-tab icon follows the palette.
+   Browser chrome renders the favicon outside the document, so it sees no CSS
+   custom properties and the static export has no server to render a per-palette
+   file -- the only route is a generated, self-contained icon handed to the
+   <link>. That makes it exactly the kind of thing vitest cannot touch and a
+   browser can.
+
+   What is NOT provable here, and is called out rather than implied: whether the
+   browser actually PAINTS the new icon into the tab strip. That is chrome, not
+   DOM, and headless CDP cannot read it. The strongest available proxy is the
+   last check below -- that the generated data URI decodes into a real image
+   with non-zero intrinsic dimensions -- which is the failure mode that would
+   actually matter (a malformed or unencoded SVG yields a silently blank tab). */
+const faviSnap = `(() => {
+  const icons = [...document.querySelectorAll('link[rel~="icon"]')].map((l) => l.getAttribute('href'));
+  const apple = document.querySelector('link[rel="apple-touch-icon"]');
+  const rgb = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+  const hex = rgb ? '#' + rgb.split(/\\s+/).map((n) => (+n).toString(16).padStart(2, '0')).join('') : null;
+  return { icons, apple: apple ? apple.getAttribute('href') : null,
+    accentHex: hex, theme: document.documentElement.dataset.theme };
+})()`
+
+/* The paint is deliberately async -- it fetches the mask asset once -- so poll
+   for it rather than sleeping. A fixed sleep here would be the same mistake the
+   header warns about for smooth scrolling. */
+const waitForDataIcon = async (want) => {
+  for (let i = 0; i < 40; i++) {
+    const f = await evalJs(faviSnap)
+    const isData = f.icons.every((h) => h && h.startsWith('data:image/svg+xml,'))
+    if (isData === want) return f
+    await new Promise((r) => setTimeout(r, 150))
+  }
+  return await evalJs(faviSnap)
+}
+
+await goto(ORIGIN + '/')
+await evalJs(`localStorage.clear()`)
+await goto(ORIGIN + '/')
+const faviFunky = await evalJs(faviSnap)
+check('funky serves the brand icon file, not a generated one',
+  faviFunky.icons.length === 2 && faviFunky.icons.every((h) => h === '/ttt_icon.svg'),
+  JSON.stringify(faviFunky.icons))
+
+await evalJs(diceClick)
+const faviRandom = await waitForDataIcon(true)
+check('rolling repaints every tab icon as a generated data URI',
+  faviRandom.icons.length === 2 && faviRandom.icons.every((h) => h.startsWith('data:image/svg+xml,')),
+  JSON.stringify(faviRandom.icons.map((h) => h.slice(0, 40))))
+check('apple-touch-icon is deliberately left alone',
+  faviRandom.apple === '/ttt_icon.svg', `apple=${faviRandom.apple}`)
+
+const decoded = await evalJs(`(async () => {
+  const href = document.querySelector('link[rel~="icon"]').getAttribute('href');
+  const prefix = 'data:image/svg+xml,';
+  if (!href.startsWith(prefix)) return { notData: href.slice(0, 60) };
+  const svg = decodeURIComponent(href.slice(prefix.length));
+  const fills = [...new Set((svg.match(/fill="[^"]*"/g) || []).map((s) => s.slice(6, -1).toLowerCase()))];
+  const size = await new Promise((res) => {
+    const img = new Image();
+    img.onload = () => res({ w: img.naturalWidth, h: img.naturalHeight });
+    img.onerror = () => res(null);
+    img.src = href;
+  });
+  return { fills, size, bytes: href.length, hasViewBox: /viewBox=/.test(svg) };
+})()`)
+check('the generated icon is tinted to exactly one colour, the accent',
+  decoded.fills && decoded.fills.length === 1 && decoded.fills[0] === faviRandom.accentHex,
+  `fills=${JSON.stringify(decoded.fills)} accent=${faviRandom.accentHex}`)
+/* The real risk with a hand-built data URI is that it is malformed -- an
+   unencoded '#' truncates it at the fragment and the tab silently goes blank.
+   Decoding it as an image is what rules that out. */
+check('the generated icon actually decodes as an image',
+  !!decoded.size && decoded.size.w > 0 && decoded.size.h > 0,
+  `size=${JSON.stringify(decoded.size)} bytes=${decoded.bytes} viewBox=${decoded.hasViewBox}`)
+
+// Switching back to funky must RESTORE the file. Unlike the colour tokens there
+// is no stylesheet underneath the icon to fall back to, so un-setting is not
+// enough and this is a separate code path worth its own check.
+await evalJs(pick(0))
+const faviBack = await waitForDataIcon(false)
+check('switching to funky puts the brand icon file back',
+  faviBack.icons.every((h) => h === '/ttt_icon.svg'), JSON.stringify(faviBack.icons))
+
+/* And the on-load path: the pre-paint script restores a cached palette without
+   running the engine, so none of the paths above fire on a reload. Without the
+   catch-up in ThemeSwitcher's effect the tab would show the funky icon over a
+   random page -- which is the original bug, just one reload later. */
+await evalJs(diceClick)
+await waitForDataIcon(true)
+await goto(ORIGIN + '/')
+const faviReload = await waitForDataIcon(true)
+check('a reload with a stored palette repaints the icon from the applied accent',
+  faviReload.theme === 'random' &&
+    faviReload.icons.every((h) => h.startsWith('data:image/svg+xml,')),
+  `theme=${faviReload.theme} icons=${JSON.stringify(faviReload.icons.map((h) => h.slice(0, 32)))}`)
+
 ws.close(); kill(); server.close()
 console.log('PASS:'); pass.forEach((p) => console.log('  ✓ ' + p))
 if (fail.length) { console.log('FAIL:'); fail.forEach((f) => console.log('  ✗ ' + f)) }
