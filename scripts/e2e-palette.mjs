@@ -22,6 +22,13 @@
  * would pin funky to the last random palette), that the masked logo mark's ink
  * follows --accent, that a stale cache recovers from the seed with React state
  * in step, and that the nav does not overflow.
+ *
+ * It also pins the dice's two-state action (section 7b): the press that enters
+ * random RESTORES the reader's last palette, and every press after that ROLLS.
+ * vitest cannot reach that -- it lives in a click handler in a client component
+ * that reads both the live DOM attribute and localStorage, and the thing worth
+ * proving is that the restored palette is the same one that was PAINTED before,
+ * which needs a browser.
  */
 import { spawn } from 'child_process'
 
@@ -205,6 +212,8 @@ const nBtns = await evalJs(diceClick)
 await new Promise((r) => setTimeout(r, 400))
 s = await evalJs(SNAP)
 check('switcher has 2 buttons', nBtns === 2, `found ${nBtns}`)
+// localStorage was cleared just above, so this press has nothing to restore and
+// must roll. Covered again explicitly in 7c with the label assertions.
 check('dice applies a random palette', s.theme === 'random' && /^\d+ \d+ \d+$/.test(s.inlineBg),
   `theme=${s.theme} --bg="${s.inlineBg}"`)
 check('polarity published', s.polarity === 'dark' || s.polarity === 'light', `polarity=${s.polarity}`)
@@ -282,26 +291,69 @@ check('a code block IS present to test', !code.none, JSON.stringify(code))
 check('code block borrows a Shiki set by polarity',
   !code.none && code.bg !== 'rgba(0, 0, 0, 0)' && !!code.color && code.color !== 'rgb(0, 0, 0)', JSON.stringify(code))
 
-// 7b. The dice ALWAYS rolls, even when arriving from funky. Pressing a dice
-// and getting back the palette you already had is not what a dice means.
+// 7b. The dice RESTORES the palette the reader last landed on when it is
+// arriving from funky, and ROLLS once random is already live. This block is
+// the inverse of what it asserted before 2026-10-16, deliberately: the old
+// rule was "the dice ALWAYS rolls", and it was traded away so that a reader
+// who wanders off to funky and comes back gets their own palette rather than
+// a stranger's. The negative control for the new rule is the pair below --
+// restore must return the SAME seed and the same painted --bg, and the press
+// after it must still produce a different one, or "restore" has quietly become
+// "never roll again".
 await goto(ORIGIN + '/')
-const seedBeforeNamed = await evalJs(`localStorage.getItem('ttt-seed')`)
+const beforeDetour = await evalJs(SNAP)
+const seedBeforeNamed = beforeDetour.storedSeed
+const bgBeforeNamed = beforeDetour.inlineBg
 await evalJs(pick(0)) // funky
 await new Promise((r) => setTimeout(r, 300))
+const onFunky = await evalJs(SNAP)
+// The button has to say which of the two things it is about to do.
+check('dice is relabelled as a restore while funky is active',
+  onFunky.diceLabel === 'Restore your last palette', `title="${onFunky.diceLabel}"`)
 await evalJs(diceClick)
 await new Promise((r) => setTimeout(r, 400))
 const afterNamed = await evalJs(SNAP)
-check('dice rolls a NEW palette when arriving from funky',
-  !!seedBeforeNamed && afterNamed.storedSeed !== seedBeforeNamed && afterNamed.theme === 'random',
-  `seed ${seedBeforeNamed} -> ${afterNamed.storedSeed}`)
+/* Same seed AND same --bg. The seed alone would pass if the restore wrote the
+   stored seed back but painted something else; the --bg alone would pass on a
+   coincidence. Checking both also proves generate(seed) still agrees with the
+   cache the pre-paint script pasted, since the restore path re-runs the engine
+   rather than reading ttt-palette. */
+check('dice RESTORES the stored palette when arriving from funky',
+  !!seedBeforeNamed && afterNamed.storedSeed === seedBeforeNamed &&
+    afterNamed.inlineBg === bgBeforeNamed && afterNamed.theme === 'random',
+  `seed ${seedBeforeNamed} -> ${afterNamed.storedSeed}, bg ${bgBeforeNamed} -> ${afterNamed.inlineBg}`)
+check('restoring relabels the dice back to a re-roll',
+  afterNamed.diceLabel === 'Roll a new palette', `title="${afterNamed.diceLabel}"`)
 
-// and two presses in a row give two different palettes
+// and the press AFTER the restore rolls, as does the one after that
 const first = afterNamed.storedSeed
 await evalJs(diceClick)
 await new Promise((r) => setTimeout(r, 400))
 const second = await evalJs(SNAP)
-check('two consecutive presses give two different palettes',
+check('the press after a restore rolls a new palette',
   second.storedSeed !== first, `${first} -> ${second.storedSeed}`)
+await evalJs(diceClick)
+await new Promise((r) => setTimeout(r, 400))
+const third = await evalJs(SNAP)
+check('two consecutive presses give two different palettes',
+  third.storedSeed !== second.storedSeed, `${second.storedSeed} -> ${third.storedSeed}`)
+
+// 7c. With nothing stored there is nothing to restore, so the first press from
+// funky must still roll. readSeed() returns null here and the ?? falls through;
+// this is the check that the empty-storage case needs no branch of its own.
+await evalJs(`localStorage.clear()`)
+await goto(ORIGIN + '/')
+const virgin = await evalJs(SNAP)
+check('a first-ever visitor sees funky with no stored seed',
+  virgin.theme === 'funky' && !virgin.storedSeed, `theme=${virgin.theme} seed=${virgin.storedSeed}`)
+check('dice is labelled a roll when there is nothing stored',
+  virgin.diceLabel === 'Roll a new palette', `title="${virgin.diceLabel}"`)
+await evalJs(diceClick)
+await new Promise((r) => setTimeout(r, 400))
+const afterVirgin = await evalJs(SNAP)
+check('dice rolls on a first-ever press rather than no-opping',
+  afterVirgin.theme === 'random' && +afterVirgin.storedSeed > 0 && !!afterVirgin.inlineBg,
+  `theme=${afterVirgin.theme} seed=${afterVirgin.storedSeed} bg="${afterVirgin.inlineBg}"`)
 
 // 8. The alpha-composited accent utilities. These are the one family the
 // generator cannot bound -- it picks colours, and these are composites of one --
