@@ -204,6 +204,14 @@ let s = await evalJs(SNAP)
 check('clean load renders funky', s.theme === 'funky' && !s.inlineBg, `theme=${s.theme} inlineBg="${s.inlineBg}"`)
 check('funky mark visible, random hidden', s.funkyMarkVisible && !s.randomMarkVisible,
   `funky=${s.funkyMarkVisible} random=${s.randomMarkVisible}`)
+/* Storage was just cleared, so there is nothing to restore and the dice must
+   advertise a roll. This is the empty-store half of the dice's two-state name;
+   section 7b covers the other two states. The empty-store BEHAVIOUR needs no
+   check of its own -- the press in section 2 below happens in exactly this
+   state, so 'dice applies a random palette' already is that assertion. */
+check('dice is labelled a roll when nothing is stored',
+  s.diceLabel === 'Roll a new palette' && !s.storedSeed,
+  `title="${s.diceLabel}" seed=${s.storedSeed}`)
 
 // 2. click the dice
 const diceClick = `(() => { const g = document.querySelector('[role="group"][aria-label="Colour theme"]');
@@ -325,35 +333,17 @@ check('dice RESTORES the stored palette when arriving from funky',
 check('restoring relabels the dice back to a re-roll',
   afterNamed.diceLabel === 'Roll a new palette', `title="${afterNamed.diceLabel}"`)
 
-// and the press AFTER the restore rolls, as does the one after that
+/* And the press after the restore must still roll -- without this, "restore"
+   could silently mean "never roll again". One press is enough: this is a
+   random->random press, the same operation asserted at 'pressing dice again
+   re-rolls' and 'press after recovery re-rolls', so a second consecutive press
+   here would only repeat it. */
 const first = afterNamed.storedSeed
 await evalJs(diceClick)
 await new Promise((r) => setTimeout(r, 400))
 const second = await evalJs(SNAP)
 check('the press after a restore rolls a new palette',
   second.storedSeed !== first, `${first} -> ${second.storedSeed}`)
-await evalJs(diceClick)
-await new Promise((r) => setTimeout(r, 400))
-const third = await evalJs(SNAP)
-check('two consecutive presses give two different palettes',
-  third.storedSeed !== second.storedSeed, `${second.storedSeed} -> ${third.storedSeed}`)
-
-// 7c. With nothing stored there is nothing to restore, so the first press from
-// funky must still roll. readSeed() returns null here and the ?? falls through;
-// this is the check that the empty-storage case needs no branch of its own.
-await evalJs(`localStorage.clear()`)
-await goto(ORIGIN + '/')
-const virgin = await evalJs(SNAP)
-check('a first-ever visitor sees funky with no stored seed',
-  virgin.theme === 'funky' && !virgin.storedSeed, `theme=${virgin.theme} seed=${virgin.storedSeed}`)
-check('dice is labelled a roll when there is nothing stored',
-  virgin.diceLabel === 'Roll a new palette', `title="${virgin.diceLabel}"`)
-await evalJs(diceClick)
-await new Promise((r) => setTimeout(r, 400))
-const afterVirgin = await evalJs(SNAP)
-check('dice rolls on a first-ever press rather than no-opping',
-  afterVirgin.theme === 'random' && +afterVirgin.storedSeed > 0 && !!afterVirgin.inlineBg,
-  `theme=${afterVirgin.theme} seed=${afterVirgin.storedSeed} bg="${afterVirgin.inlineBg}"`)
 
 // 8. The alpha-composited accent utilities. These are the one family the
 // generator cannot bound -- it picks colours, and these are composites of one --
