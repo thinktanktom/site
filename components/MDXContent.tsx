@@ -124,20 +124,45 @@ const components = {
   // Inline annotation: the phrase is set in --accent with a solid accent
   // underline, followed by an accent superscript that refers to a numbered note
   // in the <Notes> block at the foot of the post.
+  //
+  // The phrase and its marker together are one <a> pointing at #note-N, and the
+  // note's number points back at #ref-N. The round trip is plain HTML anchors —
+  // no JavaScript, no history API, no scroll listener — so it works in the
+  // static export and with JS off. The whole phrase is the hit target rather
+  // than the ~6px superscript, which carries one constraint: an Annotated
+  // phrase must NOT contain a markdown link, because that nests <a> inside <a>.
+  // The parser drops the inner one and the annotation stops working.
+  //
+  // The .annot / .annot-phrase / .annot-note classes carry the styling and the
+  // scroll-margin that clears the fixed nav; see globals.css for why they are
+  // real classes rather than the equivalent Tailwind utility strings.
+  //
+  // NO aria-label on this one, deliberately. An aria-label REPLACES a link's
+  // text as its accessible name, and this link's text is a phrase in the middle
+  // of a sentence — labelling it "Jump to note 1" deletes the phrase from the
+  // prose for anyone using a screen reader, leaving a hole in the paragraph. An
+  // sr-only suffix adds the cue instead of overwriting the sentence, which is
+  // the same pattern /about already uses for "(opens in new tab)".
   Annotated: ({ n, children }: { n: number; children?: React.ReactNode }) => (
-    <>
-      <span className="text-accent underline underline-offset-4">{children}</span>
-      <span className="text-accent">{superscripts[n] ?? n}</span>
-    </>
+    <a id={`ref-${n}`} href={`#note-${n}`} className="annot">
+      <span className="annot-phrase">{children}</span>
+      {superscripts[n] ?? n}
+      <span className="sr-only"> (see note {n})</span>
+    </a>
   ),
   Notes: (props: { children?: React.ReactNode }) => (
     <div className="mt-16 pt-6 border-t border-border">
       <div className="font-mono text-xs leading-relaxed space-y-1">{props.children}</div>
     </div>
   ),
+  // The back-link DOES take an aria-label: its text is a bare "1.", which is
+  // not prose and means nothing read aloud on its own, so there is no sentence
+  // to damage by naming it.
   Note: ({ n, children }: { n: number; children?: React.ReactNode }) => (
-    <p>
-      <span className="text-accent">{n}.</span>
+    <p id={`note-${n}`} className="annot-note">
+      <a href={`#ref-${n}`} className="annot" aria-label={`Back to annotation ${n} in the text`}>
+        {n}.
+      </a>
       <span className="text-muted"> {children}</span>
     </p>
   ),

@@ -324,12 +324,13 @@ a real browser, live in `scripts/` and run against a built export:
 |---|---|
 | `node scripts/e2e-palette.mjs` | 32 checks: the switcher has exactly 2 buttons, the palette is actually painted, a reload restores it pre-paint, switching back to funky *removes* the inline properties, the mark's ink follows `--accent`, a stale cache recovers from the seed with React state in step |
 | `node scripts/e2e-palette-mobile.mjs` | the overlay control fits at 375px and 390px, no horizontal overflow, picking a theme does not close the overlay |
+| `node scripts/e2e-annotations.mjs` | 206 checks: every annotation round-trips to its note and back, both ends land **clear of the fixed nav** rather than under it, the phrase (not the superscript) is the hit target, the phrase survives into the accessible name with an additive `sr-only` cue and **no** `aria-label`, ids are unique and paired, no nested `<a>`. Covers the MDX components on a post *and* the hand-rolled copy on `/about` |
 
 Build first — they serve `out/`, not a dev server. Chromium comes from nixpkgs
-(`nix run nixpkgs#chromium`); **Playwright's bundled Chromium cannot run on NixOS**. Neither script
+(`nix run nixpkgs#chromium`); **Playwright's bundled Chromium cannot run on NixOS**. No script
 installs anything; they drive CDP over Node's built-in `WebSocket`.
 
-If you write another browser harness, four traps already paid for:
+If you write another browser harness, six traps already paid for:
 
 - Use an **absolute** static root. A relative `'out'` resolves against `process.cwd()`, so running
   from another directory serves 404s — and the browser renders the 404 body with the right URL and
@@ -340,6 +341,14 @@ If you write another browser harness, four traps already paid for:
 - `nix run` makes Chromium a **grandchild** — launch `detached` and kill the process *group*, or it
   leaks and holds its port.
 - **Poll, don't sleep.** `location.href` updates when a navigation commits, before the body parses.
+- **Wait for a smooth scroll to settle before measuring.** `html` has `scroll-behavior: smooth`, so
+  the scroll is still in flight when `.click()` returns and an immediate `getBoundingClientRect()`
+  reads the *old* position — which passes for the wrong reason. `e2e-annotations.mjs` polls
+  `window.scrollY` until it holds the same value across three consecutive samples.
+- **Never fake a regression by mutating `out/*.html`.** React hydrates from the RSC flight payload
+  inlined beside the markup and restores the correct DOM, so the mutation vanishes before any
+  assertion runs and a broken check looks like a passing one. This cost two invalid negative
+  controls. Mutate the **source** and rebuild.
 
 ---
 
@@ -501,23 +510,67 @@ The <Annotated n={1}>JavaScript, HTML and CSS boilerplate</Annotated> I once wro
 
 The styling is settled — **do not redesign it**:
 
-- **The phrase is highlighted**: set in `--accent` with a **solid** underline —
-  `text-accent underline underline-offset-4`. Never dotted or dashed: a perforated underline was
-  explicitly rejected. Never bare/undecorated either — the accent highlight is the point.
-  Known limitation, accepted: a `random` palette whose accent comes out close to neutral sets an
-  annotated phrase apart mainly by its underline, so it reads much like an inline link. The chroma
-  floor bounds how often that happens; it is not a styling bug — leave it alone. (This used to be
-  unavoidable in the black-and-white `dark` and `light` themes, which no longer exist.)
+- **The phrase is highlighted**: set in `--accent` with a **solid** underline. Since 2026-10-16 this
+  is carried by **two real classes in `globals.css`, not Tailwind utilities** — `.annot` (accent,
+  hover to `--accent-dim`, `scroll-margin-top`) on the wrapping `<a>`, and `.annot-phrase`
+  (underline, 4px offset) on the phrase `<span>` inside it. Identical pixels to the former
+  `text-accent underline underline-offset-4` span. They are classes because Next inlines the RSC
+  flight payload beside the markup, so a utility string is emitted **four times per annotation** —
+  measured at 536 raw / 79 gzip bytes per annotation against 323 / 60 for the class form, on an
+  8-annotation post. Don't "modernise" them back into utilities. Never dotted or dashed: a
+  perforated underline was explicitly rejected. Never bare/undecorated either — the accent
+  highlight is the point.
+  Known limitation, **downgraded on 2026-10-16**: a `random` palette whose accent comes out close
+  to neutral sets an annotated phrase apart mainly by its underline, so it reads much like an
+  inline link. Since the phrase *is* a link now, that is no longer a wrong signal, only an
+  ambiguous one — it points at a note rather than off-site. Still not a styling bug; leave it
+  alone. (This used to be worse in the black-and-white `dark` and `light` themes, which no longer
+  exist.)
 - **Use the `--accent` token**, not a hex copied out of a logo file. The funky logo assets do not
   agree with each other on the yellow — they differ by a couple of percent, and from the token — so a
   hex lifted from whichever file you happened to open will be subtly wrong somewhere else. The token
   is the single source of truth, and it keeps an annotated phrase matching its own superscript marker.
-- **Marker**: a Unicode superscript (`¹²³⁴`) in `--accent` straight after the phrase, no space, not
-  a link.
+- **Marker**: a Unicode superscript (`¹²³⁴`) in `--accent` straight after the phrase, no space.
+  **Amended 2026-10-16: the marker is now part of a link.** It used to be specified as "not a
+  link"; Tom asked for click-to-note, so the phrase and the marker together are the anchor. The
+  *appearance* the old rule protected is unchanged — the marker is still an unlinked-looking accent
+  superscript with no underline of its own, because only the inner phrase span carries `underline`.
+- **The jump is a two-way plain-HTML round trip**, added 2026-10-16. The phrase+marker is
+  `<a id="ref-N" href="#note-N" class="annot">`; the note's `N.` is `<a href="#ref-N" class="annot">`
+  and its `<p>` carries `id="note-N"` and `.annot-note`. No JavaScript, no history API, no scroll
+  listener — it works in the static export and with JS off, at 323 raw / 60 gzip bytes per
+  annotation (most of which is the ids, the hrefs and the screen-reader cue below) plus a one-off
+  +347 raw / +83 gzip in the stylesheet. Four things hold it together:
+  - **`scroll-margin-top: var(--anchor-offset)` on both ends**, where `--anchor-offset` is `6rem`,
+    declared on the `html` rule in `globals.css`. The nav is `fixed` at `h-16` (4rem), so without a
+    scroll margin the jump lands *under* the bar — the URL says you arrived and the target is
+    hidden. 4rem of nav + 2rem of air. **If the nav height changes, this is the one number to
+    change with it.** It is deliberately *not* in a second `:root` block: `:root` is `html` so it
+    inherits identically, and both this file's convention and the CSS cross-check in
+    `lib/palette/__tests__/calibration.test.ts` (which finds the palette by the **first** `:root {`
+    in the file) treat the one `:root` block as the single palette token block.
+  - **`html { scroll-behavior: smooth }`** in `globals.css` does the gliding. It has to be on the
+    scrolling element; on the target it does nothing. The existing `prefers-reduced-motion` block
+    already forces it back to `auto`, and Next's router suspends it for its own scroll-to-top, so
+    route changes stay instant.
+  - **No `aria-label` on the forward link. This is load-bearing, not an omission.** An `aria-label`
+    *replaces* a link's text as its accessible name, and that text is a phrase in the middle of a
+    sentence — so labelling it `"Jump to note 1"` **deletes the phrase from the paragraph** for
+    anyone using a screen reader, leaving a hole in the prose. The cue is additive instead: a
+    `<span class="sr-only"> (see note N)</span>` after the marker, the same pattern `/about`
+    already uses for `"(opens in new tab)"`. The **back**-link does take an `aria-label`, because
+    its text is a bare `"1."` which means nothing read aloud and there is no sentence to damage.
+    `scripts/e2e-annotations.mjs` asserts both halves; the negative control is in its header.
+  - **An `Annotated` phrase must never contain a markdown link.** The whole phrase is the hit
+    target (deliberately — not the ~6px superscript), so a link inside it nests `<a>` in `<a>` and
+    the parser drops the inner one. Annotate around a link, not over one.
+  The only *new* pixel in the feature is the hover: `.annot:hover` goes to `--accent-dim`, the
+  documented hover state for accent, purely as a click affordance.
 - **Notes block** at the foot of the post, matching the `/about` footnotes exactly: wrapper
   `pt-6 border-t border-border`, inner `font-mono text-xs leading-relaxed space-y-1`, each note an
-  accent `N.` followed by muted text. (`/about` hand-rolls the same markup inline — if the
-  annotation style changes, change both.)
+  accent `N.` (now the back-link) followed by muted text. (`/about` hand-rolls the same markup
+  inline, anchor round trip included — if the annotation style changes, change both. It was kept in
+  sync on 2026-10-16.)
 - Keep the note text as written in the draft; don't pad it out. A bare author credit or a one-line
   aside is the intended register.
 

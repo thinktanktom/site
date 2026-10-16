@@ -52,6 +52,70 @@ body {
   transition: background-color 200ms ease, color 200ms ease;
 }
 
+/* In-page anchor jumps glide instead of teleporting, so a reader following an
+   annotation marker down to its note (and the note's number back up again) can
+   see which way the page moved and roughly how far. This has to sit on the
+   scrolling element: scroll-behavior on the jump *target* does nothing.
+   The reduced-motion block below forces it back to `auto`, and Next's router
+   suspends it for its own scroll-to-top, so route changes stay instant. */
+html {
+  scroll-behavior: smooth;
+
+  /* How far an anchor jump stops short of the top. The nav is `fixed` at h-16
+     (4rem), and without a scroll margin a jump lands UNDERNEATH it: the URL
+     says you arrived but the target is hidden behind the bar. 4rem of nav plus
+     2rem of breathing room. If the nav height changes, this is the one number
+     to change with it.
+
+     Deliberately declared here and not in a second `:root` block — `:root` IS
+     html, so this inherits identically, and CLAUDE.md (plus the CSS
+     cross-check in lib/palette/__tests__/calibration.test.ts, which finds the
+     palette by the FIRST `:root {` in this file) treats the one `:root` block
+     above as the single palette token block. */
+  --anchor-offset: 6rem;
+}
+
+/* ---- Annotation anchors -------------------------------------------------
+   The #ref-N <-> #note-N round trip behind the Annotated / Note components in
+   components/MDXContent.tsx, and the hand-rolled copy of the same markup in
+   the /about footnotes. Pure HTML anchors: no JavaScript, no history API, no
+   scroll listener, so they work in the static export and with JS off.
+
+   These are real classes rather than the equivalent Tailwind utility strings
+   (`text-accent hover:text-accent-dim transition-colors duration-200
+   scroll-mt-24`) because that string would otherwise be repeated per
+   annotation in BOTH the rendered HTML and the RSC flight payload Next inlines
+   beside it — four copies of ~90 characters each. Measured on the 8-annotation
+   post /writing/god-in-a-bottle: the utility form added 4,288 raw / 629 gzip
+   bytes to the page (536 / 79 per annotation), the class form adds 2,584 raw /
+   487 gzip (323 / 60 per annotation), against +347 raw / +83 gzip once in this
+   stylesheet. Same pixels, and the styling now lives in one place rather than
+   being restated at each of the two call sites. What is left is mostly the
+   ids, the hrefs and the sr-only cue, which are the feature.
+   --anchor-offset is declared on `html` above. */
+.annot {
+  color: rgb(var(--accent));
+  transition: color 200ms ease;
+  scroll-margin-top: var(--anchor-offset);
+}
+
+/* Hover is the click affordance — accent-dim is the documented hover state for
+   accent, so this stays inside the palette and follows a random one. */
+.annot:hover {
+  color: rgb(var(--accent-dim));
+}
+
+/* The phrase carries the underline; the superscript marker deliberately does
+   not. CLAUDE.md: solid, never dotted or dashed, never bare. */
+.annot-phrase {
+  text-decoration-line: underline;
+  text-underline-offset: 4px;
+}
+
+.annot-note {
+  scroll-margin-top: var(--anchor-offset);
+}
+
 a {
   color: inherit;
   text-decoration: none;
