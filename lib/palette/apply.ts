@@ -53,9 +53,8 @@ export function applyPalette(
 /**
  * Remove every property applyPalette set.
  *
- * Required when switching back to funky, dark or light: inline styles beat the
- * stylesheet, so leaving them in place would pin the named theme to the last
- * random palette.
+ * Required when switching back to funky: inline styles beat the stylesheet, so
+ * leaving them in place would pin funky to the last random palette.
  */
 export function clearPalette(el: HTMLElement = document.documentElement): void {
   for (const name of TOKEN_NAMES) {

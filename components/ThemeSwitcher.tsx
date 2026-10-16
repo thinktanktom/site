@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Zap, Moon, Sun, Dices } from 'lucide-react'
+import { Zap, Dices } from 'lucide-react'
 import { generate } from '@lib/palette/generate'
 import {
   THEME_KEY,
@@ -13,12 +13,13 @@ import {
 } from '@lib/palette/apply'
 
 
-export type Theme = 'funky' | 'dark' | 'light' | 'random'
+export type Theme = 'funky' | 'random'
 
+/* Two themes: funky, the brand default held by :root, and random, generated at
+   runtime from a seed. The dice is LAST on purpose -- both e2e harnesses reach
+   it as b[b.length - 1]. */
 const themes = [
   { id: 'funky' as Theme, Icon: Zap, label: 'Funky' },
-  { id: 'dark' as Theme, Icon: Moon, label: 'Dark' },
-  { id: 'light' as Theme, Icon: Sun, label: 'Light' },
   { id: 'random' as Theme, Icon: Dices, label: 'Random' },
 ]
 
@@ -45,9 +46,9 @@ export default function ThemeSwitcher({
   useEffect(() => {
     const read = () => {
       const t = document.documentElement.dataset.theme
-      setTheme(
-        t === 'dark' || t === 'light' || t === 'random' ? t : 'funky',
-      )
+      // Anything that is not 'random' reads as funky, which mirrors both the
+      // pre-paint script's validation and what :root actually renders.
+      setTheme(t === 'random' ? 'random' : 'funky')
     }
     read()
 
@@ -95,9 +96,8 @@ export default function ThemeSwitcher({
     if (next === 'random') {
       // The dice ALWAYS rolls a new palette, whether or not random is already
       // active — pressing a dice and getting the palette you already had is not
-      // what a dice means. Getting a previous look back is what the three named
-      // themes are for. (A reload is different: that restores the stored seed,
-      // because a page load is not a press.)
+      // what a dice means. (A reload is different: that restores the stored
+      // seed, because a page load is not a press.)
       const palette = generate(randomSeed())
       applyPalette(palette.tokens, palette.polarity)
       persistPalette(palette)
@@ -105,8 +105,8 @@ export default function ThemeSwitcher({
         `${palette.polarity} palette applied, seed ${palette.seed}`,
       )
     } else {
-      // Inline custom properties beat the stylesheet, so a named theme cannot
-      // take effect until the random palette's properties are removed.
+      // Inline custom properties beat the stylesheet, so funky cannot take
+      // effect until the random palette's properties are removed.
       clearPalette()
       setAnnouncement('')
       try {
@@ -120,15 +120,22 @@ export default function ThemeSwitcher({
     setTheme(next)
   }
 
-  /* The full variant is a 2x2 GRID, not a row, and that is a measured
+  /* The full variant is a GRID, not a flex row, and that stays a measured
      constraint rather than a preference. It is used once -- in the mobile
-     overlay, inside a w-64 (256px) box -- and four labelled buttons in one row
-     measure 417px of content. flex-1 does not rescue it, because a flex item's
-     default min-width is auto, so the buttons refuse to shrink below their
-     label and simply spill outside the pill and off-screen. (Three buttons
-     already overflowed at 304px before this theme was added; the fourth is what
-     made it visible.) Two columns give each button ~120px for ~100px of
-     content, measured at both 375px and 390px. */
+     overlay, inside a w-64 (256px) box. With two themes grid-cols-2 is a single
+     row of two: measured at 121x36px per button, 254px of content inside the
+     256px box, with no label clipped and no text wrap, at both 375px and 390px
+     (node scripts/e2e-palette-mobile.mjs, which prints buttonBoxes every run --
+     re-read it there rather than trusting this comment).
+
+     Why a grid and not a row, kept because the reason outlived the bug: a flex
+     item's default min-width is auto, so these labelled buttons will not shrink
+     below their own label -- flex-1 does not rescue them -- and instead of
+     compressing they spill outside the pill and off-screen. That is how it
+     actually failed when there were four of them (417px of content in the 256px
+     box; three already overflowed at 304px and merely hid behind the rounded
+     border). The grid assigns each cell a width instead of asking the content to
+     yield, so it cannot fail that way whatever the button count. */
   const wrapper =
     variant === 'full'
       ? 'grid grid-cols-2 gap-1 rounded-2xl border border-border p-1'

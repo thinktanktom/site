@@ -95,10 +95,14 @@ export default function Nav({ wordmark }: NavProps) {
               pill was in this row: wordmark + 5 tracked uppercase links + the
               switcher + the pill needed more width than lg gives, and an
               earlier lg measurement that said otherwise had been taken with
-              scrollbars hidden. Without the pill the row is 643px against the
-              961px lg leaves after padding and a classic scrollbar — 94px of
-              clearance, measured in a browser. Below lg the full-screen
-              overlay carries the navigation and the theme control. */}
+              scrollbars hidden. Without the pill the row measured 643px against
+              the 961px lg leaves after padding and a classic scrollbar — 94px of
+              clearance, measured in a browser. That was with a four-button
+              switcher; dropping the dark and light buttons only widened the
+              clearance, so the breakpoint still holds and `lg` is still the
+              right one. (The e2e harness asserts nav scrollWidth === clientWidth
+              rather than trusting this number.) Below lg the full-screen overlay
+              carries the navigation and the theme control. */}
           <div className="hidden lg:flex items-center gap-6">
             {navLinks.map(({ href, label }) => (
               <Link

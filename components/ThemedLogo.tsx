@@ -25,14 +25,16 @@ type Role = {
      below is computed from this rather than typed out, so the number the layout
      maths uses and the number the artwork is drawn on cannot drift apart. */
   viewBox: string
-  /* Single-fill asset used as the ALPHA MASK for the `random` variant. Any of
-     the mono exports would do — only their alpha matters, not their ink. */
+  /* Single-fill asset used as the ALPHA MASK for the `random` variant. These are
+     the `*_light-primary.svg` exports, which no longer render as images of their
+     own — only their alpha matters here, never their ink, so do not delete them
+     as "the light theme's files". */
   maskSrc: string
-  /* viewBox width / viewBox height, shared by every variant of the role.
-     INVARIANT: all variants of a role carry the SAME viewBox and the SAME
-     path sequence in the same coordinates — only the ink differs, so one
-     viewBox means the element box AND the ink land on the same pixels in every
-     theme.
+  /* viewBox width / viewBox height, shared by the file variant and the mask.
+     INVARIANT: the funky file and the mask asset carry the SAME viewBox and the
+     SAME path sequence in the same coordinates — only the ink differs, and the
+     mask reads no ink at all, so one viewBox means the element box AND the
+     artwork land on the same pixels in both themes.
 
      Measured caveat, so the claim above is not read as more exact than it is:
      the masked element resolves 0.062px TALLER than the <img> in the wordmark
@@ -40,20 +42,21 @@ type Role = {
      but <img> then has preflight's height:auto and the UA's attr()-based
      aspect-ratio applied on top, which re-derives its height from the ROUNDED
      width/height, while an explicitly sized span keeps what it was given.
-     Verified across all four themes on / and /about: nothing reflows — the h1
-     top, the footer icon top and document scrollHeight are byte-identical in
-     every theme — and the other two roles are exact (96×96, 24×24, 400×225). The screen stays a transparent cutout in every variant; a theme
-     that fills it is a theme whose mark no longer matches the others.
+     Verified on / and /about: nothing reflows — the h1 top, the footer icon top
+     and document scrollHeight are byte-identical in both themes — and the other
+     two roles are exact (96×96, 24×24, 400×225). The screen stays a transparent
+     cutout in the file and in the mask asset alike; filling it breaks the match.
 
-     This is load-bearing, and the history says why. The dark/light exports
-     originally shipped cropped tight to the ink while funky's masters carry
-     padding, so sizing each file by its own aspect drew the mark ~8% (icon)
-     and ~26% (stacked logo) too large outside funky. The first fix kept the
-     mismatched assets and scaled each variant down by its ink/canvas fraction.
-     That equalised the ink but left the element boxes different sizes, which
-     reflowed every container that does not reserve a fixed height — /about
-     collapsed 45.83px and moved the whole page with it — and could not fix
-     position anyway, because funky's padding is vertically ASYMMETRIC (icon
+     This is load-bearing, and the history says why — and it still is, because
+     the mask assets are the very exports that caused it. The `*-mono` and
+     `*-primary` exports originally shipped cropped tight to the ink while funky's
+     masters carry padding, so sizing each file by its own aspect drew the mark
+     ~8% (icon) and ~26% (stacked logo) too large outside funky. The first fix
+     kept the mismatched assets and scaled each variant down by its ink/canvas
+     fraction. That equalised the ink but left the element boxes different sizes,
+     which reflowed every container that does not reserve a fixed height —
+     /about collapsed 45.83px and moved the whole page with it — and could not
+     fix position anyway, because funky's padding is vertically ASYMMETRIC (icon
      top 89.45 vs bottom 68.95 user units; stacked 123 vs 97), so a centred
      tight crop still sat 1.58px high in the hero. Normalising the viewBoxes
      removes both failures at the source instead of compensating for them.
@@ -62,27 +65,29 @@ type Role = {
      trusting it; a tight crop sneaking back in is exactly the old bug.
      `node components/logo/extract-paths.mjs` asserts the inline geometry's
      viewBox against funky's master and refuses to write if they diverge — it
-     cannot check the dark/light *files*, so those still need eyes. */
+     cannot check the mask *files*, so those still need eyes. */
   aspect: number
-  /* the themes whose mark is a prebuilt, fill-baked SVG file */
+  /* the funky mark: a prebuilt, fill-baked SVG file. One entry per role — kept
+     as a list because `.only-*` visibility is what selects it, not a branch. */
   variants: Variant[]
 }
 
 /*
- * Theme-aware logo marks — a deliberate dual path.
+ * Theme-aware logo marks — a deliberate dual path. There are two themes, so
+ * each role renders exactly two things: ONE funky file and ONE masked span.
  *
- * `funky` / `dark` / `light`: ASSET SWAP. Every variant is rendered and CSS
- * reveals exactly one (`.only-funky` / `.only-dark` / `.only-light` toggle
- * `display`). These stay as files on purpose, not out of inertia: funky's
- * `ttt_logo_full.svg` is the one mark with THREE inks (#E1F708 computer,
- * #F6F4F1 and #FFFFFF wordmark/tagline). Routing it through a single-ink
- * inline mark would flatten all three to one colour, which is a visible
- * regression on /about. Do not "unify" the four variants onto the inline path.
+ * `funky`: FILE. The prebuilt, fill-baked SVG, revealed by `.only-funky`
+ * (which toggles `display`). It stays a file on purpose, not out of inertia:
+ * funky's `ttt_logo_full.svg` is the one mark with THREE inks (#E1F708
+ * computer, #F6F4F1 and #FFFFFF wordmark/tagline). Routing it through a
+ * single-ink mask or inline mark would flatten all three to one colour, which
+ * is a visible regression on /about. Do not "unify" the two paths.
  *
  * `random`: CSS MASK. The palette is generated at runtime, so no file can carry
  * its fill. `.only-random` reveals an empty element painted with
- * `background-color: rgb(var(--accent))` and masked by one of the mono SVGs, so
- * the artwork becomes a stencil and the token supplies the colour.
+ * `background-color: rgb(var(--accent))` and stencilled by a single-fill SVG
+ * (`role.maskSrc`), so the artwork becomes a hole-punch and the token supplies
+ * the colour.
  *
  * This is NOT the forbidden "recolour a mark" — nothing is filtered or
  * hue-shifted, and the file contributes only its alpha. It replaced an inline
@@ -109,11 +114,7 @@ const ICON: Role = {
   viewBox: ICON_VIEWBOX,
   maskSrc: '/ttt_icon_light-primary.svg',
   aspect: aspectOf(ICON_VIEWBOX),
-  variants: [
-    { only: 'only-funky', src: '/ttt_icon.svg' },
-    { only: 'only-dark', src: '/ttt_icon_dark-mono.svg' },
-    { only: 'only-light', src: '/ttt_icon_light-primary.svg' },
-  ],
+  variants: [{ only: 'only-funky', src: '/ttt_icon.svg' }],
 }
 
 const WORDMARK_VIEWBOX = '0 0 1339.99 191.14'
@@ -121,11 +122,7 @@ const WORDMARK: Role = {
   viewBox: WORDMARK_VIEWBOX,
   maskSrc: '/ttt_horizontal_light-primary.svg',
   aspect: aspectOf(WORDMARK_VIEWBOX),
-  variants: [
-    { only: 'only-funky', src: '/ttt_side_no_byline_logo.svg' },
-    { only: 'only-dark', src: '/ttt_horizontal_dark-mono.svg' },
-    { only: 'only-light', src: '/ttt_horizontal_light-primary.svg' },
-  ],
+  variants: [{ only: 'only-funky', src: '/ttt_side_no_byline_logo.svg' }],
 }
 
 const LOGO_FULL_VIEWBOX = '0 0 1920 1080'
@@ -133,11 +130,7 @@ const LOGO_FULL: Role = {
   viewBox: LOGO_FULL_VIEWBOX,
   maskSrc: '/ttt_stacked-tagline_light-primary.svg',
   aspect: aspectOf(LOGO_FULL_VIEWBOX),
-  variants: [
-    { only: 'only-funky', src: '/ttt_logo_full.svg' },
-    { only: 'only-dark', src: '/ttt_stacked-tagline_dark-mono.svg' },
-    { only: 'only-light', src: '/ttt_stacked-tagline_light-primary.svg' },
-  ],
+  variants: [{ only: 'only-funky', src: '/ttt_logo_full.svg' }],
 }
 
 function ThemedLogo({
@@ -147,10 +140,10 @@ function ThemedLogo({
   className,
   alt = 'thinktanktom',
 }: ThemedLogoProps & { role: Role }) {
-  /* ONE size for every variant, computed once from the one role aspect. Every
-     variant — the three files and the masked element — is handed this same
-     pair, which is what makes the element boxes identical and the theme switch
-     a pure repaint instead of a reflow. */
+  /* ONE size for both variants, computed once from the one role aspect. The
+     funky file and the masked element are handed the same pair, which is what
+     makes their element boxes identical and the theme switch a pure repaint
+     instead of a reflow. */
   const size =
     height === undefined
       ? { width: width as number, height: Math.round((width as number) / role.aspect) }
@@ -167,15 +160,15 @@ function ThemedLogo({
             {...size}
             className="object-contain"
             unoptimized
-            /* No variant preloads. Only one is ever visible, but the theme
-               is not known at build time, so marking any of them `priority`
-               makes that one eager + preloaded in EVERY theme — the funky
-               assets were being downloaded for dark and light readers and
-               rendered hidden. The hidden variants are display:none, so a
-               lazy image inside them is never requested at all, and the
-               visible one is in the viewport and loads at layout. Measured:
-               under Fast-3G the LCP element is the h1, gated by the webfont,
-               not the mark — so there is nothing here worth preloading. */
+            /* Deliberately no `priority`. The theme is not known at build
+               time, so marking this eager + preloaded would fetch the funky
+               asset for random-theme readers too and render it hidden — the
+               exact regression this note was written for, back when there were
+               more variants to hide. It is display:none in random, so a lazy
+               image is never requested at all, and in funky it is in the
+               viewport and loads at layout. Measured: under Fast-3G the LCP
+               element is the h1, gated by the webfont, not the mark — so there
+               is nothing here worth preloading. */
           />
         </div>
       ))}
