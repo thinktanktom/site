@@ -42,13 +42,24 @@ export default function ThemeSwitcher({
      anything happened. The seed is included because it is the one thing that
      distinguishes one palette from another and is what makes it reproducible. */
   const [announcement, setAnnouncement] = useState('')
+  /* Whether the NEXT dice press will restore rather than roll, used only to
+     name the button. Starts false so the server render and the first client
+     render agree; the effect below corrects it. `select()` deliberately does
+     not consult this -- it re-reads the DOM and storage itself, because a
+     stale boolean choosing between restore and roll would be a real bug,
+     where a stale tooltip is cosmetic. */
+  const [diceRestores, setDiceRestores] = useState(false)
 
   useEffect(() => {
     const read = () => {
       const t = document.documentElement.dataset.theme
       // Anything that is not 'random' reads as funky, which mirrors both the
       // pre-paint script's validation and what :root actually renders.
-      setTheme(t === 'random' ? 'random' : 'funky')
+      const isRandom = t === 'random'
+      setTheme(isRandom ? 'random' : 'funky')
+      // Mirrors select()'s own test exactly: restore only when random is not
+      // live AND there is something stored to restore.
+      setDiceRestores(!isRandom && readSeed() !== null)
     }
     read()
 
@@ -75,6 +86,15 @@ export default function ThemeSwitcher({
         // "Re-roll", and the next press restores the stored seed instead of
         // re-rolling.
         setTheme('random')
+        /* Same reason, and it is not theoretical: read() above saw funky WITH a
+           stored seed, so it set this true, and no mutation record ever arrives
+           to correct it. The dice then advertised "Restore your last palette"
+           on a page that had just recovered INTO random, where the next press
+           rolls. Caught by e2e-palette.mjs's 'recovery relabels the dice as a
+           re-roll' check. It was only ever the label that was wrong -- select()
+           re-reads the DOM rather than trusting this flag, which is why the
+           press itself still rolled correctly. */
+        setDiceRestores(false)
       }
     } catch {
       // localStorage throws outright in some privacy modes — funky is already
@@ -94,15 +114,39 @@ export default function ThemeSwitcher({
 
   const select = (next: Theme) => {
     if (next === 'random') {
-      // The dice ALWAYS rolls a new palette, whether or not random is already
-      // active — pressing a dice and getting the palette you already had is not
-      // what a dice means. (A reload is different: that restores the stored
-      // seed, because a page load is not a press.)
-      const palette = generate(randomSeed())
+      /* The dice RESTORES on the way in and ROLLS once random is already live.
+         So a reader who picked a palette, wandered off to funky and came back
+         gets their palette back rather than a stranger's; pressing again from
+         there rolls, and every roll overwrites what is stored.
+
+         Liveness is read from the DOM attribute, never from the `theme` state
+         above: that state starts null and is only filled in by an effect, so a
+         press that lands before it resolves would restore where it should roll.
+         The attribute is the single source of truth everywhere else in this
+         file (the MutationObserver follows it, the pressed visual is CSS keyed
+         on it), and this is no exception.
+
+         A first-ever visitor has no stored seed, so readSeed() is null and the
+         ?? falls through to a roll — the empty-storage case needs no branch of
+         its own. The consequence accepted deliberately: there is no longer any
+         single press that yields a FRESH palette from funky. You get your old
+         one back, then press again. A reload and a first press now do the same
+         thing, which is the more coherent model than the split that was here
+         before. */
+      const live = document.documentElement.dataset.theme === 'random'
+      const restored = live ? null : readSeed()
+      const palette = generate(restored ?? randomSeed())
       applyPalette(palette.tokens, palette.polarity)
       persistPalette(palette)
+      /* Re-rolling does not move aria-pressed, so this live region is the only
+         feedback a screen-reader user gets. It has to distinguish the two
+         actions: "applied" for a palette they have never seen and "restored"
+         for the one they left, or the announcement is indistinguishable from a
+         roll that happened to be ignored. */
       setAnnouncement(
-        `${palette.polarity} palette applied, seed ${palette.seed}`,
+        restored === null
+          ? `${palette.polarity} palette applied, seed ${palette.seed}`
+          : `${palette.polarity} palette restored, seed ${palette.seed}`,
       )
     } else {
       // Inline custom properties beat the stylesheet, so funky cannot take
@@ -164,9 +208,20 @@ export default function ThemeSwitcher({
             type="button"
             onClick={() => select(id)}
             aria-pressed={pressed}
-            // The dice's action does not change once it is pressed: it always
-            // rolls. So its name says that in every state.
-            title={isRandom ? 'Roll a new palette' : `${label} theme`}
+            /* The dice's action is now state-dependent -- it restores on the
+               way in and rolls once random is live -- so its name has to say
+               which one it will do. `diceRestores` is React state, so this is
+               one frame behind on first paint; that is acceptable for a name
+               (there is no click handler before hydration either) and it costs
+               no hydration mismatch, because the server and the first client
+               render agree on false. */
+            title={
+              isRandom
+                ? diceRestores
+                  ? 'Restore your last palette'
+                  : 'Roll a new palette'
+                : `${label} theme`
+            }
             // The pressed *visual* is driven from CSS off html[data-theme],
             // not from React state, so the active theme reads correctly on the
             // very first paint and with JS disabled. `.theme-btn-*` rules live
@@ -180,7 +235,11 @@ export default function ThemeSwitcher({
               <span>{label}</span>
             ) : (
               <span className="sr-only">
-                {isRandom ? 'Roll a new palette' : label}
+                {isRandom
+                  ? diceRestores
+                    ? 'Restore your last palette'
+                    : 'Roll a new palette'
+                  : label}
               </span>
             )}
           </button>
