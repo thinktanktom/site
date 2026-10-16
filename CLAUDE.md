@@ -347,7 +347,7 @@ a real browser, live in `scripts/` and run against a built export:
 
 | command | what it proves |
 |---|---|
-| `node scripts/e2e-palette.mjs` | 35 checks: the switcher has exactly 2 buttons, the palette is actually painted, a reload restores it pre-paint, switching back to funky *removes* the inline properties, the mark's ink follows `--accent`, a stale cache recovers from the seed with React state in step. Also the dice's two-state action (§7b): entering random **restores** the stored seed *and* repaints the same `--bg`, the press after that rolls, and the button renames itself in all three states. **The empty-store roll has no check of its own on purpose** — section 2's press happens on cleared storage, so `dice applies a random palette` already *is* that assertion; breaking the empty-store path fails it (plus 8 downstream checks), which is what licensed dropping the duplicate. Negative-controlled the same way for the restore itself: with the old always-roll `select()` rebuilt from source, the restore check fails and the roll checks still pass |
+| `node scripts/e2e-palette.mjs` | 42 checks: the switcher has exactly 2 buttons, the palette is actually painted, a reload restores it pre-paint, switching back to funky *removes* the inline properties, the mark's ink follows `--accent`, a stale cache recovers from the seed with React state in step. Also the dice's two-state action (§7b): entering random **restores** the stored seed *and* repaints the same `--bg`, the press after that rolls, and the button renames itself in all three states. **The empty-store roll has no check of its own on purpose** — section 2's press happens on cleared storage, so `dice applies a random palette` already *is* that assertion; breaking the empty-store path fails it (plus 8 downstream checks), which is what licensed dropping the duplicate. Negative-controlled the same way for the restore itself: with the old always-roll `select()` rebuilt from source, the restore check fails and the roll checks still pass. §9 covers the **themed favicon**: funky serves the brand file, a roll repaints both `rel~="icon"` links as a tinted data URI with exactly one fill, that URI **decodes as a real image**, `apple-touch-icon` is untouched, funky puts the file back, and a reload repaints from the applied accent |
 | `node scripts/e2e-palette-mobile.mjs` | the overlay control fits at 375px and 390px, no horizontal overflow, picking a theme does not close the overlay |
 | `node scripts/e2e-annotations.mjs` | 305 checks: every annotation round-trips to its note and back, both ends land **clear of the fixed nav** rather than under it, the phrase (not the superscript) is the hit target, the phrase survives into the accessible name with an additive `sr-only` cue and **no** `aria-label`, ids are unique and paired, no nested `<a>`. The `:target` highlight lands on the right note and no other, tints to `--surface`, measures ≥4.5:1, clears itself on the back-link, and does **not** reflow the note — a `border-left` in place of the inset shadow shifts the text 3px and fails here. Covers the MDX components on a post *and* the hand-rolled copy on `/about` |
 
@@ -687,8 +687,10 @@ Every developer eventually builds their own website...
    survives, since the mask reuses an asset that already existed rather than adding another copy of
    the geometry to keep in sync.) The old "white on black — never invert it" rule still holds for
    `thinktanktom_logo.png` / `ttt_logo.png` — the raster with the black ground baked in, used only
-   as the OG/Twitter card image and the favicon. Those are consumed outside the page by social
-   scrapers and browser chrome, cannot be themed, and stay dark-ground.
+   as the **OG/Twitter card image**. That is consumed outside the page by social scrapers, cannot be
+   themed, and stays dark-ground. (This used to say "and the favicon", which was already wrong
+   before the themed favicon landed: `layout.tsx` has pointed `icon`/`shortcut`/`apple-touch-icon`
+   at `ttt_icon.svg` for some time. Corrected 2026-10-16.)
    **The funky file and the mask asset of a role must carry the same `viewBox`.** The path sequence
    is identical across them and sits in identical coordinates; only the fill differs, and the mask
    reads just the alpha. The screen is a transparent cutout in both — do not fill it. A white screen
@@ -714,12 +716,14 @@ Every developer eventually builds their own website...
    | wordmark | `ttt_side_no_byline_logo.svg` | `ttt_horizontal_light-primary.svg` |
    | full logo | `ttt_logo_full.svg` | `ttt_stacked-tagline_light-primary.svg` |
 
-   The `*_light-primary.svg` column is **mask-only** now — those files are never rendered as
-   images. They are still referenced, so **do not delete them** as part of removing the light theme;
-   only their alpha is read, which is why no fourth copy of the geometry was ever needed.
+   The `*_light-primary.svg` column is **shape-only** — nothing about these files' own colour is
+   ever read. They are still referenced, so **do not delete them** as part of removing the light
+   theme, and no fourth copy of the geometry was ever needed. Two consumers now, not one: the CSS
+   mask reads the alpha, and `ttt_icon_light-primary.svg` is additionally **fetched and tinted into
+   the themed favicon** (see below) — so that one file is no longer "never rendered as an image".
 
-   Plus `ttt_logo.png` — the dark-ground raster for OG/Twitter cards and the favicon, referenced
-   from `layout.tsx` metadata and every route's `generateMetadata`.
+   Plus `ttt_logo.png` — the dark-ground raster for OG/Twitter cards, referenced from `layout.tsx`
+   metadata and every route's `generateMetadata`.
 
    The three `*_dark-mono.svg` files became **unreferenced** when the dark theme was removed on
    2026-10-16 and are left on disk for separate untracking. Nothing should start using them.
@@ -730,12 +734,50 @@ Every developer eventually builds their own website...
    were reachable as URLs under the published export, so that was a deliberate URL-breaking change
    rather than a cleanup oversight. Do not re-add them "for completeness".
 
-8. Test mobile layout at 375px and 390px widths. Use
+8. **The browser-tab icon follows the palette** (`lib/palette/favicon.ts`, added 2026-10-16).
+   Browser chrome renders the favicon *outside* the document, so it sees no CSS custom properties,
+   `currentColor` is meaningless to it, and a static export has no server to render a per-palette
+   file. The only route is to hand the `<link>` a self-contained icon with the colour already baked
+   in and rebuild it on the client. Load-bearing details:
+
+   - **It tints the existing mask asset; it does not carry its own geometry.** `paintFavicon`
+     fetches `ttt_icon_light-primary.svg` once, memoises the source, and replaces **every** `fill`
+     with the accent. Inlining the paths into the bundle instead would cost ~2.2KB to every reader
+     including funky-only ones — the same argument CLAUDE.md already makes for the mask over an
+     inline `<svg>`. Verified: `grep` for the icon's path data finds it in **0** build chunks and
+     First Load JS is unchanged at 87.4 kB.
+   - **The fill is replaced, never substituted.** It never reads what colour the file carried, so
+     the asset stays a stencil and re-exporting it in a different colour cannot silently change the
+     favicon. §9 asserts the generated icon has exactly **one** distinct fill, so an asset that
+     gains a second ink fails loudly rather than being quietly flattened.
+   - **`encodeURIComponent` on the data URI is not optional.** The tinted SVG contains a `#` in
+     every fill; unencoded, the URI truncates at the fragment and the tab goes silently blank.
+     Negative-controlled: dropping the encoding still passes the "is a data URI" and "one fill"
+     checks and fails only the decode check — which is why §9 loads the URI into an `Image()` and
+     asserts non-zero intrinsic dimensions.
+   - **`link[rel~="icon"]` deliberately spares `apple-touch-icon`.** The `~=` match covers both
+     `rel="icon"` and `rel="shortcut icon"`; the Apple icon is an iOS home-screen bookmark captured
+     when the bookmark is made, so repainting it achieves nothing.
+   - **Three call sites, and the third is easy to miss.** `applySeed()` covers every roll, restore
+     and stale-cache recovery; the funky branch of `select()` calls `resetFavicon()` (there is no
+     stylesheet under the icon to fall back to, so it must be put back explicitly, not merely
+     un-set); and the effect calls `paintFaviconFromDocument()` **once on load**, because the
+     pre-paint script restores a cached palette without the engine running — without it the tab
+     shows the funky icon over a random page after any reload. That third call is guarded on a
+     `recovered` flag so it does not double up with the recovery path.
+   - **Deliberately async and fire-and-forget**, and deliberately *not* in the pre-paint script: a
+     tab icon is not a layout element, so arriving a few hundred ms late costs nothing visible,
+     whereas a `fetch` before first paint would be blocking work for no benefit.
+   - **What is not proven:** whether the browser repaints the tab strip. That is chrome, not DOM,
+     and headless CDP cannot read it. The decode check is the strongest available proxy and covers
+     the failure mode that would actually matter.
+
+9. Test mobile layout at 375px and 390px widths. Use
    `Emulation.setDeviceMetricsOverride` over CDP, **not** `--window-size`: headless chromium
    reported a 500px CSS viewport for both 375 and 390, so a `--window-size` check silently tests
    neither width. `node scripts/e2e-palette-mobile.mjs` does this and asserts the emulated width
    actually applied before trusting any other number.
-9. Run `next build` and fix all TypeScript errors before considering the site done
+10. Run `next build` and fix all TypeScript errors before considering the site done
 
 ---
 
