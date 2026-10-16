@@ -19,9 +19,10 @@ export default function HomePage() {
 
         <div className="relative z-10 flex flex-col items-center text-center max-w-article mx-auto">
           <div className="animate-fade-up" style={{ animationDelay: '0ms' }}>
-            {/* Every variant shares funky's square canvas, so the mark is
-                96x96 in all three themes; the fixed box is belt-and-braces
-                in case an asset is re-exported with a tighter viewBox. */}
+            {/* The funky file and the random mask share funky's square
+                canvas, so the mark is 96x96 in both themes; the fixed box is
+                belt-and-braces in case an asset is re-exported with a tighter
+                viewBox. */}
             <div className="mb-8 flex h-24 items-center justify-center">
               <TttIcon width={96} />
             </div>

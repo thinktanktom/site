@@ -32,8 +32,9 @@ describe('every seed produces a palette that passes the gates', () => {
 
     for (let seed = 1; seed <= SWEEP_SEEDS; seed++) {
       const { tokens } = generate(seed)
-      // checkChroma on: unlike the shipping themes, a *generated* accent that
-      // comes out grey is a failure — it would read as a fourth neutral.
+      // checkChroma on: unlike the achromatic calibration palettes, a
+      // *generated* accent that comes out grey is a failure — it would read as a
+      // fourth neutral.
       if (!isValid(tokens, { checkChroma: true })) {
         failures.push({ seed, misses: validate(tokens, { checkChroma: true }) })
       }

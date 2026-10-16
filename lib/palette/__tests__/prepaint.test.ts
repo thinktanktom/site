@@ -91,20 +91,25 @@ describe('the pre-paint script parses and runs', () => {
   })
 })
 
-describe('named themes', () => {
+describe('funky, the only named theme', () => {
   it('falls back to funky with nothing stored', () => {
     const r = run({})
     expect(r.theme).toBe('funky')
     expect(r.props.size).toBe(0)
   })
 
-  it.each(['dark', 'light'])('applies the %s attribute and no inline tokens', (t) => {
-    const r = run({ 'ttt-theme': t })
-    expect(r.theme).toBe(t)
+  it('applies the funky attribute and no inline tokens', () => {
+    const r = run({ 'ttt-theme': 'funky' })
+    expect(r.theme).toBe('funky')
     expect(r.props.size).toBe(0)
   })
 
-  it.each(['', 'bogus', 'RANDOM', 'funky '])(
+  /* 'dark' and 'light' are in this list on purpose, not by oversight: they were
+     page themes until they were removed, so a returning reader can still have
+     one of them in localStorage. The script validates against 'random' alone, so
+     they fall through to funky -- the self-healing outcome, and the reason no
+     migration step was needed. */
+  it.each(['', 'bogus', 'RANDOM', 'funky ', 'dark', 'light'])(
     'rejects %o and renders funky',
     (t) => {
       expect(run({ 'ttt-theme': t }).theme).toBe('funky')
@@ -112,7 +117,7 @@ describe('named themes', () => {
   )
 
   it('survives a localStorage that throws', () => {
-    const r = run({ 'ttt-theme': 'dark' }, { throwOnRead: true })
+    const r = run({ 'ttt-theme': 'random' }, { throwOnRead: true })
     expect(r.theme).toBe('funky')
     expect(r.props.size).toBe(0)
   })

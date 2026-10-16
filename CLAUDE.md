@@ -25,20 +25,28 @@ The logo (`thinktanktom_logo.png`) is a **pixel-art retro computer** with a city
 
 ### Color Palette
 
-The site has **four themes**. `funky` is the default and the brand look; `dark` is black and
-white; `light` is white and black; `random` is generated at runtime from a seed. The theme is an
-attribute on `<html>` — `data-theme="funky" | "dark" | "light" | "random"` — and `:root` holds funky,
-so an absent or unrecognised attribute renders funky.
+The site has **two themes**. `funky` is the default and the brand look; `random` is generated at
+runtime from a seed. The theme is an attribute on `<html>` — `data-theme="funky" | "random"` — and
+`:root` holds funky, so an absent or unrecognised attribute renders funky.
+
+The `dark` (black-and-white) and `light` (white-and-black) themes were **removed on 2026-10-16**,
+along with their token blocks, their `.only-*` and `.theme-btn-*` rules, their Shiki selectors, their
+light-only accent-alpha nudges and their logo `<img>` variants. A reader whose stored `ttt-theme` is
+still `dark` or `light` falls through to funky, so no migration step was needed. Two things survive
+the removal and are **not** leftovers — see the warnings below: `data-polarity`, and the `dark` /
+`light` keys in the Shiki config.
 
 `random` has **no token block in `globals.css`** and cannot have one: its nine values are generated
 by `lib/palette` and written as **inline custom properties on `<html>`**, which beat any stylesheet
 rule. Two consequences that are easy to get wrong:
 
 - Switching *away* from random must **remove** those inline properties (`clearPalette()`), not just
-  change the attribute. Leaving them pins funky/dark/light to the last random palette.
+  change the attribute. Leaving them pins funky to the last random palette.
 - Anything that needs to know which end a random palette sits at reads `data-polarity="dark" | "light"`,
   also published on `<html>`. CSS cannot branch on a generated colour, so this attribute is the only
-  way to select on it — used by the Shiki mapping and the light accent-border nudges.
+  way to select on it — used by the Shiki mapping. **`data-polarity` is the generator's own notion of
+  which end of the lightness range a palette landed on. It has nothing to do with the removed dark and
+  light page themes and must not be cleaned up with them.**
 
 Tokens are stored as **space-separated RGB channel triples, not hex**, so that Tailwind can map
 them as `rgb(var(--token) / <alpha-value>)` and the opacity modifiers already in use
@@ -60,18 +68,19 @@ fails silently.
 }
 ```
 
-`dark` and `light` redefine all nine. Both are strictly neutral (R=G=B everywhere): with the
-yellow gone, **the accent is carried by luminance instead of hue** — it takes the pure endpoint
-(`#ffffff` in dark, `#000000` in light) while `--text` sits just inside it (`#e0e0e0` / `#1f1f1f`).
-That is deliberate; do not "fix" text to pure white or black, or the accent stops reading as an
-accent. See `src/app/globals.css` for the full blocks.
+That block is the only token block in `globals.css`. The two achromatic palettes that used to join
+it — `dark` and `light`, strictly neutral (R=G=B everywhere), each taking the pure endpoint
+(`#ffffff` / `#000000`) for its accent and sitting `--text` just inside it (`#e0e0e0` / `#1f1f1f`)
+so the accent read by luminance rather than hue — live on **only** as fixtures in
+`lib/palette/__tests__/fixtures.ts`. They are the calibration reference for the randomizer's gate
+table (see below) and nothing renders them. Keep them there; do not restore them to the stylesheet.
 
-Every informational text pair clears WCAG AA (4.5:1) in all three themes. If you change a token,
-re-check it — `--muted` on `--surface` is the tightest pair at 4.78:1 in funky.
+Every informational text pair clears WCAG AA (4.5:1). If you change a token, re-check it — `--muted`
+on `--surface` is the tightest pair at 4.78:1.
 
 **Theming rules:**
 - Never hardcode a colour. Every colour goes through a token, including new ones — a raw hex or a
-  stock Tailwind colour (`green-400`) cannot follow the theme and will be wrong in two of three.
+  stock Tailwind colour (`green-400`) cannot follow the theme and will be wrong in random.
 - Theme-dependent CSS selectors must be anchored at `html[data-theme=…]`. In particular
   `rehype-pretty-code` writes its *own* `data-theme` onto every `<pre>`, so an unanchored selector
   matches the wrong element.
@@ -235,18 +244,24 @@ tags: ["tag1", "tag2"]
 
 **Desktop nav** (sticky, top bar):
 ```
-[TTT wordmark — 32px high]   Writing  Projects  Experience  Contributions  About   [⚡☾☀]  [Hire me ↗]
+[TTT wordmark — 32px high]   Writing  Projects  Experience  Contributions  About   [⚡🎲]  [Hire me ↗]
 ```
 
 **Mobile nav**: hamburger → full-screen overlay with large links, the Hire me pill, and the
 theme control last.
 
-The overlay's theme control (`ThemeSwitcher variant="full"`) is a **2×2 grid, not a row**, and that
-is measured. It sits in a `w-64` (256px) box, and four labelled buttons in one flex row measure
-417px of content; `flex-1` does not help, because a flex item's default `min-width` is `auto`, so the
-buttons refuse to shrink below their label and spill outside the pill and off-screen. Three buttons
-already overflowed at 304px, which merely hid behind the rounded border. Verify with
-`node scripts/e2e-palette-mobile.mjs` after a build.
+The overlay's theme control (`ThemeSwitcher variant="full"`) is a **grid, not a flex row**, and that
+is measured. It sits in a `w-64` (256px) box. With two themes `grid-cols-2` is one row of two,
+measured at **121×36px per button, 254px of content in the 256px box**, no label clipped and no text
+wrap, at both 375px and 390px.
+
+Keep it a grid even though two buttons now fit either way: a flex item's default `min-width` is
+`auto`, so these labelled buttons will not shrink below their own label — `flex-1` does not help —
+and they spill outside the pill and off-screen instead of compressing. That is how it actually
+failed with four buttons (417px of content in the 256px box; three already overflowed at 304px and
+merely hid behind the rounded border). A grid assigns each cell a width rather than asking the
+content to yield. Verify with `node scripts/e2e-palette-mobile.mjs` after a build — it prints
+`buttonBoxes` every run, so re-read the numbers there rather than trusting this file.
 
 - Active page: nav item gets `--accent` colour
 - "Hire me" button: small pill button, `--accent` bg, `--bg` text — links to Upwork
@@ -265,36 +280,38 @@ already overflowed at 304px, which merely hid behind the rounded border. Verify 
 
 ## Theme switching
 
-Three themes, selected by `data-theme` on `<html>`: `funky` (default) | `dark` | `light`.
-Persisted in `localStorage` under the key `ttt-theme`. **`prefers-color-scheme` is deliberately
-never consulted** — funky is the brand default and is neither light nor dark, so the OS preference
-cannot express the choice.
+Two themes, selected by `data-theme` on `<html>`: `funky` (default) | `random`. Persisted in
+`localStorage` under the key `ttt-theme`. **`prefers-color-scheme` is deliberately never consulted**
+— funky is the brand default and is neither light nor dark, so the OS preference cannot express the
+choice.
 
 - **No-flash script** — a synchronous inline script, the first child of `<body>` in `layout.tsx`,
   reads the stored value, validates it, and sets the attribute before first paint. It must stay
   synchronous and must stay first; anything that defers it reintroduces a flash of funky. The read
   is wrapped in `try`/`catch` so a `localStorage` throw in a privacy mode cannot kill the page.
   It writes only `data-theme`, an attribute React never renders, so there is no hydration mismatch
-  and `suppressHydrationWarning` is correctly *not* needed.
-- **`ThemeSwitcher.tsx`** — a 3-way segmented control (⚡ funky / ☾ dark / ☀ light), mounted in both
-  the desktop nav and the mobile overlay. The **pressed visual comes from CSS** keyed on
+  and `suppressHydrationWarning` is correctly *not* needed. The validation is now a single test —
+  `if(t!=='random')t='funky'` — so a stale stored `dark`/`light` self-heals to funky.
+- **`ThemeSwitcher.tsx`** — a 2-way segmented control (⚡ funky / 🎲 random), mounted in both the
+  desktop nav and the mobile overlay. The dice is **last**, and both e2e harnesses reach it as
+  `b[b.length - 1]` — do not reorder. The **pressed visual comes from CSS** keyed on
   `html[data-theme]`, not from React state, so the active theme reads correctly on first paint and
   with JS off; `aria-pressed` stays with React and a `MutationObserver` keeps the two mounted
   instances in step. Pressed inverts background and foreground rather than shifting hue, so it
   survives the loss of yellow (WCAG 1.4.1). Picking a theme in the overlay does **not** close it.
-- **Theme-visibility utilities** — `.only-funky` / `.only-dark` / `.only-light` toggle `display`
-  and are how `ThemedLogo` picks its asset with no JavaScript. `.only-funky` is written with a
-  `:not()` pair so it also shows when the attribute is absent, matching what `:root` renders.
+- **Theme-visibility utilities** — `.only-funky` / `.only-random` toggle `display` and are how
+  `ThemedLogo` picks between its file and its masked span with no JavaScript. `.only-funky` is
+  written with a `:not()` so it also shows when the attribute is absent, matching what `:root`
+  renders.
 
-**Adding a fifth, named theme** touches: the token block, the `.only-*` group, the `.theme-btn-*`
-rule and the Shiki selector set in `globals.css`; the allow-list in the `layout.tsx` script;
+**Adding a third, named theme** touches: a token block, the `.only-*` group, the `.theme-btn-*`
+rule and the Shiki selector set in `globals.css`; the validation in the `layout.tsx` script;
 `ThemeSwitcher.tsx`; the `variants` arrays in `ThemedLogo.tsx`; and the `theme` object in
 `MDXContent.tsx`. It also needs a matching logo asset set. Budget for that before promising one.
 
-Note the `:not()` chains: the rules that make funky the default are written as
-`html:not([data-theme='dark']):not([data-theme='light']):not([data-theme='random'])`. **Every new
-theme has to be excluded there too**, or it will reveal the funky logo mark and light the funky
-button alongside its own.
+Note the `:not()`: the rules that make funky the default are written as
+`html:not([data-theme='random'])`. **Every new theme has to be excluded there too**, or it will
+reveal the funky logo mark and light the funky button alongside its own.
 
 ---
 
@@ -305,7 +322,7 @@ a real browser, live in `scripts/` and run against a built export:
 
 | command | what it proves |
 |---|---|
-| `node scripts/e2e-palette.mjs` | 21 checks: the palette is actually painted, a reload restores it pre-paint, switching to a named theme *removes* the inline properties, the mark's ink follows `--accent`, a stale cache recovers from the seed with React state in step |
+| `node scripts/e2e-palette.mjs` | 32 checks: the switcher has exactly 2 buttons, the palette is actually painted, a reload restores it pre-paint, switching back to funky *removes* the inline properties, the mark's ink follows `--accent`, a stale cache recovers from the seed with React state in step |
 | `node scripts/e2e-palette-mobile.mjs` | the overlay control fits at 375px and 390px, no horizontal overflow, picking a theme does not close the overlay |
 
 Build first — they serve `out/`, not a dev server. Chromium comes from nixpkgs
@@ -332,11 +349,19 @@ The `random` theme generates all nine tokens from a single 32-bit seed. The engi
 no DOM and no dependencies** — `lib/palette/apply.ts` is the only part that touches the document — so
 it can be lifted into another project whole.
 
-**Do not tune the numbers by taste.** Every target was calibrated by measuring funky, dark and light,
-and `lib/palette/__tests__` asserts that **all three shipping themes pass the same gate table the
-generator targets**. That test is the calibration: if you change a gate and it fails, the gate is
-wrong, not the theme. Two findings from that measurement shaped the design and are easy to undo by
-accident:
+**Do not tune the numbers by taste.** Every target was calibrated by measuring three hand-designed
+palettes — funky, plus the former `dark` and `light` themes — and `lib/palette/__tests__` asserts
+that **all three pass the same gate table the generator targets**. That test is the calibration: if
+you change a gate and it fails, the gate is wrong, not the palette.
+
+Only funky still ships. `dark` and `light` are kept as `CALIBRATION_PALETTES` in
+`lib/palette/__tests__/fixtures.ts` because they are the **evidence**, not history: they are the two
+achromatic endpoints (accent pure `#ffffff` / `#000000`, C = 0.000) that bound the neutral end of
+the range, and they are why the second finding below is a chroma floor. Running them is what shows
+the gates are not merely tuned to funky. The CSS cross-check in `calibration.test.ts` is narrowed to
+funky's `:root`, since they no longer have a stylesheet block to agree with.
+
+Two findings from that measurement shaped the design and are easy to undo by accident:
 
 - funky's `#e8ff00` sits at the **exact sRGB gamut edge** for its hue (C/maxC = 1.00). "As vivid as
   the gamut allows" is therefore the brand rule, and the gamut is the cap — don't add a saturation
@@ -361,10 +386,10 @@ Other load-bearing choices:
 
 **Opacity modifiers on the accent are NOT covered by the gate table, and need their own rule.**
 The gates bound pairs of *solid* tokens. An alpha on the accent is only as strong as the accent's own
-contrast, and a generated accent has far less to spend than a hand-picked one: funky/dark/light put
-the accent at 17–21:1 against `--bg` (pure yellow, white, black), so `border-accent/40` still clears
-the 3:1 UI floor, while a generated accent at the same 40% lands at **1.72:1** — under the floor on
-78.7% of palettes. The accent-tinted chip was worse, because both sides move: `text-accent/80` on
+contrast, and a generated accent has far less to spend than a hand-picked one: funky puts the accent
+at 17–21:1 against `--bg` (it is pure yellow), so `border-accent/40` still clears the 3:1 UI floor —
+as did the two calibration palettes, whose accents were pure white and pure black. A generated
+accent at the same 40% lands at **1.72:1** — under the floor on 78.7% of palettes. The accent-tinted chip was worse, because both sides move: `text-accent/80` on
 `bg-accent/10` missed WCAG AA on 58.9% of palettes, at `text-xs`.
 
 This cannot be fixed in the generator — it picks colours, and these are composites of one. So
@@ -373,7 +398,7 @@ This cannot be fixed in the generator — it picks colours, and these are compos
 | utility | random alpha | why |
 |---|---|---|
 | `border-accent/40` | `0.8` | a card/panel **boundary**, held to 3:1. Measured worst 3.26:1 over 20,000 seeds; 0.75 still failed 14 of them |
-| `border-accent/30`, `border-success/40` | `0.6` | **decorative** chip outlines (every chip carries an icon *and* a label) and already 2.37–3.36 in the shipping themes, so not held to 3:1 — only to parity with funky's 2.44:1 |
+| `border-accent/30`, `border-success/40` | `0.6` | **decorative** chip outlines (every chip carries an icon *and* a label) and already under 3:1 in funky itself, so not held to 3:1 — only to parity with funky's 2.44:1 |
 | `bg-accent/10` | → `rgb(var(--surface))` | drops the tint so the chip pair reduces to accent-on-surface, which **is** gated |
 | `text-accent/80` | → solid `--accent` | same reason; makes the chip AA by construction rather than by luck |
 
@@ -381,8 +406,10 @@ Two traps here, both already paid for:
 
 - **Key these on `[data-theme='random']` alone, never with `data-polarity`.** A
   `[data-theme='random'][data-polarity='light']` selector is (0,3,1) and outranks these (0,2,1)
-  rules, silently reinstating the weaker light-theme alpha for every light palette — i.e. exactly the
-  bug the rules exist to fix.
+  rules. That is how the bug originally landed: it silently reinstated the weaker light-*theme* alpha
+  for every light-polarity palette — i.e. exactly the bug the rules exist to fix. The light theme's
+  alpha nudges are gone now (they were keyed on the theme, so nothing could match them), but the
+  specificity trap is unchanged and will bite the next rule written that way.
 - **`border-border/40` is deliberately left alone** at ~1.09:1. It is a neutral decorative hairline
   that measures the same in funky, and holding `random` to a bar the brand theme does not meet would
   be incoherent.
@@ -395,7 +422,7 @@ random theme now routes onto an opaque surface), so AA applies to that pair too.
 
 | key | value |
 |---|---|
-| `ttt-theme` | `funky` | `dark` | `light` | `random` |
+| `ttt-theme` | `funky` | `random` (a stale `dark`/`light` is rejected and renders funky) |
 | `ttt-seed` | the integer seed — the source of truth |
 | `ttt-palette` | the nine resolved tokens, for the pre-paint script |
 | `ttt-palette-v` | `ENGINE_VERSION`; a cache stamped otherwise is refused |
@@ -415,8 +442,10 @@ seed, rather than pinning readers to a palette the engine no longer produces.
 
 **Known limitation, accepted:** code blocks cannot follow a random palette. `rehype-pretty-code`
 resolves highlighting at build time and the static export has no runtime to re-highlight with, so a
-random palette borrows the dark or light Shiki set by its `data-polarity`. Fixing it properly means
-shipping a client-side highlighter.
+random palette borrows the `--shiki-dark` or `--shiki-light` variable set by its `data-polarity`.
+Fixing it properly means shipping a client-side highlighter. **This is the sole reason the `dark` and
+`light` keys remain in the Shiki config** — they are Shiki theme names, not page themes. Delete
+either and every random-theme reader gets unstyled code blocks.
 
 ---
 
@@ -436,13 +465,17 @@ shipping a client-side highlighter.
 Install and configure:
 - `next-mdx-remote` or `@next/mdx` for rendering MDX
 - `gray-matter` for parsing frontmatter
-- `rehype-pretty-code` + `shiki` for code highlighting. Configured with an **object** `theme`
-  keyed by theme name, so Shiki emits `--shiki-funky` / `--shiki-dark` / `--shiki-light` CSS
-  variables and the page theme picks the set: `one-dark-pro` (funky), `vesper` (dark),
-  `vitesse-light` (light). Highlighting is resolved at build time — the static export has no
-  runtime to re-highlight, which is why it has to go through CSS variables. There is deliberately
-  **no `random` key**: that palette does not exist at build time, so it borrows the dark or light
-  set by `data-polarity` in `globals.css` instead.
+- `rehype-pretty-code` + `shiki` for code highlighting. Configured with an **object** `theme`, so
+  Shiki emits `--shiki-funky` / `--shiki-dark` / `--shiki-light` CSS variables and CSS picks the
+  set: `one-dark-pro` (funky), `vesper` (dark), `vitesse-light` (light). Highlighting is resolved
+  at build time — the static export has no runtime to re-highlight, which is why it has to go
+  through CSS variables, and why there is deliberately **no `random` key**: that palette does not
+  exist at build time.
+  **`dark` and `light` here are Shiki theme names, NOT page themes** — the site ships only funky
+  and random. They stay because `globals.css` maps
+  `html[data-theme='random'][data-polarity='dark'|'light']` onto those two variable sets, which is
+  how a random palette gets highlighted code at all. Removing either key leaves every random-theme
+  reader with unstyled code blocks.
 - `remark-gfm` for GitHub Flavored Markdown (tables, strikethrough, etc.)
 - `reading-time` for estimated read time
 
@@ -471,9 +504,10 @@ The styling is settled — **do not redesign it**:
 - **The phrase is highlighted**: set in `--accent` with a **solid** underline —
   `text-accent underline underline-offset-4`. Never dotted or dashed: a perforated underline was
   explicitly rejected. Never bare/undecorated either — the accent highlight is the point.
-  Known limitation, accepted: in `dark` and `light` the accent is white/black rather than a hue,
-  so an annotated phrase is set apart mainly by its underline and reads much like an inline link.
-  That is inherent to a black-and-white theme, not a styling bug — leave it alone.
+  Known limitation, accepted: a `random` palette whose accent comes out close to neutral sets an
+  annotated phrase apart mainly by its underline, so it reads much like an inline link. The chroma
+  floor bounds how often that happens; it is not a styling bug — leave it alone. (This used to be
+  unavoidable in the black-and-white `dark` and `light` themes, which no longer exist.)
 - **Use the `--accent` token**, not a hex copied out of a logo file. The funky logo assets do not
   agree with each other on the yellow — they differ by a couple of percent, and from the token — so a
   hex lifted from whichever file you happened to open will be subtly wrong somewhere else. The token
@@ -528,43 +562,45 @@ Every developer eventually builds their own website...
 7. **Logo marks follow the theme; the raster logo does not.** `components/ThemedLogo.tsx` runs a
    deliberate **dual path**, and both halves matter:
 
-   - **`funky` / `dark` / `light`: asset swap.** Per-theme files — the existing `public/ttt_*.svg`
-     for funky, `ttt_*_dark-mono.svg` (white) for dark, `ttt_*_light-primary.svg` (near-black) for
-     light — all rendered, with CSS revealing exactly one. These stay as *files* on purpose, not out
-     of inertia: funky's `ttt_logo_full.svg` is the one mark with **three inks** (#E1F708 computer,
-     #F6F4F1 / #FFFFFF wordmark and tagline). Routing it through the single-ink inline path would
-     flatten all three to one colour — a visible regression on `/about`. Do not "unify" the variants.
+   - **`funky`: a file.** The existing `public/ttt_*.svg`, revealed by `.only-funky`. It stays a
+     *file* on purpose, not out of inertia: funky's `ttt_logo_full.svg` is the one mark with
+     **three inks** (#E1F708 computer, #F6F4F1 / #FFFFFF wordmark and tagline). Routing it through
+     the single-ink mask path would flatten all three to one colour — a visible regression on
+     `/about`. Do not "unify" the two paths.
    - **`random`: CSS mask.** A runtime-generated palette has no file that could carry its fill, so
      this variant is an **empty `<span>`** painted `background-color: rgb(var(--accent))` and
-     stencilled by one of the mono SVGs: `.logo-mask` in `globals.css` holds the shared
+     stencilled by a single-fill SVG: `.logo-mask` in `globals.css` holds the shared
      `mask-repeat/position/size` (autoprefixer adds the `-webkit-` pair), and only the per-role
      `mask-image` url is inline. The file contributes **nothing but its alpha**, so the screen
      cutout stays a hole and the ink comes from the token.
+
+   So each role renders exactly **two** things now: one `<img>` and one masked `<span>`. The
+   `dark`/`light` `<img>` variants were dropped with those themes on 2026-10-16.
 
    An inline `<svg>` with `fill="currentColor"` was built first and did the same job correctly, but
    it had to be rendered in **every** theme and merely hidden, because the theme is not known at
    build time — so its path data cost HTML bytes for every reader, including the ones who never pick
    `random`. Measured gzip: `/about` 26,665 bytes with the inline mark against **8,425** with the
    mask (7,742 before the feature), and `/` 12,038 against **7,839**. A mask also costs no request
-   in the other three themes, because a `display: none` element does not load its mask.
+   in funky, because a `display: none` element does not load its mask.
 
    **Never recolour or CSS-`filter` a file variant**, and never hue-shift one. A mask is not a
    recolour: nothing about the file's own colour is read. (This supersedes the former blanket "pick
    the asset, never recolour" rule, which a themeable palette cannot satisfy — the *reason* behind it
-   survives, since the mask reuses the very same asset the `light` theme ships rather than adding a
-   fourth copy of the geometry to keep in sync.) The old "white on black — never invert it" rule
-   still holds for
+   survives, since the mask reuses an asset that already existed rather than adding another copy of
+   the geometry to keep in sync.) The old "white on black — never invert it" rule still holds for
    `thinktanktom_logo.png` / `ttt_logo.png` — the raster with the black ground baked in, used only
    as the OG/Twitter card image and the favicon. Those are consumed outside the page by social
    scrapers and browser chrome, cannot be themed, and stay dark-ground.
-   **Every variant of a role must carry the same `viewBox`.** The path sequence is identical across
-   the files and sits in identical coordinates; only the fill differs, and the mask reads just the
-   alpha. The screen is a transparent cutout in all of them — do not fill it. A white screen fill in the light mark was
-   tried and reverted: it read as a faint lighter rectangle against the scrolled nav's
-   `bg-surface/90`. The dark/light exports originally shipped cropped tight to the ink (icon
-   `22.68 89.48 578.24 465.37`, stacked `75.71 123.4 1768.61 858.81`) while funky's masters carry
-   padding, so sizing each file by its own aspect drew the mark ~8% (icon) and ~26% (stacked) too
-   large outside funky. Scaling each variant down by its ink/canvas fraction — the first attempt —
+   **The funky file and the mask asset of a role must carry the same `viewBox`.** The path sequence
+   is identical across them and sits in identical coordinates; only the fill differs, and the mask
+   reads just the alpha. The screen is a transparent cutout in both — do not fill it. A white screen
+   fill in the light-primary mark was tried and reverted: it read as a faint lighter rectangle
+   against the scrolled nav's `bg-surface/90`. **This stays load-bearing after the theme removal,
+   because the `*_light-primary.svg` files are now the masks.** Those exports originally shipped
+   cropped tight to the ink (icon `22.68 89.48 578.24 465.37`, stacked `75.71 123.4 1768.61 858.81`)
+   while funky's masters carry padding, so sizing each file by its own aspect drew the mark ~8%
+   (icon) and ~26% (stacked) too large outside funky. Scaling each variant down by its ink/canvas fraction — the first attempt —
    equalised the ink but left the element boxes unequal, which reflowed any container without a
    reserved height (`/about` collapsed 45.83px and carried the page with it), and could not fix
    position regardless, because funky's padding is vertically **asymmetric** (icon top 89.45 vs
@@ -575,15 +611,21 @@ Every developer eventually builds their own website...
    **Which `public/` asset each variant uses**, so the set can be checked at a glance rather than
    reconstructed from the component. Do not add an asset without a reference.
 
-   | role | funky | dark | light + `random` mask |
-   |---|---|---|---|
-   | icon | `ttt_icon.svg` | `ttt_icon_dark-mono.svg` | `ttt_icon_light-primary.svg` |
-   | wordmark | `ttt_side_no_byline_logo.svg` | `ttt_horizontal_dark-mono.svg` | `ttt_horizontal_light-primary.svg` |
-   | full logo | `ttt_logo_full.svg` | `ttt_stacked-tagline_dark-mono.svg` | `ttt_stacked-tagline_light-primary.svg` |
+   | role | funky `<img>` | `random` mask (alpha only) |
+   |---|---|---|
+   | icon | `ttt_icon.svg` | `ttt_icon_light-primary.svg` |
+   | wordmark | `ttt_side_no_byline_logo.svg` | `ttt_horizontal_light-primary.svg` |
+   | full logo | `ttt_logo_full.svg` | `ttt_stacked-tagline_light-primary.svg` |
+
+   The `*_light-primary.svg` column is **mask-only** now — those files are never rendered as
+   images. They are still referenced, so **do not delete them** as part of removing the light theme;
+   only their alpha is read, which is why no fourth copy of the geometry was ever needed.
 
    Plus `ttt_logo.png` — the dark-ground raster for OG/Twitter cards and the favicon, referenced
-   from `layout.tsx` metadata and every route's `generateMetadata`. The `random` mask deliberately
-   reuses the `light` asset rather than shipping a tenth file; only its alpha is read.
+   from `layout.tsx` metadata and every route's `generateMetadata`.
+
+   The three `*_dark-mono.svg` files became **unreferenced** when the dark theme was removed on
+   2026-10-16 and are left on disk for separate untracking. Nothing should start using them.
 
    That table is the whole list. **Four assets were deleted on 2026-10-14** once nothing referenced
    them — `ttt_logo_side.svg`, `ttt_logo.svg`, `ttt_logo_notag.svg` and `ttt_logo_wordmark.svg`,
