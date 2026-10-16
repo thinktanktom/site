@@ -6,11 +6,14 @@
  *
  * Two things this exists to catch, both of which it did catch:
  *
- *  1. The overlay's theme control is a w-64 (256px) box. Four LABELLED buttons
- *     in one flex row measure 417px of content, and flex-1 does not save them
- *     because a flex item's default min-width is auto -- so they spilled outside
- *     the pill and off-screen. (Three buttons already overflowed at 304px on
- *     main; the fourth made it visible.) Hence the 2x2 grid.
+ *  1. The overlay's theme control is a w-64 (256px) box, and its content has to
+ *     fit inside it. The recorded failure: a flex item's default min-width is
+ *     auto, so LABELLED buttons refuse to shrink below their own label and
+ *     spill outside the pill and off-screen rather than compressing -- flex-1
+ *     does not save them. That is why the control is a GRID. With two themes it
+ *     is one row of two (grid-cols-2); the harness prints buttonBoxes each run,
+ *     so the current measured widths are in the output below, not in this
+ *     comment where they would go stale.
  *  2. --window-size is NOT a reliable way to set a CSS viewport in headless
  *     chromium: it reported 500px CSS width for both 375 and 390, silently
  *     testing neither. Emulation.setDeviceMetricsOverride is used instead, and
@@ -105,6 +108,8 @@ for (const W of [375, 390]) {
       textWraps: btns.filter(b=>b.getBoundingClientRect().height>44).length
     }})())`))
 
+  // The dice is the LAST button in the control (funky is first), so this still
+  // resolves correctly now that there are two rather than four.
   const dice = `(()=>{const ov=document.getElementById('mobile-nav');const g=ov.querySelector('[aria-label="Colour theme"]');
     const b=[...g.querySelectorAll('button')];b[b.length-1].click();return 1})()`
   await ev(dice); await new Promise(r=>setTimeout(r,500))
@@ -127,7 +132,7 @@ for(const r of results){
   if(!r.closed.hamburger) f.push(r.W+': no hamburger')
   if(r.closed.docScroll>r.closed.cssWidth) f.push(r.W+': overflow closed')
   if(!r.open.overlayOpen) f.push(r.W+': overlay did not open')
-  if(r.open.buttonCount!==4) f.push(r.W+': overlay switcher has '+r.open.buttonCount+' buttons')
+  if(r.open.buttonCount!==2) f.push(r.W+': overlay switcher has '+r.open.buttonCount+' buttons')
   if(r.open.docScroll>r.open.cssWidth) f.push(r.W+': overflow with overlay open')
   if(r.open.switcherRight>r.open.cssWidth||r.open.switcherLeft<0) f.push(r.W+': switcher outside viewport')
   if(r.open.switcherScrollW>r.open.switcherW+1) f.push(r.W+': switcher content overflows its box ('+r.open.switcherScrollW+' > '+r.open.switcherW+')')

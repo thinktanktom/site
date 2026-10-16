@@ -8,14 +8,24 @@ import type { Palette, TokenName } from '../tokens'
 export const palette = (p: Record<TokenName, readonly [number, number, number]>): Palette => p
 
 /**
- * The three shipping themes, transcribed from src/app/globals.css.
+ * The three hand-designed palettes the generator's gate table was calibrated
+ * against. ONLY `funky` still ships: it is the site's default, held by `:root` in
+ * src/app/globals.css, and the only one of the three with a stylesheet block to
+ * cross-check against (calibration.test.ts does exactly that).
+ *
+ * `dark` and `light` were removed as page themes, but are kept here deliberately,
+ * because they are the calibration evidence and not merely history. They are the
+ * two hand-designed ACHROMATIC endpoints — accent is pure #ffffff and pure
+ * #000000, C = 0.000 — and they are the reason the "the accent must not collapse
+ * into the text" rule is a CHROMA FLOOR rather than a contrast gate: as a
+ * contrast gate it would reject them, and funky's own accent measures 1.02:1
+ * against its text. Drop them and the gate table loses the two palettes that
+ * bound the neutral end of its range. Nothing in the shipped site renders them.
  *
  * Hardcoded on purpose: this is the calibration reference, so it must not be
- * derived from the same stylesheet it is checking. `calibration.test.ts` also
- * parses globals.css and asserts the two agree, which catches a drift in either
- * direction.
+ * derived from a stylesheet it is checking.
  */
-export const SHIPPING_THEMES: Record<'funky' | 'dark' | 'light', Palette> = {
+export const CALIBRATION_PALETTES: Record<'funky' | 'dark' | 'light', Palette> = {
   funky: palette({
     bg: [10, 10, 10],
     surface: [17, 17, 17],

@@ -25,7 +25,7 @@ import {
 } from '../apply'
 import { generate } from '../generate'
 import { TOKEN_NAMES } from '../tokens'
-import { fakeElement, memoryStorage, SHIPPING_THEMES, throwingStorage } from './fixtures'
+import { fakeElement, memoryStorage, CALIBRATION_PALETTES, throwingStorage } from './fixtures'
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -35,7 +35,7 @@ afterEach(() => {
 describe('applyPalette', () => {
   it('writes the nine tokens plus color-scheme, and nothing else', () => {
     const { el, style } = fakeElement()
-    applyPalette(SHIPPING_THEMES.funky, 'dark', el)
+    applyPalette(CALIBRATION_PALETTES.funky, 'dark', el)
 
     expect(Array.from(style.props.keys()).sort()).toEqual(
       [...TOKEN_NAMES.map((n) => `--${n}`), 'color-scheme'].sort(),
@@ -49,16 +49,16 @@ describe('applyPalette', () => {
     // It is part of what applyPalette sets, which means clearPalette owes it a
     // removal — see the clearPalette block below.
     const { el, attributes } = fakeElement()
-    applyPalette(SHIPPING_THEMES.light, 'light', el)
+    applyPalette(CALIBRATION_PALETTES.light, 'light', el)
     expect(Array.from(attributes.entries())).toEqual([['data-polarity', 'light']])
 
-    applyPalette(SHIPPING_THEMES.funky, 'dark', el)
+    applyPalette(CALIBRATION_PALETTES.funky, 'dark', el)
     expect(attributes.get('data-polarity')).toBe('dark')
   })
 
   it('writes values as space-separated channel triples', () => {
     const { el, style } = fakeElement()
-    applyPalette(SHIPPING_THEMES.funky, 'dark', el)
+    applyPalette(CALIBRATION_PALETTES.funky, 'dark', el)
 
     // The channel-triple form is load-bearing: globals.css consumes the tokens
     // as rgb(var(--accent) / <alpha-value>), so a "rgb(...)" or hex string here
@@ -73,18 +73,18 @@ describe('applyPalette', () => {
 
   it('writes the polarity as color-scheme', () => {
     const dark = fakeElement()
-    applyPalette(SHIPPING_THEMES.dark, 'dark', dark.el)
+    applyPalette(CALIBRATION_PALETTES.dark, 'dark', dark.el)
     expect(dark.style.getPropertyValue('color-scheme')).toBe('dark')
 
     const light = fakeElement()
-    applyPalette(SHIPPING_THEMES.light, 'light', light.el)
+    applyPalette(CALIBRATION_PALETTES.light, 'light', light.el)
     expect(light.style.getPropertyValue('color-scheme')).toBe('light')
   })
 
   it('overwrites a previously applied palette in place', () => {
     const { el, style } = fakeElement()
-    applyPalette(SHIPPING_THEMES.funky, 'dark', el)
-    applyPalette(SHIPPING_THEMES.light, 'light', el)
+    applyPalette(CALIBRATION_PALETTES.funky, 'dark', el)
+    applyPalette(CALIBRATION_PALETTES.light, 'light', el)
     expect(style.props.size).toBe(TOKEN_NAMES.length + 1)
     expect(style.getPropertyValue('--bg')).toBe('255 255 255')
     expect(style.getPropertyValue('color-scheme')).toBe('light')
@@ -105,7 +105,7 @@ describe('clearPalette', () => {
     // single leftover property pins funky/dark/light to the last random
     // palette for the rest of the session.
     const { el, style, attributes } = fakeElement()
-    applyPalette(SHIPPING_THEMES.funky, 'dark', el)
+    applyPalette(CALIBRATION_PALETTES.funky, 'dark', el)
     clearPalette(el)
     expect(Array.from(style.props.keys())).toEqual([])
     expect(Array.from(attributes.keys())).toEqual([])
@@ -116,7 +116,7 @@ describe('clearPalette', () => {
     style.setProperty('--not-a-theme-token', 'keep me')
     style.setProperty('background-color', 'red')
     attributes.set('data-theme', 'random')
-    applyPalette(SHIPPING_THEMES.funky, 'dark', el)
+    applyPalette(CALIBRATION_PALETTES.funky, 'dark', el)
     clearPalette(el)
     expect(Array.from(style.props.keys()).sort()).toEqual(['--not-a-theme-token', 'background-color'])
     // data-theme is the theme system's own attribute; clearPalette must not

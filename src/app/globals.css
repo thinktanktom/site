@@ -10,14 +10,17 @@
    :root holds the "funky" palette, which is also the default when no
    data-theme attribute is present (JS off, blocked, or pre-script).
 
-   There is a fourth theme, "random", with no token block here on purpose: its
-   nine values are generated at runtime by lib/palette and written as INLINE
-   custom properties on <html>, which beat any stylesheet rule. That is also why
-   switching away from random has to REMOVE those properties (see clearPalette
-   in lib/palette/apply.ts) -- leaving them would pin the named theme to the last
-   random palette. The random theme also publishes data-polarity="dark"|"light"
-   on <html>, because some rules below need to know which end it sits at and a
-   generated palette cannot be matched by a static attribute value alone. */
+   funky is one of only TWO themes. The other is "random", and it has no token
+   block here on purpose: its nine values are generated at runtime by lib/palette
+   and written as INLINE custom properties on <html>, which beat any stylesheet
+   rule. That is also why switching away from random has to REMOVE those
+   properties (see clearPalette in lib/palette/apply.ts) -- leaving them would pin
+   funky to the last random palette. The random theme also publishes
+   data-polarity="dark"|"light" on <html>, because some rules below need to know
+   which end it sits at and a generated palette cannot be matched by a static
+   attribute value alone. data-polarity is the GENERATOR's notion of which end of
+   the lightness range a palette landed on; it has nothing to do with the former
+   dark and light page themes, which no longer exist. */
 :root {
   --bg:         10 10 10;
   --surface:    17 17 17;
@@ -29,32 +32,6 @@
   --grid-dot:   30 30 30;
   --success:    74 222 128;
   color-scheme: dark;
-}
-
-html[data-theme='dark'] {
-  --bg:         0 0 0;
-  --surface:    15 15 15;
-  --border:     42 42 42;
-  --text:       224 224 224;
-  --muted:      138 138 138;
-  --accent:     255 255 255;
-  --accent-dim: 189 189 189;
-  --grid-dot:   36 36 36;
-  --success:    184 184 184;
-  color-scheme: dark;
-}
-
-html[data-theme='light'] {
-  --bg:         255 255 255;
-  --surface:    244 244 244;
-  --border:     212 212 212;
-  --text:       31 31 31;
-  --muted:      107 107 107;
-  --accent:     0 0 0;
-  --accent-dim: 61 61 61;
-  --grid-dot:   220 220 220;
-  --success:    69 69 69;
-  color-scheme: light;
 }
 
 * {
@@ -115,24 +92,14 @@ a {
    per-theme logo asset. The :not() pair is what makes funky the default when the
    data-theme attribute is absent. */
 .only-funky,
-.only-dark,
-.only-light,
 .only-random {
   display: none;
 }
 
-/* The :not() chain is what makes funky the default when the attribute is
-   absent. Every new theme has to be excluded here too, or it would reveal the
-   funky mark as well as its own. */
-html:not([data-theme='dark']):not([data-theme='light']):not([data-theme='random']) .only-funky {
-  display: block;
-}
-
-html[data-theme='dark'] .only-dark {
-  display: block;
-}
-
-html[data-theme='light'] .only-light {
+/* The :not() is what makes funky the default when the attribute is absent, or
+   carries a value this stylesheet does not know. Every theme added later has to
+   be excluded here too, or it would reveal the funky mark as well as its own. */
+html:not([data-theme='random']) .only-funky {
   display: block;
 }
 
@@ -255,31 +222,13 @@ html[data-theme='random'] .only-random {
   color: var(--shiki-funky);
 }
 
-html[data-theme='dark'] [data-rehype-pretty-code-figure] pre {
-  background-color: var(--shiki-dark-bg);
-}
-
-html[data-theme='dark'] [data-rehype-pretty-code-figure] pre,
-html[data-theme='dark'] [data-rehype-pretty-code-figure] pre span {
-  color: var(--shiki-dark);
-}
-
-html[data-theme='light'] [data-rehype-pretty-code-figure] pre {
-  /* vitesse-light's own background is #ffffff — identical to the light page
-     background, leaving the block delimited only by its 1px border. Use the
-     surface token so a code block reads as a distinct panel in every theme. */
-  background-color: rgb(var(--surface));
-}
-
-html[data-theme='light'] [data-rehype-pretty-code-figure] pre,
-html[data-theme='light'] [data-rehype-pretty-code-figure] pre span {
-  color: var(--shiki-light);
-}
-
 /* The random theme has no Shiki theme of its own and cannot get one: Shiki runs
    at BUILD time and the static export has no runtime to re-highlight with. So a
-   random palette borrows the dark or light token set by its polarity, which the
-   pre-paint script publishes as data-polarity. Code stays legible and tonally
+   random palette borrows the --shiki-dark or --shiki-light variable set by its
+   polarity, which the pre-paint script publishes as data-polarity. Those two
+   variable sets are now the ONLY reason the `dark` and `light` keys still exist in the
+   rehype-pretty-code config (components/MDXContent.tsx) -- they are Shiki theme
+   names feeding these two rules, not page themes. Code stays legible and tonally
    correct; it just does not carry the key hue. Accepted limitation -- the
    alternative is shipping a client-side highlighter.
 
@@ -295,8 +244,10 @@ html[data-theme='random'][data-polarity='dark'] [data-rehype-pretty-code-figure]
 }
 
 html[data-theme='random'][data-polarity='light'] [data-rehype-pretty-code-figure] pre {
-  /* Same reasoning as the light theme: vitesse-light's own background is
-     #ffffff, so use the surface token to keep the block reading as a panel. */
+  /* vitesse-light's own background is #ffffff, which on a light-polarity palette
+     is near-identical to the page behind it and would leave the block delimited
+     only by its 1px border. Use the surface token so a code block keeps reading
+     as a distinct panel. */
   background-color: rgb(var(--surface));
 }
 
@@ -305,28 +256,12 @@ html[data-theme='random'][data-polarity='light'] [data-rehype-pretty-code-figure
   color: var(--shiki-light);
 }
 
-/* In light the accent is pure black, so black at 40% over white lands on
-   #999999 — 2.85:1, just under the 3:1 UI threshold. Nudge the accent borders
-   up in the light theme only (/40 → /55 = 4.74:1, /30 → /45) rather than
-   editing the utility class in eight files. */
-html[data-theme='light'] .border-accent\/40,
-html[data-theme='light'] .hover\:border-accent\/40:hover {
-  border-color: rgb(var(--accent) / 0.55);
-}
-
-html[data-theme='light'] .border-accent\/30,
-html[data-theme='light'] .hover\:border-accent\/30:hover {
-  border-color: rgb(var(--accent) / 0.45);
-}
-
 /* ThemeSwitcher pressed state, driven off the html attribute rather than React
    state so the active theme is visibly selected on the first paint and with JS
    off. Mirrors the .only-* logic: no attribute (or an unknown one) reads as
    funky, matching what :root actually renders. Specificity (0,2,1) clears both
    .text-muted and .hover\:text-text:hover. */
-html:not([data-theme='dark']):not([data-theme='light']):not([data-theme='random']) .theme-btn-funky,
-html[data-theme='dark'] .theme-btn-dark,
-html[data-theme='light'] .theme-btn-light,
+html:not([data-theme='random']) .theme-btn-funky,
 html[data-theme='random'] .theme-btn-random {
   background-color: rgb(var(--accent));
   color: rgb(var(--bg));
@@ -342,13 +277,16 @@ html[data-theme='random'] .theme-btn-random {
    to fix. The measured alphas below hold for both polarities.
 
    An alpha on the accent is only as strong as the accent's own contrast, and a
-   GENERATED accent has far less of it to spend than a hand-picked one. funky,
-   dark and light put the accent at 17-21:1 against bg (it is pure yellow, white
-   or black), so 40% alpha still lands at 3.47-4.74:1. A generated accent only
-   has to clear 4.5-6.5:1, so the same 40% lands at 1.72:1 -- below the 3:1
-   non-text UI floor on 78.7% of palettes, measured over 20,000 seeds. The
-   existing light-theme /40 -> /55 nudge does not rescue it either: /55 still
-   only reaches 2.17:1.
+   GENERATED accent has far less of it to spend than a hand-picked one. funky's
+   accent is pure yellow and sits at 17-21:1 against its bg, so 40% alpha still
+   clears the floor comfortably. The same held for the two achromatic palettes the
+   gate table was calibrated against -- the former dark and light themes, whose
+   accents were pure white and pure black; they survive only as calibration
+   references in lib/palette/__tests__/fixtures.ts. A generated accent only has to
+   clear 4.5-6.5:1, so the same 40% lands at 1.72:1 -- below the 3:1 non-text UI
+   floor on 78.7% of palettes, measured over 20,000 seeds. Raising the alpha to
+   0.55, which is what the old light theme did, does not rescue it either: /55
+   still only reaches 2.17:1.
 
    This cannot be fixed in the generator, because the generator picks colours and
    these are alpha composites of one. So the random theme raises the alpha until
@@ -361,10 +299,10 @@ html[data-theme='random'] .hover\:border-accent\/40:hover {
 }
 
 /* /30 and success/40 are decorative (every chip they outline carries an icon and
-   a text label) and are ALREADY under 3:1 in the three shipping themes, so they
-   are not held to the UI floor. They are nudged only to keep a random palette
-   from being arbitrarily fainter than funky: 0.6 lands at 2.34:1, which is where
-   funky's /30 already sits (2.44:1). */
+   a text label) and are ALREADY under 3:1 in funky itself, so they are not held
+   to the UI floor. They are nudged only to keep a random palette from being
+   arbitrarily fainter than funky: 0.6 lands at 2.34:1, which is where funky's /30
+   already sits (2.44:1). */
 html[data-theme='random'] .border-accent\/30,
 html[data-theme='random'] .hover\:border-accent\/30:hover {
   border-color: rgb(var(--accent) / 0.6);
@@ -392,13 +330,5 @@ html[data-theme='random'] .bg-accent\/10 {
 
 html[data-theme='random'] .text-accent\/80 {
   color: rgb(var(--accent));
-}
-
-/* Match the accent-border nudge above: success at 40% over white is 2.06:1,
-   fainter than the accent border that was worth correcting. These chip borders
-   are decorative (every chip carries an icon and a text label), but leaving
-   light alone would make it arbitrarily weaker than funky and dark. */
-html[data-theme='light'] .border-success\/40 {
-  border-color: rgb(var(--success) / 0.55);
 }
 

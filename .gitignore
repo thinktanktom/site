@@ -49,3 +49,10 @@ content/projects/BankX_project_files/
 # Logo master artwork — large source files, kept outside version control
 /logo/
 /logo.zip
+
+# Dark-theme logo marks — kept locally, removed from the repo when the dark
+# theme was dropped (2026-10-16). Nothing references them; the *_light-primary
+# marks stay tracked because the random theme uses them as mask stencils.
+/public/ttt_icon_dark-mono.svg
+/public/ttt_horizontal_dark-mono.svg
+/public/ttt_stacked-tagline_dark-mono.svg
