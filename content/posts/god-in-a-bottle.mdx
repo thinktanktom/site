@@ -27,7 +27,7 @@ That's where post-training comes in. We get human labellers to answer thousands 
 
 As much as I'd love for everyone to get along, in reality it is convention for most frontier labs to keep the messy details of their post-training process from the public. However, DeepSeek, a Chinese AI lab, published a paper in January 2025, detailing the benefits it saw from reinforcement learning. Its headline finding was that strong reasoning emerged from reinforcement learning with very little human-written example data. One variant, R1-Zero, had none at all.
 
-Reinforcement learning is not a new concept. It goes back decades, and AlphaGo is its most famous party trick. In one powerful version of it, we give the AI a problem whose answer we already know and then watch it figure out different ways to hack at it. The surprising part is that DeepSeek barely nudged it at all. They mostly rewarded the final answer for being correct and properly formatted, and let the model work out how to get there on its own. Kind of like handing your child a really tight jar of Nutella and leaving the room. Over time, the model had a series of what is described as 'aha' moments, where it spontaneously learns to stop, double-check its work and backtrack when an approach isn't working.
+Reinforcement learning is not a new concept. It goes back decades, and AlphaGo is its most famous party trick. In one powerful version of it, we give the AI a problem whose answer we already know and then watch it figure out different ways to hack at it. Kind of like handing your child a really tight jar of Nutella and leaving the room. Over time, the model had a series of what is described as 'aha' moments, where it spontaneously learns to stop, double-check its work and backtrack when an approach isn't working.
 
 Keep in mind that under the hood we are still dealing with probability distributions. What has changed is that reasoning models now write out a long chain of intermediate "thinking" tokens before giving a final answer. Each new token builds on everything before it, so the model is effectively doing scratch work it can then build upon. This is often called test-time compute: spending more computation while answering, rather than during training. This is less thinking and more what I'd call active computation. Although I can't help but notice how eerily similar it all is to the way us humans learn things.
 
@@ -37,19 +37,19 @@ Nowadays, everyone is using reinforcement learning in their post training effort
 
 Out of the box, AI is a jack of all trades that knows nothing about you: your situation, your constraints or your goals. Adding a list of words or a direction allows us to better steer the probability distribution of the output. It's an emulation of the preference training done by human labellers mentioned earlier.
 
-A system prompt sets standing instructions for the whole conversation. A few worked examples in the prompt (few-shot prompting) show the model exactly what you want. This becomes much more useful when creating agents and building agentic workflows.
+A system prompt sets standing instructions for the whole conversation. Adding a <Annotated n={5}>few worked examples in the prompt</Annotated> can show the model exactly what you want. This becomes much more useful when creating agents and building agentic workflows.
 
 ## What are agents? What about agentic workflows?
 
 Remember Agent Smith from The Matrix? I always thought his ability to clone himself into whichever role he needed was way cooler than whatever Neo had going on.
 
-When someone mentions agents, it always reminds me of the image of little test-tube Agent Smiths trapped in small glass boxes. They are compute-wise the same as your average LLM, except they are given a narrative or a mission via prompting, along with a set of tools to carry it out. I think of them as goombahs for a big mafia family. You give them a hit, they have to decide how to go about it, what tool to use and bring back proof that the job is done. Without all that, it's just an <Annotated n={5}>LLM with a fancy prompt</Annotated>.
+When someone mentions agents, it always reminds me of the image of little test-tube Agent Smiths trapped in small glass boxes. They are compute-wise the same as your average LLM, except they are given a narrative or a mission via prompting, along with a set of tools to carry it out. I think of them as goombahs for a big mafia family. You give them a hit, they have to decide how to go about it, what tool to use and bring back proof that the job is done. Without all that, it's just an <Annotated n={6}>LLM with a fancy prompt</Annotated>.
 
-As for agentic workflows, the difference is who holds the wheel. In a workflow, your code decides the sequence of LLM calls and tools along a predefined path. In an agent, the model decides its own next step. I'm not going to go into too much detail on creating agentic workflows and the like, as everyone does it differently with different skills. I would suggest you try to build your own whilst taking inspiration from good engineers out there, as simply <Annotated n={6}>copying</Annotated> takes the fun out of it.
+As for agentic workflows, the difference is who holds the wheel. In a workflow, your code decides the sequence of LLM calls and tools along a predefined path. In an agent, the model decides its own next step. I'm not going to go into too much detail on creating agentic workflows and the like, as everyone does it differently with different skills. I would suggest you try to build your own whilst taking inspiration from good engineers out there, as simply <Annotated n={7}>copying</Annotated> takes the fun out of it.
 
 ## Conclusion
 
-AI is kind of like our version of the pyramids. The amount of work put into this endeavour is immense and mandates a <Annotated n={7}>collective vision</Annotated> at scale. My personal view on AI is a little nuanced. Over time, it's been interesting to watch math and computer science become increasingly esoteric in nature. Even the people building these models can't fully explain why a trained model works the way it does.
+AI is kind of like our version of the pyramids. The amount of work put into this endeavour is immense and mandates a <Annotated n={8}>collective vision</Annotated> at scale. My personal view on AI is a little nuanced. Over time, it's been interesting to watch math and computer science become increasingly esoteric in nature. Even the people building these models can't fully explain why a trained model works the way it does.
 
 Reading through the research, I found the whole process and big-picture output reminiscent of my brief foray into alchemy. One of the frontiers of alchemy is research into the fabled 'Homunculus', or the artificial human. I think that's exactly what these companies are trying to build: God in a bottle. Omnipotent and readily usable. I suspect the stochasticity of our universe prevents us from ever achieving this goal, but the question isn't whether we'll succeed or fail. It's how close is close enough?
 
@@ -72,12 +72,14 @@ Reading through the research, I found the whole process and big-picture output r
 
 <Note n={3}>A token is a word-fragment: sometimes a whole word, sometimes part of one, sometimes just a space or a comma.</Note>
 
-<Note n={4}>RLHF</Note>
+<Note n={4}>RLHF - reinforcement learning from human feedback</Note>
 
-<Note n={5}>or an Italian with a fancy hat</Note>
+<Note n={5}>also called few-shot prompting</Note>
 
-<Note n={6}>also not safe to copy skills you haven't read</Note>
+<Note n={6}>or an Italian with a fancy hat</Note>
 
-<Note n={7}>or a couple of extremely rich capitalists</Note>
+<Note n={7}>also not safe to copy skills you haven't read</Note>
+
+<Note n={8}>or a couple of extremely rich capitalists</Note>
 
 </Notes>
