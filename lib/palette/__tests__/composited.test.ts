@@ -6,12 +6,16 @@
  * composites of a token against another token, and an alpha on the accent is
  * only as strong as the accent's own contrast.
  *
- * That gap mattered. funky, dark and light put the accent at 17-21:1 against bg
- * (pure yellow, white or black), so 40% alpha still clears the 3:1 non-text UI
- * floor. A GENERATED accent only has to clear 4.5-6.5:1, so the same 40% landed
- * at 1.72:1 -- under the floor on 78.7% of palettes -- and the accent-tinted
- * chip, where both the text and its background move toward the accent, missed
- * WCAG AA on 58.9%.
+ * That gap mattered. funky puts the accent at 17-21:1 against bg (it is pure
+ * yellow), so 40% alpha still clears the 3:1 non-text UI floor. A GENERATED
+ * accent only has to clear 4.5-6.5:1, so the same 40% landed at 1.72:1 -- under
+ * the floor on 78.7% of palettes -- and the accent-tinted chip, where both the
+ * text and its background move toward the accent, missed WCAG AA on 58.9%.
+ *
+ * The dark and light entries used below come from CALIBRATION_PALETTES and are
+ * no longer page themes; they are kept as the two achromatic reference palettes
+ * (see fixtures.ts). Only the [data-theme='random'] rules are read back out of
+ * globals.css, because they are the only alpha overrides the site still ships.
  *
  * The fix lives in globals.css, not in the generator, because the generator
  * picks colours and these are composites of one. These tests read the alphas
@@ -25,7 +29,7 @@ import { join } from 'node:path'
 import { generate } from '../generate'
 import { contrast } from '../contrast'
 import type { Rgb } from '../oklch'
-import { SHIPPING_THEMES } from './fixtures'
+import { CALIBRATION_PALETTES } from './fixtures'
 
 const CSS = readFileSync(join(process.cwd(), 'src/app/globals.css'), 'utf8')
 
@@ -98,30 +102,34 @@ describe('border-accent/40 — the 3:1 non-text UI floor', () => {
     expect(failing).toBeGreaterThan(palettes.length / 2)
   })
 
-  it('is already fine at 0.4 in funky and dark, which is why the gap hid', () => {
-    // Their accents are pure yellow and pure white, far enough from bg that 40%
-    // alpha still clears the floor.
+  it('is already fine at 0.4 for a hand-picked accent, which is why the gap hid', () => {
+    // funky's accent is pure yellow and the dark reference palette's was pure
+    // white -- both far enough from bg that 40% alpha still clears the floor.
+    // That is why nobody noticed until the accent started being generated.
     for (const name of ['funky', 'dark'] as const) {
-      const theme = SHIPPING_THEMES[name]
+      const theme = CALIBRATION_PALETTES[name]
       const c = contrast(over(theme.accent, theme.bg, 0.4), theme.bg)
       expect(c, name).toBeGreaterThanOrEqual(3)
     }
   })
 
-  it('needed a nudge in the light theme too, for the same reason', () => {
-    // light's accent is pure BLACK, so 0.4 over white composites to #999999 =
-    // 2.85:1 -- under the floor. That is what the pre-existing light /55 rule
-    // is for, and it is the same failure mode as the random theme's, just with
-    // one hand-picked accent instead of a generated one.
-    const { accent, bg } = SHIPPING_THEMES.light
+  it('but a hand-picked accent can miss it too, as the light reference shows', () => {
+    // The light reference palette's accent is pure BLACK, so 0.4 over white
+    // composites to #999999 -- under the floor. It is the same failure mode as
+    // the random theme's, with one hand-picked accent instead of a generated
+    // one, which is why this palette is worth keeping as a reference.
+    //
+    // This used to additionally parse the html[data-theme='light'] /40 -> /55
+    // nudge out of globals.css. That rule was DELETED along with the light page
+    // theme -- it was keyed on the theme, not on data-polarity, so nothing could
+    // match it any more. The arithmetic below is the part that was load-bearing,
+    // so it stays; the stylesheet assertion had nothing left to assert.
+    const { accent, bg } = CALIBRATION_PALETTES.light
     expect(contrast(over(accent, bg, 0.4), bg)).toBeLessThan(3)
-
-    const m = CSS.match(
-      /html\[data-theme='light'\][^{]*\.border-accent\\\/40[^{]*\{[^}]*rgb\(var\(--accent\)\s*\/\s*([0-9.]+)\)/,
-    )
-    expect(m, 'light theme should carry its own /40 nudge').toBeTruthy()
-    const lightAlpha = Number.parseFloat(m![1])
-    expect(contrast(over(accent, bg, lightAlpha), bg)).toBeGreaterThanOrEqual(3)
+    // and the alpha the random theme now applies would have rescued it
+    expect(
+      contrast(over(accent, bg, randomAlphaFor('border-accent/40', 'accent')), bg),
+    ).toBeGreaterThanOrEqual(3)
   })
 })
 
@@ -157,13 +165,13 @@ describe('the accent-tinted chip — WCAG AA on small text', () => {
 describe('decorative accent borders', () => {
   it('keeps /30 and success/40 roughly where funky already sits', () => {
     // These outline chips that always carry an icon AND a text label, and they
-    // are already under 3:1 in all three shipping themes, so they are not held
-    // to the UI floor. The nudge exists only so a random palette is not
-    // arbitrarily fainter than funky, whose /30 measures 2.44:1.
+    // are already under 3:1 in funky itself, so they are not held to the UI
+    // floor. The nudge exists only so a random palette is not arbitrarily
+    // fainter than funky, whose /30 measures 2.44:1.
     const alpha30 = randomAlphaFor('border-accent/30', 'accent')
     const funky30 = contrast(
-      over(SHIPPING_THEMES.funky.accent, SHIPPING_THEMES.funky.bg, 0.3),
-      SHIPPING_THEMES.funky.bg,
+      over(CALIBRATION_PALETTES.funky.accent, CALIBRATION_PALETTES.funky.bg, 0.3),
+      CALIBRATION_PALETTES.funky.bg,
     )
     const { value } = worstOf((p) =>
       contrast(over(p.tokens.accent, p.tokens.bg, alpha30), p.tokens.bg),

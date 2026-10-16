@@ -5,9 +5,11 @@
  * makes a palette reproducible, storable as a single integer, and shareable.
  *
  * The constraint set, and what each rule prevents, is documented in CLAUDE.md.
- * Every numeric target here was calibrated by measuring the three shipping
- * themes rather than chosen by taste — see lib/palette/__tests__, where those
- * three themes are asserted to pass the same gates this generator targets.
+ * Every numeric target here was calibrated by measuring three hand-designed
+ * palettes rather than chosen by taste — funky, which still ships as the site's
+ * default, and the former dark and light themes, kept as the achromatic
+ * endpoints of the range. See lib/palette/__tests__/fixtures.ts, where all three
+ * are asserted to pass the same gates this generator targets.
  */
 
 import { maxChroma, oklch, type Rgb } from './oklch'
@@ -87,8 +89,8 @@ export function generate(seed: number): GeneratedPalette {
 
   // border and grid-dot are solved to a contrast *window*, not offset by a
   // fixed lightness: near white, +0.105 L buys far more contrast than it does
-  // near black. Targets sit inside the range the three shipping themes already
-  // occupy (border 1.24-1.48, grid-dot 1.19-1.37).
+  // near black. Targets sit inside the range the three calibration palettes
+  // already occupy (border 1.24-1.48, grid-dot 1.19-1.37).
   const border = neutral(solveNear(1.32, bg, bgL, keyHue, cast, dark))
   const gridDot = neutral(solveNear(1.2, bg, bgL, keyHue, cast, dark))
 

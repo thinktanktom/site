@@ -12,12 +12,16 @@
  * NixOS (generic dynamically-linked ELF, hits the stub-ld error). No test
  * dependency is installed; this drives CDP over Node's built-in WebSocket.
  *
+ * The site has TWO themes: funky (the default, held by :root) and random. The
+ * switcher is therefore two buttons, funky first and the dice LAST -- pick(0)
+ * and b[b.length - 1] below rely on exactly that.
+ *
  * What it covers that vitest cannot: that the palette is actually PAINTED, that
- * a reload restores it before first paint, that switching to a named theme
- * removes the inline custom properties (inline styles beat the stylesheet, so a
- * leftover would pin funky to the last random palette), that the inline logo
- * mark's ink follows --accent, that a stale cache recovers from the seed with
- * React state in step, and that the nav does not overflow with four buttons.
+ * a reload restores it before first paint, that switching back to funky removes
+ * the inline custom properties (inline styles beat the stylesheet, so a leftover
+ * would pin funky to the last random palette), that the masked logo mark's ink
+ * follows --accent, that a stale cache recovers from the seed with React state
+ * in step, and that the nav does not overflow.
  */
 import { spawn } from 'child_process'
 
@@ -200,7 +204,7 @@ const diceClick = `(() => { const g = document.querySelector('[role="group"][ari
 const nBtns = await evalJs(diceClick)
 await new Promise((r) => setTimeout(r, 400))
 s = await evalJs(SNAP)
-check('switcher has 4 buttons', nBtns === 4, `found ${nBtns}`)
+check('switcher has 2 buttons', nBtns === 2, `found ${nBtns}`)
 check('dice applies a random palette', s.theme === 'random' && /^\d+ \d+ \d+$/.test(s.inlineBg),
   `theme=${s.theme} --bg="${s.inlineBg}"`)
 check('polarity published', s.polarity === 'dark' || s.polarity === 'light', `polarity=${s.polarity}`)
@@ -232,7 +236,9 @@ let s3 = await evalJs(SNAP)
 check('pressing dice again re-rolls', s3.storedSeed !== seedBefore && s3.inlineBg !== bgBefore,
   `seed ${seedBefore} -> ${s3.storedSeed}`)
 
-// 5. back to funky -> inline properties must be REMOVED
+// 5. back to funky -> inline properties must be REMOVED. Button 0 is funky;
+// the dice is the last button. Two buttons now, so pick(0) and the dice are the
+// whole control.
 const pick = (i) => `(() => { const g = document.querySelector('[role="group"][aria-label="Colour theme"]');
   g.querySelectorAll('button')[${i}].click(); return true })()`
 await evalJs(pick(0)); await new Promise((r) => setTimeout(r, 400))
@@ -252,7 +258,7 @@ check('stale cache recovers to random from the seed', s5.theme === 'random' && s
 // aria-pressed points at the wrong button and the next dice press restores the
 // stored seed instead of re-rolling. This is the assertion the first version of
 // this suite was missing.
-check('recovery syncs aria-pressed onto the dice', JSON.stringify(s5.pressed) === JSON.stringify(['false','false','false','true']),
+check('recovery syncs aria-pressed onto the dice', JSON.stringify(s5.pressed) === JSON.stringify(['false','true']),
   `aria-pressed=${JSON.stringify(s5.pressed)}`)
 check('recovery relabels the dice as a re-roll', s5.diceLabel === 'Roll a new palette',
   `title="${s5.diceLabel}"`)
@@ -276,9 +282,8 @@ check('a code block IS present to test', !code.none, JSON.stringify(code))
 check('code block borrows a Shiki set by polarity',
   !code.none && code.bg !== 'rgba(0, 0, 0, 0)' && !!code.color && code.color !== 'rgb(0, 0, 0)', JSON.stringify(code))
 
-// 7b. The dice ALWAYS rolls, even when arriving from a named theme. Pressing a
-// dice and getting back the palette you already had is not what a dice means;
-// a previous look is what the three named themes are for.
+// 7b. The dice ALWAYS rolls, even when arriving from funky. Pressing a dice
+// and getting back the palette you already had is not what a dice means.
 await goto(ORIGIN + '/')
 const seedBeforeNamed = await evalJs(`localStorage.getItem('ttt-seed')`)
 await evalJs(pick(0)) // funky
@@ -286,7 +291,7 @@ await new Promise((r) => setTimeout(r, 300))
 await evalJs(diceClick)
 await new Promise((r) => setTimeout(r, 400))
 const afterNamed = await evalJs(SNAP)
-check('dice rolls a NEW palette when arriving from a named theme',
+check('dice rolls a NEW palette when arriving from funky',
   !!seedBeforeNamed && afterNamed.storedSeed !== seedBeforeNamed && afterNamed.theme === 'random',
   `seed ${seedBeforeNamed} -> ${afterNamed.storedSeed}`)
 
@@ -327,9 +332,9 @@ const chip = await evalJs(`(() => {
        Tracked separately below as a parity check instead. */
     /* border-accent/40 is the one held to the 3:1 UI floor: it is a card and
        panel BOUNDARY, and it is the utility that regressed (1.72:1 worst with a
-       generated accent, against 3.47-4.74 in the shipping themes).
+       generated accent, against 3.47-4.74 with a hand-picked one).
        border-accent/30 and border-success/40 outline chips that always carry an
-       icon AND a text label, and are already 2.37-3.36 in the shipping themes,
+       icon AND a text label, and are already under the floor in funky itself,
        so they are decorative and tracked for parity instead. */
     const uiFloor = cls.includes('border-accent/40');
     const accentish = cls.includes('accent') || cls.includes('success');

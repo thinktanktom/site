@@ -59,9 +59,9 @@ export type Failure = {
 
 export type ValidateOptions = {
   /**
-   * Check the accent chroma floor. Generator-only: `dark` and `light` are
-   * deliberately achromatic (accent is pure #ffffff / #000000), so this must
-   * not run against the shipping themes.
+   * Check the accent chroma floor. Generator-only: the `dark` and `light`
+   * calibration palettes are deliberately achromatic (accent is pure #ffffff /
+   * #000000), so this must not run against the calibration set.
    */
   checkChroma?: boolean
 }

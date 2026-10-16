@@ -3,12 +3,20 @@
  *
  * The gate table in validate.ts claims to encode *this site's* design rather
  * than a generic WCAG wishlist. The only way to check that claim is to run the
- * three hand-designed shipping themes through it: if funky, dark or light fails
- * a gate, the gate is wrong, not the theme.
+ * three hand-designed palettes through it: if funky, dark or light fails a gate,
+ * the gate is wrong, not the palette.
+ *
+ * Only funky still SHIPS. `dark` and `light` were removed as page themes, so
+ * they no longer have a token block in globals.css and there is nothing left to
+ * cross-check them against — the stylesheet block at the foot of this file is
+ * narrowed to `:root` for that reason. They are kept as REFERENCE palettes
+ * because they are the calibration evidence: the two achromatic endpoints that
+ * bound the neutral end of the gate table's range. Running them is what shows
+ * the gates are not merely tuned to funky. See fixtures.ts.
  *
  * `checkChroma` is deliberately NOT passed. dark and light are achromatic by
- * design (accent is pure #ffffff / #000000, C = 0.000), so the chroma floor is
- * a generator-only rule — see the comment on ValidateOptions in validate.ts.
+ * design (accent is pure #ffffff / #000000), so the chroma floor is a
+ * generator-only rule — see the comment on ValidateOptions in validate.ts.
  */
 
 import { readFileSync } from 'node:fs'
@@ -19,20 +27,20 @@ import { contrast } from '../contrast'
 import { toOklch } from '../oklch'
 import { TOKEN_NAMES, type Palette, type TokenName } from '../tokens'
 import { CHROMA_FLOOR, GATES, validate } from '../validate'
-import { SHIPPING_THEMES } from './fixtures'
+import { CALIBRATION_PALETTES } from './fixtures'
 
-const THEME_NAMES = ['funky', 'dark', 'light'] as const
+const PALETTE_NAMES = ['funky', 'dark', 'light'] as const
 
-describe('the three shipping themes pass the generator gate table', () => {
-  for (const name of THEME_NAMES) {
+describe('the three calibration palettes pass the generator gate table', () => {
+  for (const name of PALETTE_NAMES) {
     it(`${name} clears every gate`, () => {
       // The failure objects are readable, so assert on them rather than a
       // boolean: a regression prints which pair missed and by how much.
-      expect(validate(SHIPPING_THEMES[name])).toEqual([])
+      expect(validate(CALIBRATION_PALETTES[name])).toEqual([])
     })
   }
 
-  it('reports the gate each theme comes closest to missing', () => {
+  it('reports the gate each palette comes closest to missing', () => {
     // Not an assertion about a number — it pins the *identity* of the binding
     // constraint. validate.ts says muted/surface is the tightest pair on the
     // site; if that stops being true the comments there are stale.
@@ -49,37 +57,46 @@ describe('the three shipping themes pass the generator gate table', () => {
       return best.pair
     }
 
-    expect(tightest(SHIPPING_THEMES.funky)).toBe('border/bg')
-    expect(tightest(SHIPPING_THEMES.dark)).toBe('grid-dot/bg')
-    expect(tightest(SHIPPING_THEMES.light)).toBe('grid-dot/bg')
+    expect(tightest(CALIBRATION_PALETTES.funky)).toBe('border/bg')
+    expect(tightest(CALIBRATION_PALETTES.dark)).toBe('grid-dot/bg')
+    expect(tightest(CALIBRATION_PALETTES.light)).toBe('grid-dot/bg')
 
     // muted/surface is the tightest *informational text* pair, which is the
     // claim validate.ts actually makes; the two window gates sit closer to
     // their bounds but a divider being slightly off is not a legibility bug.
-    expect(contrast(SHIPPING_THEMES.funky.muted, SHIPPING_THEMES.funky.surface)).toBeCloseTo(4.78, 2)
+    expect(
+      contrast(CALIBRATION_PALETTES.funky.muted, CALIBRATION_PALETTES.funky.surface),
+    ).toBeCloseTo(4.78, 2)
   })
 })
 
 describe('the chroma floor is generator-only', () => {
   it('passes funky, whose accent is a real hue', () => {
-    expect(validate(SHIPPING_THEMES.funky, { checkChroma: true })).toEqual([])
-    expect(toOklch(SHIPPING_THEMES.funky.accent).C).toBeGreaterThan(CHROMA_FLOOR)
+    expect(validate(CALIBRATION_PALETTES.funky, { checkChroma: true })).toEqual([])
+    expect(toOklch(CALIBRATION_PALETTES.funky.accent).C).toBeGreaterThan(CHROMA_FLOOR)
   })
 
   for (const name of ['dark', 'light'] as const) {
     it(`fails ${name}, which is achromatic on purpose`, () => {
-      // Documents *why* the calibration test above must not pass checkChroma.
-      expect(toOklch(SHIPPING_THEMES[name].accent).C).toBeCloseTo(0, 6)
-      expect(validate(SHIPPING_THEMES[name], { checkChroma: true })).toEqual([
+      // Documents *why* the calibration test above must not pass checkChroma,
+      // and why these two palettes are still worth keeping: they are the reason
+      // "the accent must not collapse into the text" is a chroma FLOOR and not a
+      // contrast gate — as a contrast gate it would reject them outright.
+      expect(toOklch(CALIBRATION_PALETTES[name].accent).C).toBeCloseTo(0, 6)
+      expect(validate(CALIBRATION_PALETTES[name], { checkChroma: true })).toEqual([
         { pair: 'accent chroma', value: 0, min: CHROMA_FLOOR, max: Infinity },
       ])
     })
   }
 })
 
-describe('the fixtures match the shipping stylesheet', () => {
+describe('the funky fixture matches the shipping stylesheet', () => {
   // The calibration table is only evidence if it is the same table the site
   // ships. Parsed, not imported, because globals.css is not a module.
+  //
+  // funky only: it is the one palette here that still has a token block. dark
+  // and light are reference palettes with no stylesheet to agree with, so the
+  // describe() blocks above are the whole of what keeps them honest.
   const css = readFileSync(
     fileURLToPath(new URL('../../../src/app/globals.css', import.meta.url)),
     'utf8',
@@ -102,20 +119,21 @@ describe('the fixtures match the shipping stylesheet', () => {
     return out
   }
 
-  const SELECTORS: Record<(typeof THEME_NAMES)[number], string> = {
-    funky: ':root {',
-    dark: "html[data-theme='dark']",
-    light: "html[data-theme='light']",
-  }
+  it('funky', () => {
+    const parsed = parse(':root {')
+    // Every token present, so a renamed token cannot pass by being absent.
+    expect(Object.keys(parsed).sort()).toEqual([...TOKEN_NAMES].sort())
+    for (const token of TOKEN_NAMES) {
+      expect(parsed[token], `--${token} in funky`).toEqual([
+        ...CALIBRATION_PALETTES.funky[token],
+      ])
+    }
+  })
 
-  for (const name of THEME_NAMES) {
-    it(`${name}`, () => {
-      const parsed = parse(SELECTORS[name])
-      // Every token present, so a renamed token cannot pass by being absent.
-      expect(Object.keys(parsed).sort()).toEqual([...TOKEN_NAMES].sort())
-      for (const token of TOKEN_NAMES) {
-        expect(parsed[token], `--${token} in ${name}`).toEqual([...SHIPPING_THEMES[name][token]])
-      }
-    })
-  }
+  it('carries no token block for the removed dark and light themes', () => {
+    // The removal itself, asserted. A reinstated block would outrank :root for
+    // anyone whose stored ttt-theme is still a stale 'dark' or 'light'.
+    expect(css).not.toContain("html[data-theme='dark']")
+    expect(css).not.toContain("html[data-theme='light']")
+  })
 })
