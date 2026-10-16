@@ -11,6 +11,11 @@ import {
   randomSeed,
   readSeed,
 } from '@lib/palette/apply'
+import {
+  paintFavicon,
+  paintFaviconFromDocument,
+  resetFavicon,
+} from '@lib/palette/favicon'
 
 
 export type Theme = 'funky' | 'random'
@@ -38,6 +43,13 @@ function applySeed(seed: number) {
   const palette = generate(seed)
   applyPalette(palette.tokens, palette.polarity)
   persistPalette(palette)
+  /* The tab icon cannot read CSS custom properties -- browser chrome renders it
+     outside the document -- so it has to be rebuilt and handed over explicitly.
+     Fire-and-forget: it fetches the mask asset once, and a tab icon arriving a
+     frame or two late is not a visible defect. Living here rather than at the
+     call sites means every path that paints a palette repaints the icon too,
+     including the stale-cache recovery. */
+  void paintFavicon(palette.tokens.accent)
   return palette
 }
 
@@ -81,11 +93,13 @@ export default function ThemeSwitcher({
     // theme is still 'random' — so if those disagree, regenerate from the seed.
     // This is the one case where the engine runs on the client, and it is a
     // frame late by design: see the note in layout.tsx.
+    let recovered = false
     try {
       if (
         localStorage.getItem(THEME_KEY) === 'random' &&
         document.documentElement.dataset.theme !== 'random'
       ) {
+        recovered = true
         applySeed(readSeed() ?? randomSeed())
         document.documentElement.setAttribute('data-theme', 'random')
         // Sync React too. read() above already ran and saw the pre-paint
@@ -109,6 +123,15 @@ export default function ThemeSwitcher({
     } catch {
       // localStorage throws outright in some privacy modes — funky is already
       // applied and is a correct resting state.
+    }
+
+    /* Catch the tab icon up on load. The pre-paint script restores a cached
+       palette without running the engine, so on a reload none of the paths that
+       repaint the icon have fired and the markup's static funky icon would sit
+       in the tab over a random page. Guarded on `recovered` because the
+       recovery branch above already went through applySeed, which paints. */
+    if (!recovered && document.documentElement.dataset.theme === 'random') {
+      paintFaviconFromDocument()
     }
 
     // The desktop control and the mobile overlay are separate instances, so a
@@ -160,6 +183,9 @@ export default function ThemeSwitcher({
       // Inline custom properties beat the stylesheet, so funky cannot take
       // effect until the random palette's properties are removed.
       clearPalette()
+      // The icon has no stylesheet to fall back to, so unlike the tokens it has
+      // to be put back explicitly rather than merely un-set.
+      resetFavicon()
       setAnnouncement('')
       try {
         localStorage.setItem(THEME_KEY, next)
