@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { Contrast, Dices } from 'lucide-react'
 import { generate } from '@lib/palette/generate'
 import {
@@ -74,6 +75,9 @@ export default function ThemeSwitcher({
      stale boolean choosing between restore and roll would be a real bug,
      where a stale tooltip is cosmetic. */
   const [diceRestores, setDiceRestores] = useState(false)
+  /* The route, used only to re-assert the favicon after a client-side
+     navigation -- see the effect below. */
+  const pathname = usePathname()
 
   useEffect(() => {
     const read = () => {
@@ -93,13 +97,11 @@ export default function ThemeSwitcher({
     // theme is still 'random' — so if those disagree, regenerate from the seed.
     // This is the one case where the engine runs on the client, and it is a
     // frame late by design: see the note in layout.tsx.
-    let recovered = false
     try {
       if (
         localStorage.getItem(THEME_KEY) === 'random' &&
         document.documentElement.dataset.theme !== 'random'
       ) {
-        recovered = true
         applySeed(readSeed() ?? randomSeed())
         document.documentElement.setAttribute('data-theme', 'random')
         // Sync React too. read() above already ran and saw the pre-paint
@@ -125,15 +127,6 @@ export default function ThemeSwitcher({
       // applied and is a correct resting state.
     }
 
-    /* Catch the tab icon up on load. The pre-paint script restores a cached
-       palette without running the engine, so on a reload none of the paths that
-       repaint the icon have fired and the markup's static dark-mono icon would sit
-       in the tab over a random page. Guarded on `recovered` because the
-       recovery branch above already went through applySeed, which paints. */
-    if (!recovered && document.documentElement.dataset.theme === 'random') {
-      paintFaviconFromDocument()
-    }
-
     // The desktop control and the mobile overlay are separate instances, so a
     // change made in one has to be observed rather than assumed — otherwise
     // the other's aria-pressed goes stale. The attribute is the one source of
@@ -144,6 +137,33 @@ export default function ThemeSwitcher({
     })
     return () => observer.disconnect()
   }, [])
+
+  /* Keep the tab icon alive across route changes AND on first load.
+     Both are the same problem: something other than this component owns the
+     icon <link>, and it keeps putting the static default back.
+
+     - On LOAD, the pre-paint script restores a cached palette without running
+       the engine, so nothing has painted the icon yet.
+     - On a CLIENT-SIDE NAVIGATION, Next resolves route metadata and reconciles
+       <head>, which re-creates the <link> from the static value in layout.tsx.
+       That silently reverted the tab to the default mark while the page was
+       still in a random palette — the reported bug.
+
+     This has to key off `usePathname()` rather than live in the mount effect
+     above: ThemeSwitcher is rendered by the root layout's <Nav>, so it does NOT
+     remount on a route change and a `[]` effect runs exactly once in the life
+     of the tab. Folding the load case in here too means one favicon path
+     instead of two (it is what let the `recovered` guard go), and painting
+     twice would be harmless anyway — the fetch is memoised and the write is
+     idempotent.
+
+     Only the random theme needs this. In the default theme the value Next keeps
+     restoring is already the correct one, so there is nothing to repair. */
+  useEffect(() => {
+    if (document.documentElement.dataset.theme === 'random') {
+      paintFaviconFromDocument()
+    }
+  }, [pathname])
 
   const select = (next: Theme) => {
     if (next === 'random') {

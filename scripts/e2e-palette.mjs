@@ -551,6 +551,65 @@ check('a reload with a stored palette repaints the icon from the applied accent'
     faviReload.icons.every((h) => h.startsWith('data:image/svg+xml,')),
   `theme=${faviReload.theme} icons=${JSON.stringify(faviReload.icons.map((h) => h.slice(0, 32)))}`)
 
+/* 9b. The icon must survive a CLIENT-SIDE navigation.
+   This is a distinct path from both of the above and it is the one that shipped
+   broken: a reload re-runs the pre-paint script and ThemeSwitcher's mount
+   effect, but an in-app <Link> click does neither. Next resolves route metadata
+   on every navigation and reconciles <head>, which RE-CREATES the icon <link>
+   from the static value in layout.tsx -- silently reverting the tab to the
+   default mark while the page itself is still in a random palette.
+
+   ThemeSwitcher lives in the root layout's <Nav>, so it does NOT remount on a
+   route change and its effect cannot catch this. The fix watches usePathname().
+
+   Driven by clicking a real nav anchor rather than Page.navigate, because
+   Page.navigate is a full document load and would NOT reproduce the bug -- it
+   re-runs everything the mount path already covers. Asserting against a
+   hard-coded href would also be wrong here: this must stay true whichever file
+   is the default mark, so the expected value is read out of favicon.ts. */
+const DEFAULT_ICON = (readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), '..', 'lib/palette/favicon.ts'), 'utf8',
+).match(/DEFAULT_URL = '([^']*)'/) || [])[1]
+check('the harness found the default icon path in favicon.ts', !!DEFAULT_ICON,
+  `DEFAULT_URL=${DEFAULT_ICON}`)
+
+await goto(ORIGIN + '/')
+await evalJs(diceClick)
+const beforeNav = await waitForDataIcon(true)
+// A real in-app link click. Returns the href so a selector change fails loudly
+// rather than silently testing nothing.
+const navClicked = await evalJs(`(() => {
+  const a = document.querySelector('nav a[href="/writing"]');
+  if (!a) return null;
+  a.click();
+  return a.getAttribute('href');
+})()`)
+check('a nav link to /writing exists to click', navClicked === '/writing',
+  `clicked=${JSON.stringify(navClicked)}`)
+// Poll for the route to actually commit; a client nav has no load event.
+for (let i = 0; i < 60; i++) {
+  const href = await evalJs('location.pathname')
+  if (href === '/writing') break
+  await new Promise((r) => setTimeout(r, 150))
+}
+const afterNav = await evalJs(faviSnap)
+check('client-side navigation did happen', afterNav !== null &&
+  (await evalJs('location.pathname')) === '/writing',
+  `pathname=${await evalJs('location.pathname')}`)
+/* The assertion. Both halves matter: the palette must still be live (so we are
+   not just observing a theme reset) AND the icon must still be the generated
+   one rather than the static default. */
+const navIcons = await waitForDataIcon(true)
+check('the themed icon SURVIVES a client-side navigation',
+  navIcons.theme === 'random' &&
+    navIcons.icons.length > 0 &&
+    navIcons.icons.every((h) => h.startsWith('data:image/svg+xml,')) &&
+    !navIcons.icons.includes(DEFAULT_ICON),
+  `theme=${navIcons.theme} icons=${JSON.stringify(navIcons.icons.map((h) => h.slice(0, 32)))}`)
+check('and it still matches the palette actually applied after the nav',
+  navIcons.accentHex === beforeNav.accentHex,
+  `accent before=${beforeNav.accentHex} after=${navIcons.accentHex}`)
+
 ws.close(); kill(); server.close()
 console.log('PASS:'); pass.forEach((p) => console.log('  ✓ ' + p))
 if (fail.length) { console.log('FAIL:'); fail.forEach((f) => console.log('  ✗ ' + f)) }
