@@ -299,6 +299,31 @@ choice.
   with JS off; `aria-pressed` stays with React and a `MutationObserver` keeps the two mounted
   instances in step. Pressed inverts background and foreground rather than shifting hue, so it
   survives the loss of yellow (WCAG 1.4.1). Picking a theme in the overlay does **not** close it.
+- **The dice has two actions, and which one it takes depends on whether random is already live.**
+  Changed 2026-10-16; it used to always roll. The press that *enters* random **restores** the
+  reader's stored seed, and every press after that **rolls** a new palette and overwrites what is
+  stored. So a reader who picks a palette, detours to funky and comes back gets their own palette
+  rather than a stranger's. Four things hold it up:
+  - **Liveness is read from `document.documentElement.dataset.theme`, never from the `theme`
+    state.** That state starts `null` and is only filled by an effect, so a press landing before it
+    resolves would restore where it should roll. The attribute is already the single source of
+    truth in that file.
+  - **Restore re-runs `generate(seed)`; it does not paste the `ttt-palette` cache.** The seed is
+    the documented source of truth and the cache is only the pre-paint shortcut. A side effect
+    worth keeping: the e2e check compares the restored `--bg` against the one painted *before* the
+    detour, so it also proves the engine still agrees with the cache.
+  - **Empty storage needs no branch.** `readSeed()` returns `null` for a first-ever visitor and the
+    `??` falls through to a roll.
+  - **The button's name is state-dependent, and `diceRestores` is label-only.** `select()`
+    deliberately re-reads the DOM and storage instead of consulting that flag — a stale boolean
+    picking between restore and roll is a real bug, a stale tooltip is cosmetic. It must be synced
+    by hand inside the stale-cache recovery block, because the `MutationObserver` is attached
+    *after* it and no mutation record ever arrives; skipping that made the dice advertise
+    "Restore your last palette" on a page that had just recovered **into** random. That is a
+    live assertion, not a hypothetical.
+  **Accepted consequence:** no single press yields a *fresh* palette from funky any more — you get
+  your last one back, then press again. A reload and a first press now do the same thing, which is
+  more coherent than the split it replaced.
 - **Theme-visibility utilities** — `.only-funky` / `.only-random` toggle `display` and are how
   `ThemedLogo` picks between its file and its masked span with no JavaScript. `.only-funky` is
   written with a `:not()` so it also shows when the attribute is absent, matching what `:root`
@@ -322,7 +347,7 @@ a real browser, live in `scripts/` and run against a built export:
 
 | command | what it proves |
 |---|---|
-| `node scripts/e2e-palette.mjs` | 32 checks: the switcher has exactly 2 buttons, the palette is actually painted, a reload restores it pre-paint, switching back to funky *removes* the inline properties, the mark's ink follows `--accent`, a stale cache recovers from the seed with React state in step |
+| `node scripts/e2e-palette.mjs` | 38 checks: the switcher has exactly 2 buttons, the palette is actually painted, a reload restores it pre-paint, switching back to funky *removes* the inline properties, the mark's ink follows `--accent`, a stale cache recovers from the seed with React state in step. Also the dice's two-state action (§7b/7c): entering random **restores** the stored seed *and* repaints the same `--bg`, the press after that rolls, an empty store still rolls, and the button renames itself across all three states. Negative-controlled — with the old always-roll `select()` rebuilt from source, the restore check fails and the roll checks still pass |
 | `node scripts/e2e-palette-mobile.mjs` | the overlay control fits at 375px and 390px, no horizontal overflow, picking a theme does not close the overlay |
 | `node scripts/e2e-annotations.mjs` | 305 checks: every annotation round-trips to its note and back, both ends land **clear of the fixed nav** rather than under it, the phrase (not the superscript) is the hit target, the phrase survives into the accessible name with an additive `sr-only` cue and **no** `aria-label`, ids are unique and paired, no nested `<a>`. The `:target` highlight lands on the right note and no other, tints to `--surface`, measures ≥4.5:1, clears itself on the back-link, and does **not** reflow the note — a `border-left` in place of the inset shadow shifts the text 3px and fails here. Covers the MDX components on a post *and* the hand-rolled copy on `/about` |
 
