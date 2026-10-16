@@ -7,30 +7,38 @@
    rgb(var(--token) / <alpha-value>). Always wrap a token in rgb() when using it
    directly in CSS.
 
-   :root holds the "funky" palette, which is also the default when no
+   :root holds the "dark-mono" palette, which is also the default when no
    data-theme attribute is present (JS off, blocked, or pre-script).
 
-   funky is one of only TWO themes. The other is "random", and it has no token
+   dark-mono replaced "funky" as the default on 2026-10-16 and funky was removed
+   outright. It is strictly achromatic (R=G=B everywhere) and takes the pure
+   endpoint #ffffff for its accent, so the accent reads by LUMINANCE rather than
+   hue -- 21:1 against its own --bg, the maximum sRGB allows. funky's #e8ff00
+   survives only as a calibration fixture in lib/palette/__tests__/fixtures.ts,
+   where it is the sole evidence for the generator's CHROMA_CEIL (it sat at the
+   exact sRGB gamut edge). Do not restore it here.
+
+   dark-mono is one of only TWO themes. The other is "random", and it has no token
    block here on purpose: its nine values are generated at runtime by lib/palette
    and written as INLINE custom properties on <html>, which beat any stylesheet
    rule. That is also why switching away from random has to REMOVE those
    properties (see clearPalette in lib/palette/apply.ts) -- leaving them would pin
-   funky to the last random palette. The random theme also publishes
+   dark-mono to the last random palette. The random theme also publishes
    data-polarity="dark"|"light" on <html>, because some rules below need to know
    which end it sits at and a generated palette cannot be matched by a static
    attribute value alone. data-polarity is the GENERATOR's notion of which end of
    the lightness range a palette landed on; it has nothing to do with the former
    dark and light page themes, which no longer exist. */
 :root {
-  --bg:         10 10 10;
-  --surface:    17 17 17;
-  --border:     34 34 34;
-  --text:       240 240 240;
-  --muted:      128 128 128;
-  --accent:     232 255 0;
-  --accent-dim: 184 204 0;
-  --grid-dot:   30 30 30;
-  --success:    74 222 128;
+  --bg:         0 0 0;
+  --surface:    15 15 15;
+  --border:     42 42 42;
+  --text:       224 224 224;
+  --muted:      138 138 138;
+  --accent:     255 255 255;
+  --accent-dim: 189 189 189;
+  --grid-dot:   36 36 36;
+  --success:    184 184 184;
   color-scheme: dark;
 }
 
@@ -186,17 +194,17 @@ a {
 }
 
 /* Theme-visibility utilities. Consumed by components/ThemedLogo.tsx to pick the
-   per-theme logo asset. The :not() pair is what makes funky the default when the
+   per-theme logo asset. The :not() pair is what makes dark-mono the default when the
    data-theme attribute is absent. */
-.only-funky,
+.only-dark-mono,
 .only-random {
   display: none;
 }
 
-/* The :not() is what makes funky the default when the attribute is absent, or
+/* The :not() is what makes dark-mono the default when the attribute is absent, or
    carries a value this stylesheet does not know. Every theme added later has to
-   be excluded here too, or it would reveal the funky mark as well as its own. */
-html:not([data-theme='random']) .only-funky {
+   be excluded here too, or it would reveal the dark-mono mark as well as its own. */
+html:not([data-theme='random']) .only-dark-mono {
   display: block;
 }
 
@@ -299,7 +307,7 @@ html[data-theme='random'] .only-random {
 }
 
 /* Code block syntax colours. rehype-pretty-code is configured with an object
-   `theme` (see components/MDXContent.tsx), so Shiki emits --shiki-{funky,dark,light}
+   `theme` (see components/MDXContent.tsx), so Shiki emits --shiki-{dark,light}
    on every token span and --shiki-{…}-bg on the <pre>, with defaultColor:false —
    meaning no fallback `color` and no prefers-color-scheme query. These selectors
    are the only thing driving which theme is shown.
@@ -311,12 +319,12 @@ html[data-theme='random'] .only-random {
    The background goes on the <pre> only — custom properties inherit, so painting
    the spans too would draw a box behind every token and seam at line boundaries. */
 [data-rehype-pretty-code-figure] pre {
-  background-color: var(--shiki-funky-bg);
+  background-color: var(--shiki-dark-bg);
 }
 
 [data-rehype-pretty-code-figure] pre,
 [data-rehype-pretty-code-figure] pre span {
-  color: var(--shiki-funky);
+  color: var(--shiki-dark);
 }
 
 /* The random theme has no Shiki theme of its own and cannot get one: Shiki runs
@@ -329,8 +337,16 @@ html[data-theme='random'] .only-random {
    correct; it just does not carry the key hue. Accepted limitation -- the
    alternative is shipping a client-side highlighter.
 
-   These win over the unanchored funky rules above on specificity (0,3,1 vs
-   0,1,1), which is what keeps a random palette off the one-dark-pro set. */
+   These win over the unanchored default rules above on specificity (0,3,1 vs
+   0,1,1).
+
+   NOTE since funky was removed the DEFAULT theme also uses the --shiki-dark
+   (vesper) set, so the dark-polarity pair below now resolves to the same values
+   it would inherit anyway. It is kept deliberately rather than deleted: without
+   it, "random + dark polarity" would be silently coupled to whatever Shiki theme
+   the default happens to use, and a later change to the default would move
+   random's code colours with no rule anywhere saying so. The light-polarity pair
+   is doing real work in both cases. */
 html[data-theme='random'][data-polarity='dark'] [data-rehype-pretty-code-figure] pre {
   background-color: var(--shiki-dark-bg);
 }
@@ -356,9 +372,9 @@ html[data-theme='random'][data-polarity='light'] [data-rehype-pretty-code-figure
 /* ThemeSwitcher pressed state, driven off the html attribute rather than React
    state so the active theme is visibly selected on the first paint and with JS
    off. Mirrors the .only-* logic: no attribute (or an unknown one) reads as
-   funky, matching what :root actually renders. Specificity (0,2,1) clears both
+   dark-mono, matching what :root actually renders. Specificity (0,2,1) clears both
    .text-muted and .hover\:text-text:hover. */
-html:not([data-theme='random']) .theme-btn-funky,
+html:not([data-theme='random']) .theme-btn-dark-mono,
 html[data-theme='random'] .theme-btn-random {
   background-color: rgb(var(--accent));
   color: rgb(var(--bg));
@@ -374,11 +390,11 @@ html[data-theme='random'] .theme-btn-random {
    to fix. The measured alphas below hold for both polarities.
 
    An alpha on the accent is only as strong as the accent's own contrast, and a
-   GENERATED accent has far less of it to spend than a hand-picked one. funky's
-   accent is pure yellow and sits at 17-21:1 against its bg, so 40% alpha still
-   clears the floor comfortably. The same held for the two achromatic palettes the
-   gate table was calibrated against -- the former dark and light themes, whose
-   accents were pure white and pure black; they survive only as calibration
+   GENERATED accent has far less of it to spend than a hand-picked one. dark-mono's
+   accent is pure white and sits at 21:1 against its bg -- the sRGB maximum -- so
+   40% alpha still clears the floor comfortably (3.66:1). The same held for funky,
+   whose pure-yellow accent measured 17-21:1 and 3.47:1 at /40, and for the former
+   light theme's pure-black accent; all three survive only as calibration
    references in lib/palette/__tests__/fixtures.ts. A generated accent only has to
    clear 4.5-6.5:1, so the same 40% lands at 1.72:1 -- below the 3:1 non-text UI
    floor on 78.7% of palettes, measured over 20,000 seeds. Raising the alpha to
@@ -396,10 +412,13 @@ html[data-theme='random'] .hover\:border-accent\/40:hover {
 }
 
 /* /30 and success/40 are decorative (every chip they outline carries an icon and
-   a text label) and are ALREADY under 3:1 in funky itself, so they are not held
-   to the UI floor. They are nudged only to keep a random palette from being
-   arbitrarily fainter than funky: 0.6 lands at 2.34:1, which is where funky's /30
-   already sits (2.44:1). */
+   a text label) and are ALREADY under 3:1 in the default theme itself, so they
+   are not held to the UI floor. They are nudged only to keep a random palette
+   from being arbitrarily fainter than the default: 0.6 lands at 2.34:1, against
+   dark-mono's own /30 at 2.48:1 (funky's was 2.44:1 — the two hand-picked
+   accents land in the same place here because both are near-maximum luminance
+   on a near-black ground, which is why the >= 2.4 parity bar in
+   scripts/e2e-palette.mjs did not have to move). */
 html[data-theme='random'] .border-accent\/30,
 html[data-theme='random'] .hover\:border-accent\/30:hover {
   border-color: rgb(var(--accent) / 0.6);

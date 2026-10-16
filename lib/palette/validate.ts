@@ -1,10 +1,11 @@
 /**
  * The gate table: every contrast pair that actually occurs on the site.
  *
- * These are not aspirations. Each floor was set by measuring the three shipping
- * themes and taking a value they all clear, which is why the calibration test
- * (funky, dark and light must all pass this table) is the strongest available
- * evidence that the gates encode this site's design rather than a guess.
+ * These are not aspirations. Each floor was set by measuring the three
+ * hand-designed palettes and taking a value they all clear, which is why the
+ * calibration test (funky, dark and light must all pass this table) is the
+ * strongest available evidence that the gates encode this site's design rather
+ * than a guess. Only dark (shipping as dark-mono) is a page theme now.
  */
 
 import { toOklch, type Rgb } from './oklch'
@@ -25,7 +26,8 @@ export const GATES: readonly Gate[] = [
   { a: 'text', b: 'bg', role: 'body copy on the page', min: 14, max: Infinity },
   { a: 'text', b: 'surface', role: 'body copy on a card', min: 12, max: Infinity },
   { a: 'muted', b: 'bg', role: 'metadata, excerpts', min: 4.5, max: Infinity },
-  // The tightest pair on the site: 4.78:1 in funky.
+  // The tightest informational pair on the site: 5.55:1 in dark-mono, and it was
+  // 4.78:1 in funky, which is the measurement this 4.5 floor was set from.
   { a: 'muted', b: 'surface', role: 'metadata on a card', min: 4.5, max: Infinity },
   // WCAG AA is the hard floor. The staged search in generate() *prefers* 6.5:1
   // and degrades to this only where chroma and contrast genuinely oppose.

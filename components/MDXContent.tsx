@@ -20,7 +20,6 @@ import type { Options } from 'rehype-pretty-code'
 // would emit a set of variables nothing could ever select.
 const prettyCodeOptions = {
   theme: {
-    funky: 'one-dark-pro',
     dark: 'vesper',
     light: 'vitesse-light',
   },

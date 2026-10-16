@@ -102,7 +102,7 @@ describe('applyPalette', () => {
 describe('clearPalette', () => {
   it('removes every property applyPalette set', () => {
     // This is the one that matters: inline styles beat the stylesheet, so a
-    // single leftover property pins funky/dark/light to the last random
+    // single leftover property pins the default theme to the last random
     // palette for the rest of the session.
     const { el, style, attributes } = fakeElement()
     applyPalette(CALIBRATION_PALETTES.funky, 'dark', el)

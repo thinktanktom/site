@@ -12,14 +12,14 @@
  * NixOS (generic dynamically-linked ELF, hits the stub-ld error). No test
  * dependency is installed; this drives CDP over Node's built-in WebSocket.
  *
- * The site has TWO themes: funky (the default, held by :root) and random. The
- * switcher is therefore two buttons, funky first and the dice LAST -- pick(0)
+ * The site has TWO themes: dark-mono (the default, held by :root) and random. The
+ * switcher is therefore two buttons, dark-mono first and the dice LAST -- pick(0)
  * and b[b.length - 1] below rely on exactly that.
  *
  * What it covers that vitest cannot: that the palette is actually PAINTED, that
- * a reload restores it before first paint, that switching back to funky removes
+ * a reload restores it before first paint, that switching back to dark-mono removes
  * the inline custom properties (inline styles beat the stylesheet, so a leftover
- * would pin funky to the last random palette), that the masked logo mark's ink
+ * would pin dark-mono to the last random palette), that the masked logo mark's ink
  * follows --accent, that a stale cache recovers from the seed with React state
  * in step, and that the nav does not overflow.
  *
@@ -162,7 +162,7 @@ const SNAP = `(() => {
     computedAccent: cs.getPropertyValue('--accent').trim(),
     colorScheme: h.style.getPropertyValue('color-scheme').trim(),
     bodyBg: getComputedStyle(document.body).backgroundColor,
-    randomMarkVisible: vis('nav .only-random'), funkyMarkVisible: vis('nav .only-funky'),
+    randomMarkVisible: vis('nav .only-random'), defaultMarkVisible: vis('nav .only-dark-mono'),
     maskInk: (() => { const m = document.querySelector('nav .only-random .logo-mask');
       return m ? getComputedStyle(m).backgroundColor : null })(),
     maskImage: (() => { const m = document.querySelector('nav .only-random .logo-mask');
@@ -196,14 +196,14 @@ const SANITY = 'JSON.stringify({ href: location.href, hasNav: !!document.querySe
   console.log('attached OK -> ' + k.href)
 }
 
-// 1. clean load -> funky
+// 1. clean load -> dark-mono
 await goto(ORIGIN + `/`)
 await evalJs(`localStorage.clear()`)
 await goto(ORIGIN + `/`)
 let s = await evalJs(SNAP)
-check('clean load renders funky', s.theme === 'funky' && !s.inlineBg, `theme=${s.theme} inlineBg="${s.inlineBg}"`)
-check('funky mark visible, random hidden', s.funkyMarkVisible && !s.randomMarkVisible,
-  `funky=${s.funkyMarkVisible} random=${s.randomMarkVisible}`)
+check('clean load renders dark-mono', s.theme === 'dark-mono' && !s.inlineBg, `theme=${s.theme} inlineBg="${s.inlineBg}"`)
+check('dark-mono mark visible, random hidden', s.defaultMarkVisible && !s.randomMarkVisible,
+  `dark-mono=${s.defaultMarkVisible} random=${s.randomMarkVisible}`)
 /* Storage was just cleared, so there is nothing to restore and the dice must
    advertise a roll. This is the empty-store half of the dice's two-state name;
    section 7b covers the other two states. The empty-store BEHAVIOUR needs no
@@ -227,8 +227,8 @@ check('dice applies a random palette', s.theme === 'random' && /^\d+ \d+ \d+$/.t
 check('polarity published', s.polarity === 'dark' || s.polarity === 'light', `polarity=${s.polarity}`)
 check('color-scheme matches polarity', s.colorScheme === s.polarity, `${s.colorScheme} vs ${s.polarity}`)
 check('page actually repaints', s.bodyBg === `rgb(${s.inlineBg.replace(/ /g, ', ')})`, `body=${s.bodyBg} token=${s.inlineBg}`)
-check('random mark visible, funky hidden', s.randomMarkVisible && !s.funkyMarkVisible,
-  `random=${s.randomMarkVisible} funky=${s.funkyMarkVisible}`)
+check('random mark visible, dark-mono hidden', s.randomMarkVisible && !s.defaultMarkVisible,
+  `random=${s.randomMarkVisible} dark-mono=${s.defaultMarkVisible}`)
 check('masked mark is painted with --accent', s.maskInk === `rgb(${s.inlineAccent.replace(/ /g, ', ')})`,
   `background=${s.maskInk} accent=${s.inlineAccent}`)
 check('masked mark actually carries a mask image', !!s.maskImage && s.maskImage !== 'none',
@@ -253,19 +253,37 @@ let s3 = await evalJs(SNAP)
 check('pressing dice again re-rolls', s3.storedSeed !== seedBefore && s3.inlineBg !== bgBefore,
   `seed ${seedBefore} -> ${s3.storedSeed}`)
 
-// 5. back to funky -> inline properties must be REMOVED. Button 0 is funky;
+// 5. back to dark-mono -> inline properties must be REMOVED. Button 0 is dark-mono;
 // the dice is the last button. Two buttons now, so pick(0) and the dice are the
 // whole control.
 const pick = (i) => `(() => { const g = document.querySelector('[role="group"][aria-label="Colour theme"]');
   g.querySelectorAll('button')[${i}].click(); return true })()`
 await evalJs(pick(0)); await new Promise((r) => setTimeout(r, 400))
 let s4 = await evalJs(SNAP)
-check('switching to funky clears inline tokens', s4.theme === 'funky' && !s4.inlineBg && !s4.inlineAccent && !s4.polarity,
+check('switching to dark-mono clears inline tokens', s4.theme === 'dark-mono' && !s4.inlineBg && !s4.inlineAccent && !s4.polarity,
   `inlineBg="${s4.inlineBg}" inlineAccent="${s4.inlineAccent}" polarity=${s4.polarity}`)
-check('funky repaints to its own palette', s4.computedBg === '10 10 10' && s4.computedAccent === '232 255 0',
+check('dark-mono repaints to its own palette', s4.computedBg === '0 0 0' && s4.computedAccent === '255 255 255',
   `bg=${s4.computedBg} accent=${s4.computedAccent}`)
 
-// 6. stale cache -> funky pre-paint, then corrected from seed after hydration
+/* 5b. The MIGRATION path, which every existing reader takes exactly once.
+   'funky' was a valid stored value until 2026-10-16 and is now unknown, so the
+   pre-paint script's single `!== 'random'` test has to let it fall through to
+   dark-mono. vitest covers the script's logic directly (prepaint.test.ts runs
+   the real source over a table of stale values); what only a browser can show
+   is that the resulting page actually PAINTS dark-mono's tokens and lands the
+   pressed state on the right button, rather than rendering a theme with no
+   token block behind it. The same check stands in for a stale 'dark'/'light'. */
+await evalJs(`(() => { localStorage.setItem('ttt-theme','funky'); return 1 })()`)
+await goto(ORIGIN + '/')
+const stale = await evalJs(SNAP)
+check('a stale stored "funky" self-heals to a painted dark-mono',
+  stale.theme === 'dark-mono' && !stale.inlineBg &&
+    stale.computedBg === '0 0 0' && stale.computedAccent === '255 255 255' &&
+    stale.defaultMarkVisible && !stale.randomMarkVisible &&
+    JSON.stringify(stale.pressed) === JSON.stringify(['true', 'false']),
+  `theme=${stale.theme} bg=${stale.computedBg} accent=${stale.computedAccent} pressed=${JSON.stringify(stale.pressed)}`)
+
+// 6. stale cache -> dark-mono pre-paint, then corrected from seed after hydration
 await evalJs(`(() => { localStorage.setItem('ttt-theme','random'); localStorage.setItem('ttt-palette-v','99'); return 1 })()`)
 await goto(ORIGIN + `/`)
 let s5 = await evalJs(SNAP)
@@ -300,10 +318,10 @@ check('code block borrows a Shiki set by polarity',
   !code.none && code.bg !== 'rgba(0, 0, 0, 0)' && !!code.color && code.color !== 'rgb(0, 0, 0)', JSON.stringify(code))
 
 // 7b. The dice RESTORES the palette the reader last landed on when it is
-// arriving from funky, and ROLLS once random is already live. This block is
+// arriving from dark-mono, and ROLLS once random is already live. This block is
 // the inverse of what it asserted before 2026-10-16, deliberately: the old
 // rule was "the dice ALWAYS rolls", and it was traded away so that a reader
-// who wanders off to funky and comes back gets their own palette rather than
+// who wanders off to dark-mono and comes back gets their own palette rather than
 // a stranger's. The negative control for the new rule is the pair below --
 // restore must return the SAME seed and the same painted --bg, and the press
 // after it must still produce a different one, or "restore" has quietly become
@@ -312,12 +330,12 @@ await goto(ORIGIN + '/')
 const beforeDetour = await evalJs(SNAP)
 const seedBeforeNamed = beforeDetour.storedSeed
 const bgBeforeNamed = beforeDetour.inlineBg
-await evalJs(pick(0)) // funky
+await evalJs(pick(0)) // dark-mono
 await new Promise((r) => setTimeout(r, 300))
-const onFunky = await evalJs(SNAP)
+const onDefault = await evalJs(SNAP)
 // The button has to say which of the two things it is about to do.
-check('dice is relabelled as a restore while funky is active',
-  onFunky.diceLabel === 'Restore your last palette', `title="${onFunky.diceLabel}"`)
+check('dice is relabelled as a restore while dark-mono is active',
+  onDefault.diceLabel === 'Restore your last palette', `title="${onDefault.diceLabel}"`)
 await evalJs(diceClick)
 await new Promise((r) => setTimeout(r, 400))
 const afterNamed = await evalJs(SNAP)
@@ -326,7 +344,7 @@ const afterNamed = await evalJs(SNAP)
    coincidence. Checking both also proves generate(seed) still agrees with the
    cache the pre-paint script pasted, since the restore path re-runs the engine
    rather than reading ttt-palette. */
-check('dice RESTORES the stored palette when arriving from funky',
+check('dice RESTORES the stored palette when arriving from dark-mono',
   !!seedBeforeNamed && afterNamed.storedSeed === seedBeforeNamed &&
     afterNamed.inlineBg === bgBeforeNamed && afterNamed.theme === 'random',
   `seed ${seedBeforeNamed} -> ${afterNamed.storedSeed}, bg ${bgBeforeNamed} -> ${afterNamed.inlineBg}`)
@@ -369,14 +387,14 @@ const chip = await evalJs(`(() => {
     const cls = String(e.className);
     /* Only ACCENT-derived borders are held to the 3:1 UI floor. border-border/40
        is a neutral decorative hairline on a tag chip whose text label carries
-       the meaning, and it composites to ~1.09:1 in funky too -- holding the
+       the meaning, and it composites to ~1.11:1 in dark-mono too -- holding the
        random theme to a bar the brand theme does not meet would be incoherent.
        Tracked separately below as a parity check instead. */
     /* border-accent/40 is the one held to the 3:1 UI floor: it is a card and
        panel BOUNDARY, and it is the utility that regressed (1.72:1 worst with a
        generated accent, against 3.47-4.74 with a hand-picked one).
        border-accent/30 and border-success/40 outline chips that always carry an
-       icon AND a text label, and are already under the floor in funky itself,
+       icon AND a text label, and are already under the floor in dark-mono itself,
        so they are decorative and tracked for parity instead. */
     const uiFloor = cls.includes('border-accent/40');
     const accentish = cls.includes('accent') || cls.includes('success');
@@ -422,7 +440,7 @@ const chip = await evalJs(`(() => {
   check('every border-accent/40 BOUNDARY composites to >= 3:1 (UI floor)',
     !c.worstBoundaryBorder || c.worstBoundaryBorder.cr >= 3,
     `${c.boundaryBorders} boundary borders; worst ${JSON.stringify(c.worstBoundaryBorder)}`)
-  check('decorative accent chip borders stay at least as strong as funky\'s 2.44:1',
+  check('decorative accent chip borders stay at least as strong as dark-mono\'s 2.48:1',
     !c.worstDecorativeBorder || c.worstDecorativeBorder.cr >= 2.4,
     `${c.decorativeBorders} decorative; worst ${JSON.stringify(c.worstDecorativeBorder)}`)
   check('no accent border is left at the stock 0.4 alpha',
@@ -475,10 +493,10 @@ const waitForDataIcon = async (want) => {
 await goto(ORIGIN + '/')
 await evalJs(`localStorage.clear()`)
 await goto(ORIGIN + '/')
-const faviFunky = await evalJs(faviSnap)
-check('funky serves the brand icon file, not a generated one',
-  faviFunky.icons.length === 2 && faviFunky.icons.every((h) => h === '/ttt_icon.svg'),
-  JSON.stringify(faviFunky.icons))
+const faviDefault = await evalJs(faviSnap)
+check('dark-mono serves the brand icon file, not a generated one',
+  faviDefault.icons.length === 2 && faviDefault.icons.every((h) => h === '/ttt_icon_dark-mono.svg'),
+  JSON.stringify(faviDefault.icons))
 
 await evalJs(diceClick)
 const faviRandom = await waitForDataIcon(true)
@@ -486,7 +504,7 @@ check('rolling repaints every tab icon as a generated data URI',
   faviRandom.icons.length === 2 && faviRandom.icons.every((h) => h.startsWith('data:image/svg+xml,')),
   JSON.stringify(faviRandom.icons.map((h) => h.slice(0, 40))))
 check('apple-touch-icon is deliberately left alone',
-  faviRandom.apple === '/ttt_icon.svg', `apple=${faviRandom.apple}`)
+  faviRandom.apple === '/ttt_icon_dark-mono.svg', `apple=${faviRandom.apple}`)
 
 const decoded = await evalJs(`(async () => {
   const href = document.querySelector('link[rel~="icon"]').getAttribute('href');
@@ -512,17 +530,17 @@ check('the generated icon actually decodes as an image',
   !!decoded.size && decoded.size.w > 0 && decoded.size.h > 0,
   `size=${JSON.stringify(decoded.size)} bytes=${decoded.bytes} viewBox=${decoded.hasViewBox}`)
 
-// Switching back to funky must RESTORE the file. Unlike the colour tokens there
+// Switching back to dark-mono must RESTORE the file. Unlike the colour tokens there
 // is no stylesheet underneath the icon to fall back to, so un-setting is not
 // enough and this is a separate code path worth its own check.
 await evalJs(pick(0))
 const faviBack = await waitForDataIcon(false)
-check('switching to funky puts the brand icon file back',
-  faviBack.icons.every((h) => h === '/ttt_icon.svg'), JSON.stringify(faviBack.icons))
+check('switching to dark-mono puts the brand icon file back',
+  faviBack.icons.every((h) => h === '/ttt_icon_dark-mono.svg'), JSON.stringify(faviBack.icons))
 
 /* And the on-load path: the pre-paint script restores a cached palette without
    running the engine, so none of the paths above fire on a reload. Without the
-   catch-up in ThemeSwitcher's effect the tab would show the funky icon over a
+   catch-up in ThemeSwitcher's effect the tab would show the dark-mono icon over a
    random page -- which is the original bug, just one reload later. */
 await evalJs(diceClick)
 await waitForDataIcon(true)

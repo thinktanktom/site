@@ -6,10 +6,10 @@
  *
  * The constraint set, and what each rule prevents, is documented in CLAUDE.md.
  * Every numeric target here was calibrated by measuring three hand-designed
- * palettes rather than chosen by taste — funky, which still ships as the site's
- * default, and the former dark and light themes, kept as the achromatic
- * endpoints of the range. See lib/palette/__tests__/fixtures.ts, where all three
- * are asserted to pass the same gates this generator targets.
+ * palettes rather than chosen by taste — dark-mono, which ships as the site's
+ * default, plus the former funky and light themes, kept as the chromatic and
+ * neutral-light ends of the range. See lib/palette/__tests__/fixtures.ts, where
+ * all three are asserted to pass the same gates this generator targets.
  */
 
 import { maxChroma, oklch, type Rgb } from './oklch'
@@ -24,11 +24,13 @@ import type { Palette, Polarity } from './tokens'
  * its hue (C/maxC = 1.00), so "as vivid as the gamut allows" is the brand's
  * actual rule and the gamut is the real cap. This ceiling only bites on
  * wide-gamut hues — green and cyan reach C=0.23-0.27 at accent lightness and
- * would out-saturate the wordmark. 0.24 sits just above funky itself.
+ * would out-saturate the wordmark. 0.24 sits just above funky itself. funky no
+ * longer ships (dark-mono replaced it on 2026-10-16) but remains the ONLY
+ * evidence for this number, which is why it is kept as a calibration fixture.
  */
 export const CHROMA_CEIL = 0.24
 
-/** Weighted toward dark: funky and dark are both dark, and it is the brand look. */
+/** Weighted toward dark: the default theme is dark, and it is the brand look. */
 const DARK_PROBABILITY = 0.72
 
 /**
@@ -98,7 +100,7 @@ export function generate(seed: number): GeneratedPalette {
   const text = oklch(textL, cast(textL), keyHue)
 
   // Solved against SURFACE, not bg: muted-on-surface is the tightest pair on
-  // the site (4.78:1 in funky), so it is the binding constraint.
+  // the site (4.78:1 in funky, 5.55:1 in dark-mono), so it is the binding constraint.
   const mutedL = solveL(5, surface, keyHue, cast, dark)
   const muted = oklch(mutedL, cast(mutedL), keyHue)
 
@@ -156,7 +158,9 @@ export function generate(seed: number): GeneratedPalette {
       : Math.min(wantL, floorL)
   const accentDim = oklch(dimL, dimChroma(dimL), accentHue)
 
-  // Calibrated to funky's own #4ade80 (measured L=0.800 C=0.182 H=152).
+  // Calibrated to funky's #4ade80 (measured L=0.800 C=0.182 H=152). Kept at that
+  // hue after funky stopped shipping: success carries MEANING, not the key hue,
+  // so "open to work" must not go red on a red seed -- or grey on a mono default.
   //
   // The solver and the emitter MUST use the same chroma function. They did not:
   // the solver evaluated candidates at a flat 0.182 while the emitter applied

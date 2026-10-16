@@ -91,34 +91,37 @@ describe('the pre-paint script parses and runs', () => {
   })
 })
 
-describe('funky, the only named theme', () => {
-  it('falls back to funky with nothing stored', () => {
+describe('dark-mono, the only named theme', () => {
+  it('falls back to dark-mono with nothing stored', () => {
     const r = run({})
-    expect(r.theme).toBe('funky')
+    expect(r.theme).toBe('dark-mono')
     expect(r.props.size).toBe(0)
   })
 
-  it('applies the funky attribute and no inline tokens', () => {
-    const r = run({ 'ttt-theme': 'funky' })
-    expect(r.theme).toBe('funky')
+  it('applies the dark-mono attribute and no inline tokens', () => {
+    const r = run({ 'ttt-theme': 'dark-mono' })
+    expect(r.theme).toBe('dark-mono')
     expect(r.props.size).toBe(0)
   })
 
-  /* 'dark' and 'light' are in this list on purpose, not by oversight: they were
-     page themes until they were removed, so a returning reader can still have
-     one of them in localStorage. The script validates against 'random' alone, so
-     they fall through to funky -- the self-healing outcome, and the reason no
-     migration step was needed. */
-  it.each(['', 'bogus', 'RANDOM', 'funky ', 'dark', 'light'])(
-    'rejects %o and renders funky',
+  /* 'funky', 'dark' and 'light' are in this list on purpose, not by oversight:
+     all three were page themes until they were removed ('dark'/'light' first,
+     then 'funky' when dark-mono took the default on 2026-10-16), so a returning
+     reader can still have any of them in localStorage. The script validates
+     against 'random' alone, so they all fall through to dark-mono -- the
+     self-healing outcome, and the reason none of the three removals needed a
+     migration step. 'dark-mono ' with the trailing space is the near-miss of the
+     value that IS valid, which is the case a sloppy `startsWith` would pass. */
+  it.each(['', 'bogus', 'RANDOM', 'dark-mono ', 'funky', 'dark', 'light'])(
+    'rejects %o and renders dark-mono',
     (t) => {
-      expect(run({ 'ttt-theme': t }).theme).toBe('funky')
+      expect(run({ 'ttt-theme': t }).theme).toBe('dark-mono')
     },
   )
 
   it('survives a localStorage that throws', () => {
     const r = run({ 'ttt-theme': 'random' }, { throwOnRead: true })
-    expect(r.theme).toBe('funky')
+    expect(r.theme).toBe('dark-mono')
     expect(r.props.size).toBe(0)
   })
 })
@@ -155,7 +158,7 @@ describe('the random cache handshake', () => {
 
   it('refuses a cache stamped with a different engine version', () => {
     const r = run({ ...cacheFor(777), 'ttt-palette-v': '99' })
-    expect(r.theme).toBe('funky')
+    expect(r.theme).toBe('dark-mono')
     expect(r.props.size).toBe(0)
     expect(r.polarity).toBeNull()
   })
@@ -163,7 +166,7 @@ describe('the random cache handshake', () => {
   it('refuses a cache with no version stamp at all', () => {
     const c = cacheFor(777)
     delete (c as Record<string, string>)['ttt-palette-v']
-    expect(run(c).theme).toBe('funky')
+    expect(run(c).theme).toBe('dark-mono')
   })
 
   it('refuses a partial cache rather than painting half a palette', () => {
@@ -176,7 +179,7 @@ describe('the random cache handshake', () => {
         'ttt-palette': JSON.stringify(partial),
         'ttt-palette-v': ENGINE_VERSION,
       })
-      expect(r.theme, `missing --${missing}`).toBe('funky')
+      expect(r.theme, `missing --${missing}`).toBe('dark-mono')
       expect(r.props.size, `missing --${missing}`).toBe(0)
     }
   })
@@ -189,7 +192,7 @@ describe('the random cache handshake', () => {
         'ttt-palette': body,
         'ttt-palette-v': ENGINE_VERSION,
       })
-      expect(r.theme).toBe('funky')
+      expect(r.theme).toBe('dark-mono')
       expect(r.props.size).toBe(0)
     },
   )
@@ -232,7 +235,7 @@ describe('the random cache handshake', () => {
         'ttt-palette': JSON.stringify({ ...good, [name]: bad }),
         'ttt-palette-v': ENGINE_VERSION,
       })
-      expect(r.theme, `--${name} = ${JSON.stringify(bad)}`).toBe('funky')
+      expect(r.theme, `--${name} = ${JSON.stringify(bad)}`).toBe('dark-mono')
       // partial application is the specific failure being prevented
       expect(r.props.size, `--${name} = ${JSON.stringify(bad)}`).toBe(0)
     }
