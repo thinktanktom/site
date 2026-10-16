@@ -375,7 +375,7 @@ a real browser, live in `scripts/` and run against a built export:
 
 | command | what it proves |
 |---|---|
-| `node scripts/e2e-palette.mjs` | 43 checks: the switcher has exactly 2 buttons, the palette is actually painted, a reload restores it pre-paint, switching back to dark-mono *removes* the inline properties, the mark's ink follows `--accent`, a stale cache recovers from the seed with React state in step, and (§5b) **a stale stored `funky` self-heals to a PAINTED dark-mono** — the migration path every existing reader takes once, asserted on the attribute because the self-heal is invisible in the pixels. Also the dice's two-state action (§7b): entering random **restores** the stored seed *and* repaints the same `--bg`, the press after that rolls, and the button renames itself in all three states. **The empty-store roll has no check of its own on purpose** — section 2's press happens on cleared storage, so `dice applies a random palette` already *is* that assertion; breaking the empty-store path fails it (plus 8 downstream checks), which is what licensed dropping the duplicate. Negative-controlled the same way for the restore itself: with the old always-roll `select()` rebuilt from source, the restore check fails and the roll checks still pass. §9 covers the **themed favicon**: dark-mono serves the brand file, a roll repaints both `rel~="icon"` links as a tinted data URI with exactly one fill, that URI **decodes as a real image**, `apple-touch-icon` is untouched, dark-mono puts the file back, and a reload repaints from the applied accent |
+| `node scripts/e2e-palette.mjs` | 48 checks: the switcher has exactly 2 buttons, the palette is actually painted, a reload restores it pre-paint, switching back to dark-mono *removes* the inline properties, the mark's ink follows `--accent`, a stale cache recovers from the seed with React state in step, and (§5b) **a stale stored `funky` self-heals to a PAINTED dark-mono** — the migration path every existing reader takes once, asserted on the attribute because the self-heal is invisible in the pixels. Also the dice's two-state action (§7b): entering random **restores** the stored seed *and* repaints the same `--bg`, the press after that rolls, and the button renames itself in all three states. **The empty-store roll has no check of its own on purpose** — section 2's press happens on cleared storage, so `dice applies a random palette` already *is* that assertion; breaking the empty-store path fails it (plus 8 downstream checks), which is what licensed dropping the duplicate. Negative-controlled the same way for the restore itself: with the old always-roll `select()` rebuilt from source, the restore check fails and the roll checks still pass. §9 covers the **themed favicon**: dark-mono serves the brand file, a roll repaints both `rel~="icon"` links as a tinted data URI with exactly one fill, that URI **decodes as a real image**, `apple-touch-icon` is untouched, dark-mono puts the file back, and a reload repaints from the applied accent. **§9b is the one that shipped broken** — the themed icon must survive a CLIENT-SIDE navigation. It is driven by clicking a real nav anchor, because `Page.navigate` is a full document load that re-runs the mount path and therefore *cannot* reproduce the bug; and its expected default is read out of `favicon.ts` rather than hard-coded, so it cannot drift when the default mark changes |
 | `node scripts/e2e-palette-mobile.mjs` | the overlay control fits at 375px and 390px, no horizontal overflow, picking a theme does not close the overlay |
 | `node scripts/e2e-annotations.mjs` | 305 checks: every annotation round-trips to its note and back, both ends land **clear of the fixed nav** rather than under it, the phrase (not the superscript) is the hit target, the phrase survives into the accessible name with an additive `sr-only` cue and **no** `aria-label`, ids are unique and paired, no nested `<a>`. The `:target` highlight lands on the right note and no other, tints to `--surface`, measures ≥4.5:1, clears itself on the back-link, and does **not** reflow the note — a `border-left` in place of the inset shadow shifts the text 3px and fails here. Covers the MDX components on a post *and* the hand-rolled copy on `/about` |
 
@@ -845,13 +845,27 @@ Every developer eventually builds their own website...
    - **`link[rel~="icon"]` deliberately spares `apple-touch-icon`.** The `~=` match covers both
      `rel="icon"` and `rel="shortcut icon"`; the Apple icon is an iOS home-screen bookmark captured
      when the bookmark is made, so repainting it achieves nothing.
-   - **Three call sites, and the third is easy to miss.** `applySeed()` covers every roll, restore
-     and stale-cache recovery; the dark-mono branch of `select()` calls `resetFavicon()` (there is no
-     stylesheet under the icon to fall back to, so it must be put back explicitly, not merely
-     un-set); and the effect calls `paintFaviconFromDocument()` **once on load**, because the
-     pre-paint script restores a cached palette without the engine running — without it the tab
-     shows the dark-mono icon over a random page after any reload. That third call is guarded on a
-     `recovered` flag so it does not double up with the recovery path.
+   - **Two call sites, and the second is a `usePathname()` effect, not a mount effect.**
+     `applySeed()` covers every roll, restore and stale-cache recovery, and the dark-mono branch of
+     `select()` calls `resetFavicon()` (there is no stylesheet under the icon to fall back to, so it
+     must be put back explicitly, not merely un-set).
+
+     Everything else is one effect keyed on `usePathname()`, which repaints whenever random is live.
+     It covers two cases that are really the same problem — **something other than this component
+     owns the `<link>` and keeps restoring the static default**:
+     - **on load**, because the pre-paint script restores a cached palette without running the
+       engine, so nothing has painted the icon yet;
+     - **on every client-side navigation**, because Next resolves route metadata and reconciles
+       `<head>`, re-creating the `<link>` from the static value in `layout.tsx`.
+
+     **The navigation case shipped broken (fixed 2026-10-16)** — the tab silently reverted to the
+     default mark while the page was still in a random palette. The reason a mount effect could not
+     catch it is the load-bearing part: `ThemeSwitcher` is rendered by the root layout's `<Nav>`, so
+     it **never remounts on a route change** and a `[]` effect runs exactly once in the life of the
+     tab. Anything that needs to survive navigation has to key off the route.
+     Folding the load case into the same effect is what let the old `recovered` guard go — one
+     favicon path instead of two, and double-painting would be harmless anyway since the fetch is
+     memoised and the write is idempotent.
    - **Deliberately async and fire-and-forget**, and deliberately *not* in the pre-paint script: a
      tab icon is not a layout element, so arriving a few hundred ms late costs nothing visible,
      whereas a `fetch` before first paint would be blocking work for no benefit.
