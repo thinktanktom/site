@@ -14,7 +14,7 @@
  * copy of the path data to keep in sync -- the same reason CLAUDE.md gives for
  * the mask path over an inline <svg>. Inlining the geometry here instead would
  * put ~2.2KB of paths in the client bundle for every reader, including the ones
- * who never leave funky.
+ * who never leave dark-mono.
  *
  * It is fetched once and memoised, so a roll costs a string replace, not a
  * request.
@@ -25,8 +25,8 @@ import type { Rgb } from './oklch'
 /** The single-fill mask asset. Only its SHAPE is used -- see below. */
 const MASK_URL = '/ttt_icon_light-primary.svg'
 
-/** The brand icon, used verbatim whenever funky is active. */
-const FUNKY_URL = '/ttt_icon.svg'
+/** The brand icon, used verbatim whenever the default theme is active. */
+const DEFAULT_URL = '/ttt_icon_dark-mono.svg'
 
 /**
  * Matches both `rel="icon"` and `rel="shortcut icon"` (a `~=` match is over the
@@ -89,7 +89,7 @@ function setIcons(href: string): void {
  */
 export async function paintFavicon(accent: Rgb): Promise<void> {
   const svg = await loadMask()
-  // Nothing to do if the asset could not be read -- the funky icon stays, which
+  // Nothing to do if the asset could not be read -- the dark-mono icon stays, which
   // is a correct-looking tab rather than a missing one.
   if (!svg) return
   const data = tint(svg, hex(accent))
@@ -101,13 +101,13 @@ export async function paintFavicon(accent: Rgb): Promise<void> {
  *
  * Needed for exactly one case: the pre-paint script in `layout.tsx` restores a
  * cached palette without the engine running at all, so on a reload none of the
- * paths that call `paintFavicon` fire, and the markup's static funky icon would
+ * paths that call `paintFavicon` fire, and the markup's static dark-mono icon would
  * sit in the tab over a random page. Reading the applied value rather than
  * re-deriving it from the seed also means this cannot disagree with what is
  * actually painted.
  *
  * No-ops unless a palette really is applied -- an unparseable or absent value
- * leaves the funky icon alone.
+ * leaves the dark-mono icon alone.
  */
 export function paintFaviconFromDocument(): void {
   const raw = getComputedStyle(document.documentElement)
@@ -120,7 +120,7 @@ export function paintFaviconFromDocument(): void {
   void paintFavicon(parts as unknown as Rgb)
 }
 
-/** Put the brand icon back. Used when funky becomes active. */
+/** Put the brand icon back. Used when the default theme becomes active. */
 export function resetFavicon(): void {
-  setIcons(FUNKY_URL)
+  setIcons(DEFAULT_URL)
 }

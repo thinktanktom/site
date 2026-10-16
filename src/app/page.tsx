@@ -19,7 +19,7 @@ export default function HomePage() {
 
         <div className="relative z-10 flex flex-col items-center text-center max-w-article mx-auto">
           <div className="animate-fade-up" style={{ animationDelay: '0ms' }}>
-            {/* The funky file and the random mask share funky's square
+            {/* The dark-mono file and the random mask share the same square
                 canvas, so the mark is 96x96 in both themes; the fixed box is
                 belt-and-braces in case an asset is re-exported with a tighter
                 viewBox. */}
