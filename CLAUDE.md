@@ -324,7 +324,7 @@ a real browser, live in `scripts/` and run against a built export:
 |---|---|
 | `node scripts/e2e-palette.mjs` | 32 checks: the switcher has exactly 2 buttons, the palette is actually painted, a reload restores it pre-paint, switching back to funky *removes* the inline properties, the mark's ink follows `--accent`, a stale cache recovers from the seed with React state in step |
 | `node scripts/e2e-palette-mobile.mjs` | the overlay control fits at 375px and 390px, no horizontal overflow, picking a theme does not close the overlay |
-| `node scripts/e2e-annotations.mjs` | 206 checks: every annotation round-trips to its note and back, both ends land **clear of the fixed nav** rather than under it, the phrase (not the superscript) is the hit target, the phrase survives into the accessible name with an additive `sr-only` cue and **no** `aria-label`, ids are unique and paired, no nested `<a>`. Covers the MDX components on a post *and* the hand-rolled copy on `/about` |
+| `node scripts/e2e-annotations.mjs` | 305 checks: every annotation round-trips to its note and back, both ends land **clear of the fixed nav** rather than under it, the phrase (not the superscript) is the hit target, the phrase survives into the accessible name with an additive `sr-only` cue and **no** `aria-label`, ids are unique and paired, no nested `<a>`. The `:target` highlight lands on the right note and no other, tints to `--surface`, measures ≥4.5:1, clears itself on the back-link, and does **not** reflow the note — a `border-left` in place of the inset shadow shifts the text 3px and fails here. Covers the MDX components on a post *and* the hand-rolled copy on `/about` |
 
 Build first — they serve `out/`, not a dev server. Chromium comes from nixpkgs
 (`nix run nixpkgs#chromium`); **Playwright's bundled Chromium cannot run on NixOS**. No script
@@ -564,8 +564,27 @@ The styling is settled — **do not redesign it**:
   - **An `Annotated` phrase must never contain a markdown link.** The whole phrase is the hit
     target (deliberately — not the ~6px superscript), so a link inside it nests `<a>` in `<a>` and
     the parser drops the inner one. Annotate around a link, not over one.
-  The only *new* pixel in the feature is the hover: `.annot:hover` goes to `--accent-dim`, the
+  The only *new* pixel in the jump itself is the hover: `.annot:hover` goes to `--accent-dim`, the
   documented hover state for accent, purely as a click affordance.
+- **`.annot-note:target` highlights the note you landed on.** With eight notes stacked a few pixels
+  apart, arriving at the right scroll offset is not the same as knowing which line was the
+  destination. Four things about it are deliberate:
+  - **It persists; it does not flash.** That makes it self-clearing — taking the back-link moves
+    `:target` to `#ref-N` and the note un-highlights on its own. An `@keyframes` flash would also
+    fail to re-fire when the same marker is clicked twice, because `:target` never changes.
+  - **The tint is `--surface`, never an accent alpha.** Note text is `--muted`, and
+    `muted`/`surface` is a pair the generator *solves for* (`min: 4.5`, `lib/palette/validate.ts`),
+    so the highlight is AA by construction in every palette including random — measured 4.78:1,
+    matching the documented tightest informational pair. An accent-tinted background would be
+    exactly the composite hazard the randomizer section warns about: both sides move and nothing
+    in the gate table bounds the result.
+  - **The accent is an `inset` box-shadow, not a `border-left`.** A real border changes layout; the
+    padding and its compensating negative margin live on the *base* class so the strip is reserved
+    at all times and highlighting cannot reflow the note. A `border-left` shifts the text 3px, and
+    `e2e-annotations.mjs` fails on exactly that.
+  - It echoes the `3px solid --accent` left border already used by `h2`, `h3` and `blockquote`, so
+    it is not a new visual idea — and `/about` inherits it for free from the shared class.
+  Deep-linking comes free: `/writing/some-post#note-3` arrives with note 3 already highlighted.
 - **Notes block** at the foot of the post, matching the `/about` footnotes exactly: wrapper
   `pt-6 border-t border-border`, inner `font-mono text-xs leading-relaxed space-y-1`, each note an
   accent `N.` (now the back-link) followed by muted text. (`/about` hand-rolls the same markup
