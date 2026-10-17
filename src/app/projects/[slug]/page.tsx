@@ -4,6 +4,7 @@ import type { Metadata } from 'next'
 import { Github, ExternalLink } from 'lucide-react'
 import { getAllProjects, getProjectBySlug } from '@lib/projects'
 import MDXContent from '@components/MDXContent'
+import { formatLongDate } from '@lib/format'
 
 interface Props {
   params: { slug: string }
@@ -36,14 +37,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       images: ['/ttt_logo.png'],
     },
   }
-}
-
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  })
 }
 
 const statusStyles = {
@@ -95,7 +88,7 @@ export default function ProjectPage({ params }: Props) {
         <header className="mt-6 mb-12">
           <div className="flex flex-wrap items-center gap-3 mb-5">
             <time dateTime={project.date} className="font-mono text-xs text-muted tracking-wider">
-              {formatDate(project.date)}
+              {formatLongDate(project.date)}
             </time>
             <span className="text-border">·</span>
             <span

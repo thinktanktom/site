@@ -4,6 +4,7 @@ import type { Metadata } from 'next'
 import { getAllPosts, getPostBySlug } from '@lib/posts'
 import MDXContent from '@components/MDXContent'
 import AiNotesNotice from '@components/AiNotesNotice'
+import { formatLongDate } from '@lib/format'
 
 interface Props {
   params: { slug: string }
@@ -37,14 +38,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       images: ['/ttt_logo.png'],
     },
   }
-}
-
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  })
 }
 
 export default function PostPage({ params }: Props) {
@@ -93,7 +86,7 @@ export default function PostPage({ params }: Props) {
         <header className="mt-6 mb-12">
           <div className="flex flex-wrap items-center gap-3 mb-5">
             <time dateTime={post.date} className="font-mono text-xs text-muted tracking-wider">
-              {formatDate(post.date)}
+              {formatLongDate(post.date)}
             </time>
             <span className="text-border">·</span>
             <span className="font-mono text-xs text-muted">{post.readTime}</span>
