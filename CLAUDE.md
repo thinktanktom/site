@@ -512,9 +512,14 @@ top-level `;`), which left some tokens unset while `data-theme` was still `rando
 recovery path keys off `data-theme`, it could not see that state, so the broken palette survived
 reloads. Reproduced in a browser as black text on a near-black background.
 
-The pre-paint script **never runs the generator** — `generate()` costs ~1.5ms warm and the engine is
-~3KB, neither of which belongs in blocking work before first paint. It pastes the cached tokens
-instead. **Bump `ENGINE_VERSION` whenever a change would make a seed produce a different palette**;
+The pre-paint script **never runs the generator** — `generate()` costs **~0.46ms warm** and the
+engine is ~3KB, neither of which belongs in blocking work before first paint. It pastes the cached
+tokens instead. (**Corrected 2026-10-17**: this line said ~1.5ms for a long time, which was ~3×
+pessimistic. Re-measured by bundling `generate.ts` with its real transitive deps and timing it in
+Node 22: **3.96ms cold, 0.459ms/call warm over 1,000 calls** — which agrees with the `0.45ms/seed`
+figure already in `generate.test.ts`'s own comment. The ~3KB half holds: 3,893 B raw / 2,131 B gzip
+minified. The decision is unchanged either way — 0.46ms is still synchronous work before first paint
+that a cache-paste avoids, and the size argument never depended on the timing.) **Bump `ENGINE_VERSION` whenever a change would make a seed produce a different palette**;
 a stale cache is then refused, costing one frame of dark-mono before `ThemeSwitcher` regenerates from the
 seed, rather than pinning readers to a palette the engine no longer produces.
 
@@ -860,12 +865,22 @@ Every developer eventually builds their own website...
    Plus `ttt_logo.png` — the dark-ground raster for OG/Twitter cards, referenced from `layout.tsx`
    metadata and every route's `generateMetadata`.
 
-   **Three funky assets are now unreferenced and still on disk**, as of 2026-10-16:
-   `ttt_icon.svg`, `ttt_side_no_byline_logo.svg` and `ttt_logo_full.svg`. They were deliberately
-   **not** deleted along with the funky theme, because they are reachable as URLs under the
-   published export and removing them is a URL-breaking change that is Tom's call, not a cleanup.
-   Nothing should start using them. If they do get deleted, note `ttt_logo_full.svg` is the only
-   remaining three-ink mark in the repo, so it is also the only record of funky's exact logo inks.
+   **The three unreferenced funky assets were DELETED on 2026-10-17** — `ttt_icon.svg`,
+   `ttt_side_no_byline_logo.svg` and `ttt_logo_full.svg`, 36,408 bytes. They had been kept since
+   2026-10-16 because they were reachable as URLs under the published export, making removal a
+   URL-breaking change that was Tom's call rather than a cleanup. He made it. Do not re-add them.
+
+   **The claim that used to sit here was wrong, and it was the only argument against deleting
+   them:** it said `ttt_logo_full.svg` was "the only remaining three-ink mark in the repo, so it is
+   also the only record of funky's exact logo inks." It was not. Five SVGs under `logo/SVG/` are
+   **tracked** (`/logo/` is gitignored, but these predate that and tracked files win) and between
+   them carry every funky ink — `logo/SVG/with tagline _svg_ttt logo 2.svg` holds `#E1F708`,
+   `#F6F4F1`, `#FFFFFF` and `#0C0C0C`, and `logo/SVG/ttt_side_no_byline_logo.svg` is
+   **byte-identical** to the `public/` copy that was deleted (same md5). Verify with
+   `git ls-files logo/SVG/` before trusting this paragraph either.
+
+   A detail that supports the warning above about logo files disagreeing on their ink: the deleted
+   `public/ttt_icon.svg` was `#D9DB00`, **not** funky's `#E1F708`. The three never agreed.
 
    A warning drawn from this spot's own history: it previously claimed the `*_dark-mono.svg` files
    were "left on disk for separate untracking" when they had in fact already been **deleted** by
@@ -936,6 +951,35 @@ Every developer eventually builds their own website...
    neither width. `node scripts/e2e-palette-mobile.mjs` does this and asserts the emulated width
    actually applied before trusting any other number.
 10. Run `next build` and fix all TypeScript errors before considering the site done
+11. **Project doc trees are ONE route, driven by a registry** (`lib/project-docs.ts`, consolidated
+    2026-10-17). Adding a doc tree is one entry in `DOC_PROJECTS` plus a `lib/<name>-sidebar.ts`
+    data file — nothing else.
+
+    Until 2026-10-17 there were **four** copies of the whole family: `[...slug]/page.tsx`,
+    `layout.tsx`, a `<Name>DocSidebar.tsx` and a `lib/<name>-docs.ts` per project — 20 files,
+    ~1,630 lines, of which the docs libs differed in **2 lines of 70**. That is not recorded here
+    as tidiness: the copies had already drifted in three places, and nobody chose any of it.
+    - BasedAgents and FractalWebhook shipped **no `alternates.canonical` and no `BreadcrumbList`**;
+      BankX and RufloOrchestration shipped both.
+    - `sitemap.ts` kept a **hand-written list of three** doc trees, so all 12 FractalWebhook doc
+      pages were missing from the sitemap entirely. Its own comment admitted the hazard.
+
+    Four things about the single implementation are load-bearing:
+    - **The route is `projects/[slug]/[...docSlug]/`, and it must not gain a `/docs/` segment.**
+      The live URLs have never had one (`/projects/BankX/introduction`) — "Docs" is only a
+      breadcrumb *label*. Inserting a segment breaks every indexed URL. Nesting under the existing
+      `[slug]` is also forced: App Router forbids two differently-named dynamic siblings at one
+      level, and `projects/[slug]/page.tsx` (the project overview, for all 8 projects) owns it.
+    - **`layout.tsx` sits in the `[...docSlug]/` leaf, not at `[slug]/`.** One level up it would
+      also wrap the project overview pages, which deliberately have no sidebar or doc top-bar.
+    - **`DocSidebar` receives its nav as a prop from the server layout.** It is a client component;
+      importing all four data modules into it would ship every project's nav to every reader. Same
+      reasoning as `Nav.tsx`'s wordmark prop. `lib/project-docs.ts` imports `fs` — never import it
+      from a `'use client'` module; the client-safe types live in `lib/doc-sidebar-types.ts`.
+    - **A typo in `DOC_PROJECTS` is a new failure class.** It yields an *empty* doc list for that
+      project — 404s in the shipped export, not a build error. With four copies a mistake was
+      contained to one project. **Verify a change here by diffing the full `out/` file listing
+      before and after**: that is what proved this refactor preserved all 176 non-`_next` files.
 
 ---
 
