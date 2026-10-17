@@ -27,7 +27,7 @@
 import { spawn } from 'child_process'
 import { createServer } from 'http'
 import { readFile, stat } from 'fs/promises'
-import { join, extname, dirname } from 'path'
+import { join, extname, dirname, resolve, sep } from 'path'
 import { fileURLToPath } from 'url'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', 'out')
@@ -38,6 +38,14 @@ const server = createServer(async (req, res) => {
   try {
     let rel = decodeURIComponent(req.url.split('?')[0]).replace(/\/+$/, '') || '/'
     let p = join(ROOT, rel)
+    // Clamp to ROOT. join() does NOT: join(ROOT, '/../../../etc/passwd') resolves
+    // outside it, so this server would read any file the invoking user can.
+    // Dev-only and bound to 127.0.0.1, but a page open in a browser on this
+    // machine can still issue a GET while a run is live.
+    const rootAbs = resolve(ROOT), pAbs = resolve(p)
+    if (pAbs !== rootAbs && !pAbs.startsWith(rootAbs + sep)) {
+      res.writeHead(403); res.end('forbidden'); console.error('  [403] ' + req.url); return
+    }
     // Next's static export writes BOTH out/projects.html (the page) and
     // out/projects/ (its sub-routes), and that directory has no index.html.
     // So a directory hit must fall back to "<dir>.html" rather than 404 --

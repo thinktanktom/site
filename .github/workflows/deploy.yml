@@ -12,11 +12,15 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      # Actions are pinned to commit SHAs, not to version tags. A tag is mutable:
+      # whoever controls the action's repo can move `v4` to point at new code,
+      # which would then run here with the contents:write token below. The
+      # trailing comment records the human-readable version each SHA is.
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22'
           cache: 'npm'
@@ -34,7 +38,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Deploy to gh-pages
-        uses: peaceiris/actions-gh-pages@v4
+        # Third-party, so the one that most warrants a SHA pin.
+        uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4.1.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./out
