@@ -47,12 +47,7 @@ export default function ProjectDocLayout({
       </div>
 
       <div className="max-w-[1200px] mx-auto flex">
-        <DocSidebar
-          project={params.slug}
-          label={project.label}
-          navId={project.navId}
-          nav={project.nav}
-        />
+        <DocSidebar project={params.slug} label={project.label} navId={project.navId} />
 
         {/* Main content */}
         <main className="flex-1 min-w-0 px-6 lg:px-12 py-12">

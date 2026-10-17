@@ -5,23 +5,45 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Menu, X } from 'lucide-react'
 import { isSidebarGroup, type SidebarEntry, type SidebarLeaf } from '@lib/doc-sidebar-types'
+import { sidebarNav as BankX } from '@lib/bankx-sidebar'
+import { sidebarNav as BasedAgents } from '@lib/based-agents-sidebar'
+import { sidebarNav as FractalWebhook } from '@lib/fractal-webhook-sidebar'
+import { sidebarNav as RufloOrchestration } from '@lib/ruflo-orchestration-sidebar'
 
-// One sidebar for every project doc tree. This replaced four 123-line client
-// components that differed in 16 lines each — and whose four separate code-split
-// chunks each carried its own copy of the lucide icon factory, the Menu/X icon
-// defs and this nav logic (9,175 B gzip across the four, against 4,209 B as one).
+// One sidebar for every project doc tree, replacing four 123-line client
+// components that differed in 16 lines each and whose separate chunks each
+// carried their own copy of the lucide icon factory, the Menu/X icon defs and
+// this nav logic.
 //
-// The nav arrives as a prop from the server layout rather than being imported
-// here: importing all four data modules into a client component would ship every
-// project's nav to every reader. Same pattern as Nav.tsx's wordmark prop.
+// The nav data is imported HERE, into the one shared chunk, rather than passed
+// down as a prop from the server layout. That looks like the wasteful choice —
+// every doc reader downloads all four projects' navs — but it is the cheaper
+// one, because there is now a single route and therefore a single client chunk,
+// so the alternatives are worse (measured, gzip, BankX):
+//
+//   prop from the layout  1,973 B chunk + 467 B in EVERY page's RSC payload
+//   imported here         ~2,700 B chunk, cached once, 0 B per page
+//
+// The prop form is cheaper for a reader of one page and worse from the third
+// page on; this form is flat. The old four-chunk design was actually the most
+// efficient for a single-project reader (each chunk held only its own nav), so
+// this is a deliberate small trade for having one implementation — not a win.
+// next/dynamic per project would beat both, at the cost of hydrating the
+// navigation late, which is not worth it for a sidebar.
+const NAVS: Record<string, SidebarEntry[]> = {
+  BankX,
+  BasedAgents,
+  FractalWebhook,
+  RufloOrchestration,
+}
+
 interface DocSidebarProps {
-  /** URL segment, e.g. 'BankX' — the doc tree's base path. */
+  /** URL segment, e.g. 'BankX' — the doc tree's base path and NAVS key. */
   project: string
   /** Display name for the back-link and the dialog's accessible name. */
   label: string
   /** Prefix for the mobile-nav id, kept stable per project. */
   navId: string
-  nav: SidebarEntry[]
 }
 
 function NavLink({
@@ -107,10 +129,11 @@ function SidebarContent({
   )
 }
 
-export default function DocSidebar({ project, label, navId, nav }: DocSidebarProps) {
+export default function DocSidebar({ project, label, navId }: DocSidebarProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const basePath = `/projects/${project}`
   const mobileNavId = `${navId}-mobile-nav`
+  const nav = NAVS[project] ?? []
 
   useEffect(() => {
     if (!mobileOpen) return
