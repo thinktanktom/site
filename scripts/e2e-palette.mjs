@@ -29,6 +29,14 @@
  * that reads both the live DOM attribute and localStorage, and the thing worth
  * proving is that the restored palette is the same one that was PAINTED before,
  * which needs a browser.
+ *
+ * Section 1 also guards the logo mark's single path (2026-10-17). There is now
+ * ONE masked span per role, mounted in every theme, and the two checks that
+ * matter are browser-only by nature: that the mask asset has ALREADY been
+ * fetched while dark-mono is live (read from the CDP request log), and that the
+ * ink carries a background-color transition. Both exist because the hidden span
+ * could not load its mask until the dice revealed it, so the mark painted
+ * nothing for a frame locally and ~300ms on a throttled link.
  */
 import { spawn } from 'child_process'
 
@@ -117,7 +125,18 @@ const { target, kill } = await launchChrome(1280, 900)
 const ws = new WebSocket(target.webSocketDebuggerUrl)
 await new Promise((r, j) => { ws.onopen = r; ws.onerror = j })
 let id = 0; const pend = new Map()
-ws.onmessage = (e) => { const m = JSON.parse(e.data); if (m.id && pend.has(m.id)) { pend.get(m.id)(m); pend.delete(m.id) } }
+/* Every URL the page has asked for, in order, across every navigation in the
+   run. Section 1 needs to know whether the logo's mask asset was requested
+   while dark-mono was live -- and Resource Timing cannot answer that: a
+   memory-cache hit produces no entry, so the same assertion passed on a cold
+   profile and failed on a warm one for reasons that have nothing to do with the
+   site. The protocol-level log is not cache-dependent. */
+const requested = []
+ws.onmessage = (e) => {
+  const m = JSON.parse(e.data)
+  if (m.id && pend.has(m.id)) { pend.get(m.id)(m); pend.delete(m.id); return }
+  if (m.method === 'Network.requestWillBeSent') requested.push(m.params.request.url)
+}
 const send = (method, params = {}) => new Promise((res) => { const i = ++id; pend.set(i, res); ws.send(JSON.stringify({ id: i, method, params })) })
 const evalJs = async (expr) => {
   const r = await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true })
@@ -146,7 +165,7 @@ const goto = async (url) => {
   throw new Error('page never became ready: ' + url)
 }
 
-await send('Page.enable'); await send('Runtime.enable')
+await send('Page.enable'); await send('Runtime.enable'); await send('Network.enable')
 const pass = [], fail = []
 const check = (name, ok, detail) => (ok ? pass : fail).push(`${name}${detail ? ' — ' + detail : ''}`)
 
@@ -162,13 +181,31 @@ const SNAP = `(() => {
     computedAccent: cs.getPropertyValue('--accent').trim(),
     colorScheme: h.style.getPropertyValue('color-scheme').trim(),
     bodyBg: getComputedStyle(document.body).backgroundColor,
-    randomMarkVisible: vis('nav .only-random'), defaultMarkVisible: vis('nav .only-dark-mono'),
-    maskInk: (() => { const m = document.querySelector('nav .only-random .logo-mask');
+    /* ONE mark per role in every theme, since 2026-10-17. The dual
+       <img>/masked-span path is gone, so there is nothing to hide and nothing
+       to reveal -- a second element in the nav, or an <img>, means it has crept
+       back, which is how the blank-frame bug worked. */
+    markCount: document.querySelectorAll('nav .logo-mask').length,
+    markVisible: vis('nav .logo-mask'), navImgCount: document.querySelectorAll('nav img').length,
+    maskInk: (() => { const m = document.querySelector('nav .logo-mask');
       return m ? getComputedStyle(m).backgroundColor : null })(),
-    maskImage: (() => { const m = document.querySelector('nav .only-random .logo-mask');
+    maskImage: (() => { const m = document.querySelector('nav .logo-mask');
       if (!m) return null; const cs = getComputedStyle(m);
       return cs.maskImage || cs.webkitMaskImage || '' })(),
-    inlineSvgInHtml: !!document.querySelector('nav .only-random svg'),
+    /* The mask URL this role is stencilled by, resolved absolute so it can be
+       matched against the CDP request log (which is what actually answers
+       "has it been fetched yet" -- see the note on the request log above).
+       No backticks in here: this comment lives inside a template literal. */
+    maskUrl: (() => { const m = document.querySelector('nav .logo-mask'); if (!m) return null;
+      const v = m.style.getPropertyValue('mask-image') || m.style.getPropertyValue('-webkit-mask-image');
+      const u = (v.match(/url\\(["']?([^"')]+)["']?\\)/) || [])[1];
+      return u ? new URL(u, location.href).href : null })(),
+    /* The other half of the fix: the ink eases rather than snapping a frame
+       ahead of the html/body background transition. */
+    markTransition: (() => { const m = document.querySelector('nav .logo-mask'); if (!m) return null;
+      const cs = getComputedStyle(m); const i = cs.transitionProperty.split(/,\\s*/).indexOf('background-color');
+      return i < 0 ? null : cs.transitionDuration.split(/,\\s*/)[i] })(),
+    inlineSvgInHtml: !!document.querySelector('nav .logo-mask svg'),
     navOverflow: nav ? nav.scrollWidth - nav.clientWidth : null,
     pressed: (() => { const g = document.querySelector('[role="group"][aria-label="Colour theme"]');
       return g ? [...g.querySelectorAll('button')].map((b) => b.getAttribute('aria-pressed')) : null })(),
@@ -202,8 +239,29 @@ await evalJs(`localStorage.clear()`)
 await goto(ORIGIN + `/`)
 let s = await evalJs(SNAP)
 check('clean load renders dark-mono', s.theme === 'dark-mono' && !s.inlineBg, `theme=${s.theme} inlineBg="${s.inlineBg}"`)
-check('dark-mono mark visible, random hidden', s.defaultMarkVisible && !s.randomMarkVisible,
-  `dark-mono=${s.defaultMarkVisible} random=${s.randomMarkVisible}`)
+/* One masked mark, mounted and painted in the default theme too -- not a
+   hidden second copy. dark-mono's accent is pure white and so is the mask
+   asset's own ink, which is the single condition this design depends on. */
+check('one mark, mounted and white in dark-mono',
+  s.markCount === 1 && s.markVisible && s.navImgCount === 0 && s.maskInk === 'rgb(255, 255, 255)',
+  `count=${s.markCount} visible=${s.markVisible} navImgs=${s.navImgCount} ink=${s.maskInk}`)
+/* THE BUG, asserted directly: the mask asset has been requested while dark-mono
+   is live and nothing has been switched yet. It used to be requested only when
+   the dice revealed the span out of display:none -- a display:none element never
+   loads its mask -- leaving a correctly-sized element painting nothing for a
+   whole frame locally and ~300ms on a throttled link. Mounted in every theme it
+   is fetched with the page, so by the time anyone can press the dice there is
+   nothing left to wait for.
+   Read from the CDP request log rather than Resource Timing, which does not
+   report memory-cache hits and so answered this differently on a warm profile
+   than a cold one. */
+check('the mask is already fetched before any switch',
+  !!s.maskUrl && requested.includes(s.maskUrl),
+  `maskUrl=${s.maskUrl} requested=${requested.filter((u) => /light-primary/.test(u)).length} mask assets`)
+/* The ink eases in step with the html/body background-color transition rather
+   than snapping a frame ahead of it. Same duration on purpose. */
+check('the mark transitions its colour', s.markTransition === '0.2s',
+  `background-color transition=${s.markTransition}`)
 /* Storage was just cleared, so there is nothing to restore and the dice must
    advertise a roll. This is the empty-store half of the dice's two-state name;
    section 7b covers the other two states. The empty-store BEHAVIOUR needs no
@@ -227,8 +285,11 @@ check('dice applies a random palette', s.theme === 'random' && /^\d+ \d+ \d+$/.t
 check('polarity published', s.polarity === 'dark' || s.polarity === 'light', `polarity=${s.polarity}`)
 check('color-scheme matches polarity', s.colorScheme === s.polarity, `${s.colorScheme} vs ${s.polarity}`)
 check('page actually repaints', s.bodyBg === `rgb(${s.inlineBg.replace(/ /g, ', ')})`, `body=${s.bodyBg} token=${s.inlineBg}`)
-check('random mark visible, dark-mono hidden', s.randomMarkVisible && !s.defaultMarkVisible,
-  `random=${s.randomMarkVisible} dark-mono=${s.defaultMarkVisible}`)
+/* Still exactly one mark and still no <img>: the random theme reuses the very
+   element dark-mono renders, which is why the switch cannot blank it. */
+check('random reuses the same single mark',
+  s.markCount === 1 && s.markVisible && s.navImgCount === 0,
+  `count=${s.markCount} visible=${s.markVisible} navImgs=${s.navImgCount}`)
 check('masked mark is painted with --accent', s.maskInk === `rgb(${s.inlineAccent.replace(/ /g, ', ')})`,
   `background=${s.maskInk} accent=${s.inlineAccent}`)
 check('masked mark actually carries a mask image', !!s.maskImage && s.maskImage !== 'none',
@@ -279,7 +340,7 @@ const stale = await evalJs(SNAP)
 check('a stale stored "funky" self-heals to a painted dark-mono',
   stale.theme === 'dark-mono' && !stale.inlineBg &&
     stale.computedBg === '0 0 0' && stale.computedAccent === '255 255 255' &&
-    stale.defaultMarkVisible && !stale.randomMarkVisible &&
+    stale.markCount === 1 && stale.markVisible && stale.maskInk === 'rgb(255, 255, 255)' &&
     JSON.stringify(stale.pressed) === JSON.stringify(['true', 'false']),
   `theme=${stale.theme} bg=${stale.computedBg} accent=${stale.computedAccent} pressed=${JSON.stringify(stale.pressed)}`)
 

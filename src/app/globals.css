@@ -193,34 +193,28 @@ a {
   }
 }
 
-/* Theme-visibility utilities. Consumed by components/ThemedLogo.tsx to pick the
-   per-theme logo asset. The :not() pair is what makes dark-mono the default when the
-   data-theme attribute is absent. */
-.only-dark-mono,
-.only-random {
-  display: none;
-}
-
-/* The :not() is what makes dark-mono the default when the attribute is absent, or
-   carries a value this stylesheet does not know. Every theme added later has to
-   be excluded here too, or it would reveal the dark-mono mark as well as its own. */
-html:not([data-theme='random']) .only-dark-mono {
-  display: block;
-}
-
-html[data-theme='random'] .only-random {
-  display: block;
-}
-
-/* The random theme's logo mark: a stencil, not a recolour.
-   components/ThemedLogo.tsx renders an empty span per role and sets only the
+/* The logo mark, every theme: a stencil, not a recolour.
+   components/ThemedLogo.tsx renders one empty span per role and sets only the
    per-role mask url inline; everything shared lives here so autoprefixer emits
-   the -webkit- pair for older Safari. The mono SVG contributes nothing but its
+   the -webkit- pair for older Safari. The asset contributes nothing but its
    alpha, so the ink comes from --accent and the screen cutout stays a hole.
-   mask-size: contain is the equivalent of the <img> variants' object-contain. */
+   mask-size: contain is what the former <img> variants' object-contain did.
+
+   The span is mounted in EVERY theme, which is load-bearing and was the fix for
+   a measured bug: this used to be revealed by `.only-random` out of
+   `display: none`, and a display:none element never loads its mask image, so
+   the dice press revealed a correctly-sized element that painted NOTHING until
+   the mask arrived (~300ms with the link throttled). Always mounted, the mask
+   loads with the page instead. See the header of ThemedLogo.tsx.
+
+   The transition is the other half of that fix, and the duration deliberately
+   matches the `html, body` background-color transition above: the accent eases
+   from one palette to the next in step with the page ground rather than
+   snapping a frame ahead of it. The reduced-motion block above collapses it. */
 .logo-mask {
   display: block;
   background-color: rgb(var(--accent));
+  transition: background-color 200ms ease;
   mask-repeat: no-repeat;
   mask-position: center;
   mask-size: contain;
