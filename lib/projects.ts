@@ -1,5 +1,6 @@
 import fs from 'fs'
 import path from 'path'
+import { cache } from 'react'
 import matter from 'gray-matter'
 import readingTime from 'reading-time'
 
@@ -22,7 +23,10 @@ export interface Project extends ProjectMeta {
   content: string
 }
 
-export function getAllProjects(): ProjectMeta[] {
+// Memoised per render pass — see the note in lib/posts.ts. getAllProjects is
+// called by the projects index, the overview route's generateStaticParams and
+// the sitemap; getProjectBySlug twice per project route.
+export const getAllProjects = cache((): ProjectMeta[] => {
   if (!fs.existsSync(projectsDirectory)) return []
 
   const fileNames = fs.readdirSync(projectsDirectory)
@@ -49,9 +53,9 @@ export function getAllProjects(): ProjectMeta[] {
       }
     })
     .sort((a, b) => (a.date < b.date ? 1 : -1))
-}
+})
 
-export function getProjectBySlug(slug: string): Project | null {
+export const getProjectBySlug = cache((slug: string): Project | null => {
   const fullPath = path.join(projectsDirectory, `${slug}.mdx`)
   if (!fs.existsSync(fullPath)) return null
 
@@ -72,4 +76,4 @@ export function getProjectBySlug(slug: string): Project | null {
     readTime: stats.text,
     content,
   }
-}
+})
