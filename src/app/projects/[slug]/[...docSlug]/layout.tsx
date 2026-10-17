@@ -1,8 +1,25 @@
 import Link from 'next/link'
-import BasedAgentsDocSidebar from '@components/BasedAgentsDocSidebar'
+import DocSidebar from '@components/DocSidebar'
 import AiDocNotice from '@components/AiDocNotice'
+import { DOC_PROJECTS, isDocProject } from '@lib/project-docs'
 
-export default function BasedAgentsDocLayout({ children }: { children: React.ReactNode }) {
+// Deliberately at [...docSlug]/ and NOT at [slug]/: a layout one level up would
+// also wrap the project overview page (/projects/BankX), which has no sidebar or
+// doc top-bar. Scoping it to the catch-all leaf preserves that split.
+export default function ProjectDocLayout({
+  children,
+  params,
+}: {
+  children: React.ReactNode
+  params: { slug: string }
+}) {
+  // Unreachable for a generated route — every param comes from getAllDocParams()
+  // — but a doc tree's chrome is meaningless without a known project, so fall
+  // through to bare content rather than throwing during a build.
+  if (!isDocProject(params.slug)) return <>{children}</>
+
+  const project = DOC_PROJECTS[params.slug]
+
   return (
     <div className="min-h-screen pt-16">
       {/* Top bar */}
@@ -16,10 +33,10 @@ export default function BasedAgentsDocLayout({ children }: { children: React.Rea
           </Link>
           <span className="text-border font-mono text-xs">/</span>
           <Link
-            href="/projects/BasedAgents"
+            href={`/projects/${params.slug}`}
             className="font-mono text-xs text-muted hover:text-accent tracking-wider transition-colors duration-200"
           >
-            Based Agents
+            {project.label}
           </Link>
           <span className="text-border font-mono text-xs">/</span>
           <span className="font-mono text-xs text-accent tracking-wider">Docs</span>
@@ -30,7 +47,12 @@ export default function BasedAgentsDocLayout({ children }: { children: React.Rea
       </div>
 
       <div className="max-w-[1200px] mx-auto flex">
-        <BasedAgentsDocSidebar />
+        <DocSidebar
+          project={params.slug}
+          label={project.label}
+          navId={project.navId}
+          nav={project.nav}
+        />
 
         {/* Main content */}
         <main className="flex-1 min-w-0 px-6 lg:px-12 py-12">

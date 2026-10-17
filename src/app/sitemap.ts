@@ -1,21 +1,16 @@
 import type { MetadataRoute } from 'next'
 import { getAllPosts } from '@lib/posts'
 import { getAllProjects } from '@lib/projects'
-import { getAllDocSlugs as getBankxDocSlugs } from '@lib/bankx-docs'
-import { getAllDocSlugs as getBasedAgentsDocSlugs } from '@lib/based-agents-docs'
-import { getAllDocSlugs as getRufloDocSlugs } from '@lib/ruflo-orchestration-docs'
+import { getAllDocParams } from '@lib/project-docs'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const posts = getAllPosts()
   const projects = getAllProjects()
-  // Every doc tree has to be listed explicitly: each exports its own
-  // getAllDocSlugs, so a new project is invisible to the sitemap until it is
-  // added here.
-  const docTrees: Array<[string, string[][]]> = [
-    ['BankX', getBankxDocSlugs()],
-    ['BasedAgents', getBasedAgentsDocSlugs()],
-    ['RufloOrchestration', getRufloDocSlugs()],
-  ]
+  // Derived from the same DOC_PROJECTS registry the routes are generated from,
+  // so a new doc tree appears here automatically. This used to be a hand-kept
+  // list of three, which is how every FractalWebhook doc page came to be absent
+  // from the sitemap.
+  const docParams = getAllDocParams()
 
   const postUrls: MetadataRoute.Sitemap = posts.map((p) => ({
     url: `https://thinktanktom.com/writing/${p.slug}`,
@@ -27,12 +22,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
     lastModified: p.date,
   }))
 
-  const docUrls: MetadataRoute.Sitemap = docTrees.flatMap(([project, slugs]) =>
-    slugs.map((slug) => ({
-      url: `https://thinktanktom.com/projects/${project}/${slug.join('/')}`,
-      lastModified: new Date(),
-    }))
-  )
+  const docUrls: MetadataRoute.Sitemap = docParams.map(({ slug, docSlug }) => ({
+    url: `https://thinktanktom.com/projects/${slug}/${docSlug.join('/')}`,
+    lastModified: new Date(),
+  }))
 
   return [
     { url: 'https://thinktanktom.com', lastModified: new Date() },

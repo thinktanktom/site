@@ -1,0 +1,36 @@
+---
+title: "Fractal Webhook Server"
+date: "2026-06-05"
+excerpt: "A hardened Java/Spring Boot webhook receiver and Python polling client that bridges TradingView M/DB signals into a Claude Code trading bot — with SQLite queuing, process-before-ack delivery semantics, and a Telegram notification layer."
+stack: ["Java", "Spring Boot", "SQLite", "Python", "Caddy", "systemd", "TradingView", "Telegram Bot API", "DigitalOcean"]
+status: "active"
+link: "/projects/FractalWebhook/introduction"
+---
+
+## What is the Fractal Webhook Server?
+
+The Fractal Webhook Server is the signal-delivery infrastructure for the **Fractal Effects** trading bot. It bridges TradingView's alert system to a Claude Code-based trading bot running on an operator's laptop, providing reliable signal delivery across an inherently unreliable network boundary.
+
+The system has two independent parts: a **webhook server** deployed 24/7 on a DigitalOcean VPS that receives and queues incoming TradingView signals, and a **polling client** that runs on the operator's laptop during trading sessions to drain and process that queue. A third component — the **Telegram notifier** — delivers trade lifecycle and system events outbound to the operator's phone.
+
+## Architecture
+
+The design separates concerns cleanly across three components:
+
+- **Webhook server** (Java / Spring Boot, VPS) — Receives `POST /tradingview-webhook` from TradingView, validates a shared secret and JSON schema, deduplicates within a 90-second window, and persists signals to a SQLite queue. Exposes `GET /signals/pending`, `POST /signals/{id}/ack`, and `GET /health` for the polling client.
+- **Polling client** (Python, laptop) — Calls `GET /signals/pending` every 3 seconds, hands each signal to the cascade entry point, then acks via `POST /signals/{id}/ack`. Process-before-ack ordering ensures at-least-once delivery.
+- **Telegram notifier** (Python, laptop) — Invoked explicitly by the trading bot's lifecycle handlers to push trade and system events to the operator's phone. Fire-and-forget; never blocks trade execution.
+
+The public request path is: `TradingView → Caddy (TLS termination, rate limiting) → Java app on localhost:8080 → SQLite`.
+
+## Key Engineering Decisions
+
+**Process-before-ack ordering.** The polling client hands each signal to the cascade first, then acknowledges. If the bot crashes mid-cascade, the signal remains unacked and is re-delivered on the next poll. Silent loss (ack-before-process) was rejected as the worse failure mode — a missed trade is observable; an extra delivery is handled by the strategy's own deduplication logic.
+
+**Shared-secret in payload, not headers.** TradingView's webhook system does not support custom headers. Authentication is via a 128-character random secret embedded in the JSON body, compared using constant-time comparison (`MessageDigest.isEqual`) to prevent timing attacks.
+
+**No IP allowlisting on web ports.** TradingView's source IPs change without notice; the operator's laptop IP changes with travel and ISP rotation. Both would silently break if filtered. A 128-character bearer token provides ~760 bits of entropy — mathematically sufficient without IP constraints.
+
+**Caddy for TLS and rate limiting.** Caddy auto-provisions and auto-renews Let's Encrypt certificates. Per-endpoint rate limits (10/min on the webhook receiver, 60/min on polling) are enforced at the proxy layer before the Java application sees the request.
+
+**systemd hardening.** The application runs as a non-root `fractal` user with `NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome`, and `ReadWritePaths` scoped to only the data and log directories. A compromise of the Java process cannot escalate or reach the rest of the filesystem.

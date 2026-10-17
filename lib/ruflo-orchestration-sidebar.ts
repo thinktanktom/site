@@ -1,20 +1,8 @@
 // Client-safe: no Node.js imports. Contains only the static sidebar structure.
+// The shape and the group guard live in @lib/doc-sidebar-types, shared with the
+// DocSidebar client component and lib/project-docs.ts.
 
-export interface SidebarLeaf {
-  title: string
-  slug: string[]
-}
-
-export interface SidebarGroup {
-  title: string
-  items: SidebarLeaf[]
-}
-
-export type SidebarEntry = SidebarLeaf | SidebarGroup
-
-export function isSidebarGroup(entry: SidebarEntry): entry is SidebarGroup {
-  return 'items' in entry
-}
+import type { SidebarEntry } from '@lib/doc-sidebar-types'
 
 export const sidebarNav: SidebarEntry[] = [
   { title: 'Introduction', slug: ['introduction'] },
