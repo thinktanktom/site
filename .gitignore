@@ -46,9 +46,30 @@ content/projects/BankX_project_files/
 /Thomas C.  Top Rated Smart Contract  Web3 Specialist  Upwork Freelancer from Coimbatore India.pdf
 
 
-# Logo master artwork — large source files, kept outside version control
+# Logo master artwork — large source files, kept outside version control.
+# NOTE the five SVGs under logo/SVG/ are already TRACKED and stay so: they are
+# the only remaining record of funky's logo inks (#E1F708, #F6F4F1, #D9DB00),
+# which is what made deleting the unreferenced funky assets from public/ safe.
 /logo/
 /logo.zip
+
+# Local `<name>.bak-<date>` copies, made before editing a config file. These
+# were sitting un-ignored in the working tree, where a `git add -A` would have
+# staged them.
+*.bak-*
+
+# Private source material at the repo root — résumés, portfolio, drafts
+/*.pdf
+/portfolio/
+/intro.txt
+content/posts/*.txt
+
+# Local agent/planning tool output
+/.lavish/
+
+# Local MCP client config — machine-specific endpoints and request headers,
+# so it belongs to the environment rather than the repo. Keep it local.
+/claude_desktop_config.json
 
 
 # NOTE the three *_dark-mono.svg marks under public/ are deliberately TRACKED.
