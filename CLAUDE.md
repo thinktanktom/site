@@ -39,7 +39,8 @@ accent at the pure endpoint `#ffffff`, `--text` just inside it at `#e0e0e0` so t
 luminance rather than hue.
 
 Each removal took its token block, its `.only-*` and `.theme-btn-*` rules, its Shiki selectors and
-its logo `<img>` variants with it. **No migration step was ever needed**, for any of the three: the
+its logo `<img>` variants with it. (The `.only-*` group is gone entirely as of **2026-10-17** —
+the logo no longer branches on the theme at all; see implementation note 7.) **No migration step was ever needed**, for any of the three: the
 pre-paint script validates against `random` alone, so a stored `funky`, `dark` or `light` falls
 through to dark-mono. That self-heal is *invisible in the rendering* — `html:not([data-theme='random'])`
 matches a stale value too, so the page paints correctly either way — which is why
@@ -174,12 +175,8 @@ thinktanktom/
 │   ├── Footer.tsx
 │   ├── PostCard.tsx
 │   ├── MDXContent.tsx
-│   ├── ThemeSwitcher.tsx        ← 4-way theme control (client)
-│   ├── ThemedLogo.tsx           ← per-theme logo marks (server, CSS-swapped)
-│   └── logo/
-│       ├── InlineMark.tsx       ← currentColor mark, for the random theme
-│       ├── paths.ts             ← GENERATED geometry (extract-paths.mjs)
-│       └── extract-paths.mjs    ← regenerates paths.ts from public/*.svg
+│   ├── ThemeSwitcher.tsx        ← 2-way theme control (client)
+│   └── ThemedLogo.tsx           ← one CSS-masked mark per role (server)
 ├── lib/
 │   ├── posts.ts                 ← MDX reading + frontmatter utils
 │   └── palette/                 ← the seeded palette engine (no React, no DOM)
@@ -349,22 +346,26 @@ choice.
   **Accepted consequence:** no single press yields a *fresh* palette from dark-mono any more — you get
   your last one back, then press again. A reload and a first press now do the same thing, which is
   more coherent than the split it replaced.
-- **Theme-visibility utilities** — `.only-dark-mono` / `.only-random` toggle `display` and are how
-  `ThemedLogo` picks between its file and its masked span with no JavaScript. `.only-dark-mono` is
-  written with a `:not()` so it also shows when the attribute is absent, matching what `:root`
-  renders.
+- **The logo mark no longer branches on the theme at all** — changed 2026-10-17. There is ONE
+  masked `<span>` per role, mounted in every theme, with its ink from `--accent`; the
+  `.only-dark-mono` / `.only-random` visibility utilities were **deleted** with the `<img>` half
+  they used to reveal. See implementation note 7 — the dual path was a measured rendering bug, not
+  just extra machinery.
 
-**Adding a third, named theme** touches: a token block, the `.only-*` group, the `.theme-btn-*`
-rule and the Shiki selector set in `globals.css`; the validation in the `layout.tsx` script **and
-its static `icons` metadata**; `ThemeSwitcher.tsx`; the `variants` arrays in `ThemedLogo.tsx`;
-`DEFAULT_URL` in `lib/palette/favicon.ts`; and the `theme` object in `MDXContent.tsx`. It also needs
-a matching logo asset set, and both e2e harnesses hard-code the expected default tokens and the
-button order. Budget for that before promising one — the funky → dark-mono swap on 2026-10-16
-touched **18 files and ~148 references**, and that was a *replacement*, not an addition.
+**Adding a third, named theme** touches: a token block, the `.theme-btn-*` rule and the Shiki
+selector set in `globals.css`; the validation in the `layout.tsx` script **and its static `icons`
+metadata**; `ThemeSwitcher.tsx`; `DEFAULT_URL` in `lib/palette/favicon.ts`; and the `theme` object
+in `MDXContent.tsx`. **The logo is no longer on that list** — a new theme's mark needs nothing but
+its `--accent`, which is one of the things unifying the mark bought. Both e2e harnesses hard-code
+the expected default tokens and the button order. Budget for the rest before promising one — the
+funky → dark-mono swap on 2026-10-16 touched **18 files and ~148 references**, and that was a
+*replacement*, not an addition.
 
-Note the `:not()`: the rules that make dark-mono the default are written as
+Note the `:not()`: the rule that makes dark-mono the default is written as
 `html:not([data-theme='random'])`. **Every new theme has to be excluded there too**, or it will
-reveal the dark-mono logo mark and light the Mono button alongside its own.
+light the Mono button alongside its own. (It used to reveal the dark-mono logo mark as well; that
+half went with the `.only-*` utilities on 2026-10-17, so `.theme-btn-dark-mono` is now the only
+rule written this way.)
 
 ---
 
@@ -375,7 +376,7 @@ a real browser, live in `scripts/` and run against a built export:
 
 | command | what it proves |
 |---|---|
-| `node scripts/e2e-palette.mjs` | 48 checks: the switcher has exactly 2 buttons, the palette is actually painted, a reload restores it pre-paint, switching back to dark-mono *removes* the inline properties, the mark's ink follows `--accent`, a stale cache recovers from the seed with React state in step, and (§5b) **a stale stored `funky` self-heals to a PAINTED dark-mono** — the migration path every existing reader takes once, asserted on the attribute because the self-heal is invisible in the pixels. Also the dice's two-state action (§7b): entering random **restores** the stored seed *and* repaints the same `--bg`, the press after that rolls, and the button renames itself in all three states. **The empty-store roll has no check of its own on purpose** — section 2's press happens on cleared storage, so `dice applies a random palette` already *is* that assertion; breaking the empty-store path fails it (plus 8 downstream checks), which is what licensed dropping the duplicate. Negative-controlled the same way for the restore itself: with the old always-roll `select()` rebuilt from source, the restore check fails and the roll checks still pass. §9 covers the **themed favicon**: dark-mono serves the brand file, a roll repaints both `rel~="icon"` links as a tinted data URI with exactly one fill, that URI **decodes as a real image**, `apple-touch-icon` is untouched, dark-mono puts the file back, and a reload repaints from the applied accent. **§9b is the one that shipped broken** — the themed icon must survive a CLIENT-SIDE navigation. It is driven by clicking a real nav anchor, because `Page.navigate` is a full document load that re-runs the mount path and therefore *cannot* reproduce the bug; and its expected default is read out of `favicon.ts` rather than hard-coded, so it cannot drift when the default mark changes |
+| `node scripts/e2e-palette.mjs` | 50 checks: the switcher has exactly 2 buttons, the palette is actually painted, a reload restores it pre-paint, switching back to dark-mono *removes* the inline properties, the mark's ink follows `--accent`, a stale cache recovers from the seed with React state in step, that there is exactly **one** logo mark and no `<img>` in the nav, that its **mask has already been fetched while dark-mono is live** (read from the CDP request log, because Resource Timing does not report memory-cache hits) and that it carries a `background-color` transition — the two halves of the 2026-10-17 switch-stutter fix, negative-controlled by re-hiding the mark in source and rebuilding, which gives `requested=0 mask assets`, and (§5b) **a stale stored `funky` self-heals to a PAINTED dark-mono** — the migration path every existing reader takes once, asserted on the attribute because the self-heal is invisible in the pixels. Also the dice's two-state action (§7b): entering random **restores** the stored seed *and* repaints the same `--bg`, the press after that rolls, and the button renames itself in all three states. **The empty-store roll has no check of its own on purpose** — section 2's press happens on cleared storage, so `dice applies a random palette` already *is* that assertion; breaking the empty-store path fails it (plus 8 downstream checks), which is what licensed dropping the duplicate. Negative-controlled the same way for the restore itself: with the old always-roll `select()` rebuilt from source, the restore check fails and the roll checks still pass. §9 covers the **themed favicon**: dark-mono serves the brand file, a roll repaints both `rel~="icon"` links as a tinted data URI with exactly one fill, that URI **decodes as a real image**, `apple-touch-icon` is untouched, dark-mono puts the file back, and a reload repaints from the applied accent. **§9b is the one that shipped broken** — the themed icon must survive a CLIENT-SIDE navigation. It is driven by clicking a real nav anchor, because `Page.navigate` is a full document load that re-runs the mount path and therefore *cannot* reproduce the bug; and its expected default is read out of `favicon.ts` rather than hard-coded, so it cannot drift when the default mark changes |
 | `node scripts/e2e-palette-mobile.mjs` | the overlay control fits at 375px and 390px, no horizontal overflow, picking a theme does not close the overlay |
 | `node scripts/e2e-annotations.mjs` | 305 checks: every annotation round-trips to its note and back, both ends land **clear of the fixed nav** rather than under it, the phrase (not the superscript) is the hit target, the phrase survives into the accessible name with an additive `sr-only` cue and **no** `aria-label`, ids are unique and paired, no nested `<a>`. The `:target` highlight lands on the right note and no other, tints to `--surface`, measures ≥4.5:1, clears itself on the back-link, and does **not** reflow the note — a `border-left` in place of the inset shadow shifts the text 3px and fails here. Covers the MDX components on a post *and* the hand-rolled copy on `/about` |
 
@@ -715,42 +716,54 @@ Every developer eventually builds their own website...
 4. Build in this order: `globals.css` → `layout.tsx` → `Nav.tsx` → `Footer.tsx` → `lib/posts.ts` → home page → writing index → post page → about page
 5. Do **not** use any UI component libraries (no shadcn, no MUI) — hand-craft all components for full aesthetic control
 6. Keep `--accent` usage disciplined: CTAs, active states, code accents, heading decorations only. Not scattered everywhere.
-7. **Logo marks follow the theme; the raster logo does not.** `components/ThemedLogo.tsx` runs a
-   deliberate **dual path**, and both halves matter:
+7. **The logo mark follows the theme by CSS mask; the raster logo does not.**
+   `components/ThemedLogo.tsx` renders **one** thing per role, in every theme: an empty `<span>`
+   painted `background-color: rgb(var(--accent))` and stencilled by a single-fill SVG.
+   `.logo-mask` in `globals.css` holds the shared `mask-repeat/position/size` (autoprefixer adds
+   the `-webkit-` pair) plus a `background-color` transition, and only the per-role `mask-image`
+   url is inline. The file contributes **nothing but its alpha**, so the screen cutout stays a hole
+   and the ink comes from the token.
 
-   - **`dark-mono`: a file.** The `public/ttt_*_dark-mono.svg` set, revealed by `.only-dark-mono`.
-     **The reason this half is a file changed on 2026-10-16 and is now weaker — read this before
-     trusting the old rule.** Under funky it was forced: funky's `ttt_logo_full.svg` carried
-     **three inks** (#E1F708 computer, #F6F4F1 / #FFFFFF wordmark and tagline), so the single-ink
-     mask path would have flattened all three — a visible regression on `/about`. The dark-mono
-     marks are single-ink `#FFFFFF`, which is also exactly dark-mono's `--accent`, so **the mask
-     path could now render the default theme correctly too.**
-     It stays a file anyway, for two weaker but real reasons: these are the brand's own exports and
-     are meant to be the marks the site serves rather than a stencil of a different export; and a
-     file costs one cached request and no mask plumbing, while the masked span exists only because a
-     *runtime-generated* palette has no file that could carry its fill — not a problem the default
-     theme has. So **"do not unify the two paths" is now a preference, not an invariant.** If you do
-     unify it, the thing to check is that `--accent` and the mark's ink stay identical: the moment
-     the default accent stops being pure white, a masked default mark silently changes colour with it.
-   - **`random`: CSS mask.** A runtime-generated palette has no file that could carry its fill, so
-     this variant is an **empty `<span>`** painted `background-color: rgb(var(--accent))` and
-     stencilled by a single-fill SVG: `.logo-mask` in `globals.css` holds the shared
-     `mask-repeat/position/size` (autoprefixer adds the `-webkit-` pair), and only the per-role
-     `mask-image` url is inline. The file contributes **nothing but its alpha**, so the screen
-     cutout stays a hole and the ink comes from the token.
+   **This replaced a dual path on 2026-10-17, and the reason was a measured rendering bug, not
+   tidiness.** Until then `dark-mono` got a prebuilt fill-baked `<img>` revealed by
+   `.only-dark-mono` and `random` got the masked span revealed by `.only-random`. A
+   `display: none` element **never loads its mask image** — which CLAUDE.md used to list as a
+   *benefit* ("a mask costs no request in the default theme") without noticing the other half: it
+   means the dice press revealed the masked span at the very instant the mask file was first
+   requested, and for the length of that request the span was displayed, correctly sized, and
+   painting **nothing**. Measured over CDP against the built export: one whole frame with no logo
+   on localhost (nav wordmark pixel `[0,0,0]` at +28ms, correct at +41ms), and **~300ms of missing
+   logo** with the link throttled to 400ms latency / 50KB/s on a cold cache. Mounted in every
+   theme, the mask loads with the page, so the gap is not shortened but **unreachable**.
+   `scripts/e2e-palette.mjs` §1 asserts it directly — that the mask URL appears in the CDP request
+   log while dark-mono is live and nothing has been switched yet. Negative-controlled: re-adding
+   `html:not([data-theme='random']) .logo-mask { display: none }` to the source and rebuilding
+   gives `requested=0 mask assets`.
 
-   So each role renders exactly **two** things now: one `<img>` and one masked `<span>`. The
-   `dark`/`light` `<img>` variants were dropped with those themes on 2026-10-16, and the funky
-   `<img>` variants with funky the same day.
+   The second half of the fix is the **200ms `background-color` transition on `.logo-mask`**,
+   matching the one on `html, body`, so the ink eases from one accent to the next in step with the
+   page ground instead of snapping a frame ahead of it. Before it, the mark was final at +23ms
+   while the background was still moving at +200ms.
 
-   An inline `<svg>` with `fill="currentColor"` was built first and did the same job correctly, but
-   it had to be rendered in **every** theme and merely hidden, because the theme is not known at
-   build time — so its path data cost HTML bytes for every reader, including the ones who never pick
-   `random`. Measured gzip: `/about` 26,665 bytes with the inline mark against **8,425** with the
-   mask (7,742 before the feature), and `/` 12,038 against **7,839**. A mask also costs no request
-   in the default theme, because a `display: none` element does not load its mask.
+   **The one condition this design depends on:** the default theme's mark is now token-driven, so
+   it is correct only while `--accent` equals the ink the brand's own dark-mono export carries.
+   Both are pure white today (`#FFFFFF` == `--accent: 255 255 255`), **exactly**, and the three
+   `*_dark-mono.svg` and `*_light-primary.svg` files are byte-identical after stripping their
+   `fill` attributes — same viewBox, same path sequence, one ink each. If a future default accent
+   stops being that white, the default mark silently changes colour with it. That is the trade
+   accepted here; CLAUDE.md had already demoted "do not unify the two paths" to a preference on
+   2026-10-16 and named this as the thing to check.
 
-   **Never recolour or CSS-`filter` a file variant**, and never hue-shift one. A mask is not a
+   An inline `<svg>` with `fill="currentColor"` was built before any of this and did the same job
+   correctly, but it had to be rendered in **every** theme and merely hidden, because the theme is
+   not known at build time — so its path data cost HTML bytes for every reader. Measured gzip:
+   `/about` 26,665 bytes with the inline mark against **8,425** with the mask (7,742 before the
+   feature), and `/` 12,038 against **7,839**. Those numbers stand; what no longer applies is the
+   line that followed them, that the default theme pays no request at all. It now fetches one mask
+   asset instead of one `<img>` file — the same single request, and **byte-identical files**
+   (2,257 / 4,295 / 28,085 either way), so nothing was traded for the fix.
+
+   **Never recolour or CSS-`filter` an asset**, and never hue-shift one. A mask is not a
    recolour: nothing about the file's own colour is read. (This supersedes the former blanket "pick
    the asset, never recolour" rule, which a themeable palette cannot satisfy — the *reason* behind it
    survives, since the mask reuses an asset that already existed rather than adding another copy of
@@ -761,12 +774,12 @@ Every developer eventually builds their own website...
    before the themed favicon landed: `layout.tsx` has pointed `icon`/`shortcut`/`apple-touch-icon`
    at an SVG, not the raster, for some time. Corrected 2026-10-16; it now points at
    `ttt_icon_dark-mono.svg`.)
-   **A role's file variant and its mask asset must carry the same `viewBox`.** The path sequence
-   is identical across them and sits in identical coordinates; only the fill differs, and the mask
-   reads just the alpha. The screen is a transparent cutout in both — do not fill it. A white screen
-   fill in the light-primary mark was tried and reverted: it read as a faint lighter rectangle
-   against the scrolled nav's `bg-surface/90`. **This stays load-bearing after the theme removal,
-   because the `*_light-primary.svg` files are now the masks.** Those exports originally shipped
+   **A role's mask asset must carry the reference `viewBox` for that role.** Before 2026-10-17
+   this read "a role's file variant and its mask asset must carry the same viewBox", because there
+   were two assets per role to keep aligned; now only the mask is rendered, and the thing it has to
+   match is the canvas the layout maths assumes. The screen is a transparent cutout — do not fill
+   it. A white screen fill in the light-primary mark was tried and reverted: it read as a faint
+   lighter rectangle against the scrolled nav's `bg-surface/90`. Those exports originally shipped
    cropped tight to the ink (icon `22.68 89.48 578.24 465.37`, stacked `75.71 123.4 1768.61 858.81`)
    while the reference masters carry padding, so sizing each file by its own aspect drew the mark ~8%
    (icon) and ~26% (stacked) too large. Scaling each variant down by its ink/canvas fraction — the first attempt —
@@ -775,18 +788,18 @@ Every developer eventually builds their own website...
    position regardless, because the reference padding is vertically **asymmetric** (icon top 89.45 vs
    bottom 68.95; stacked 123 vs 97). The viewBoxes are all normalised to one canvas per role
    (`0 0 623.62 623.62`, `0 0 1920 1080`, `0 0 1339.99 191.14`) and `ThemedLogo` holds **one**
-   aspect per role, no per-variant scaling. Re-export an asset and re-read its `viewBox` against
+   aspect per role. Re-export an asset and re-read its `viewBox` against
    the canvases above before trusting it. **There is no automated guard on this any more** — it used
    to be `components/logo/extract-paths.mjs`, which went away with the inline-`<svg>` mark it
    generated, so this check is manual now.
-   **Which `public/` asset each variant uses**, so the set can be checked at a glance rather than
+   **Which `public/` asset each role stencils**, so the set can be checked at a glance rather than
    reconstructed from the component. Do not add an asset without a reference.
 
-   | role | `dark-mono` `<img>` | `random` mask (alpha only) |
+   | role | mask (alpha only — every theme) | unreferenced sibling, kept |
    |---|---|---|
-   | icon | `ttt_icon_dark-mono.svg` | `ttt_icon_light-primary.svg` |
-   | wordmark | `ttt_horizontal_dark-mono.svg` | `ttt_horizontal_light-primary.svg` |
-   | full logo | `ttt_stacked-tagline_dark-mono.svg` | `ttt_stacked-tagline_light-primary.svg` |
+   | icon | `ttt_icon_light-primary.svg` | `ttt_icon_dark-mono.svg` *(still the static favicon)* |
+   | wordmark | `ttt_horizontal_light-primary.svg` | `ttt_horizontal_dark-mono.svg` |
+   | full logo | `ttt_stacked-tagline_light-primary.svg` | `ttt_stacked-tagline_dark-mono.svg` |
 
    The three `*_dark-mono.svg` files were **restored to `public/` on 2026-10-16** from
    `8522281^` — the commit that had untracked them when the dark theme was removed. Restored from
@@ -794,11 +807,19 @@ Every developer eventually builds their own website...
    shipped and passed the logo checks, including the viewBox normalisation from `1757efa`. The
    `logo/dark-mono/` sources carry the same viewBoxes but different md5s and have never shipped.
 
-   The `*_light-primary.svg` column is **shape-only** — nothing about these files' own colour is
-   ever read. They are still referenced, so **do not delete them** as part of removing the light
-   theme, and no fourth copy of the geometry was ever needed. Two consumers now, not one: the CSS
-   mask reads the alpha, and `ttt_icon_light-primary.svg` is additionally **fetched and tinted into
-   the themed favicon** (see below) — so that one file is no longer "never rendered as an image".
+   **Unifying the mark on 2026-10-17 left the wordmark and full-logo `*_dark-mono.svg` files
+   unreferenced by any page** — but they stay, for two reasons beyond the usual URL-breaking one:
+   `ttt_icon_dark-mono.svg` is still live as `layout.tsx`'s static `icon`/`shortcut`/
+   `apple-touch-icon` and as `DEFAULT_URL` in `lib/palette/favicon.ts`, and all three are the
+   **record of what the mark's ink is supposed to be** — the evidence behind the one condition the
+   single masked mark depends on. Verify rather than trust: the dark-mono and light-primary files
+   for each role are byte-identical after stripping `fill` attributes, same viewBox, one ink each
+   (`#FFFFFF` and `#0A0A0A`).
+
+   The mask column is **shape-only** — nothing about these files' own colour is ever read, which is
+   why a `#0A0A0A` file can paint a white mark. Two consumers: the CSS mask reads the alpha, and
+   `ttt_icon_light-primary.svg` is additionally **fetched and tinted into the themed favicon**
+   (see below).
 
    Plus `ttt_logo.png` — the dark-ground raster for OG/Twitter cards, referenced from `layout.tsx`
    metadata and every route's `generateMetadata`.
