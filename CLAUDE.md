@@ -4,7 +4,7 @@
 
 Build a minimalist personal website for **ThinkTankTom** — a blog, technical writing hub, and professional profile page. The aesthetic is inspired by [robbowen.digital](https://robbowen.digital/): bold typography, generous whitespace, confident minimalism, and a clear editorial voice.
 
-The logo (`thinktanktom_logo.png`) is a **pixel-art retro computer** with a cityscape on screen — black background, white art. The entire site should feel like an extension of this logo: dark, sharp, retro-techy, with pixel-perfect intentionality.
+The logo is a **pixel-art retro computer** — black background, white art. (The original brief called this file `thinktanktom_logo.png`; **no such file has ever been in `public/`**. The mark ships as the `ttt_*` SVG set, catalogued in implementation note 7.) The entire site should feel like an extension of this logo: dark, sharp, retro-techy, with pixel-perfect intentionality.
 
 Since **2026-10-16** the default theme is `dark-mono`, which takes that description literally: pure black ground, pure white ink, no hue anywhere. The electric-yellow `funky` palette that previously carried the brand look was removed the same day. **The site now ships no colour at all by default** — the only way a reader sees a hue is by pressing the dice and opting into a generated `random` palette. That is deliberate, not an oversight.
 
@@ -154,8 +154,9 @@ because both hand-picked accents are near-maximum luminance on a near-black grou
 thinktanktom/
 ├── CLAUDE.md
 ├── public/
-│   ├── thinktanktom_logo.png   ← copy from project files
-│   └── favicon.ico             ← derive from logo
+│   ├── ttt_*_light-primary.svg ← the masks every logo role is stencilled by
+│   ├── ttt_*_dark-mono.svg     ← brand exports; the icon is also the static favicon
+│   └── ttt_logo.png            ← OG/Twitter card, 1200x630, opaque dark-mono
 ├── content/
 │   └── posts/
 │       └── example-post.mdx    ← seed with one placeholder post
@@ -711,7 +712,7 @@ Every developer eventually builds their own website...
 ## Implementation Notes for Claude Code
 
 1. **Start with `npx create-next-app@latest thinktanktom --typescript --tailwind --app --src-dir`**
-2. Copy `thinktanktom_logo.png` into `public/`
+2. Copy the brand `ttt_*` SVG exports into `public/` — see note 7 for which role uses which file
 3. Configure `tailwind.config.ts` to extend theme with the custom colour palette above and the two font families
 4. Build in this order: `globals.css` → `layout.tsx` → `Nav.tsx` → `Footer.tsx` → `lib/posts.ts` → home page → writing index → post page → about page
 5. Do **not** use any UI component libraries (no shadcn, no MUI) — hand-craft all components for full aesthetic control
@@ -768,12 +769,47 @@ Every developer eventually builds their own website...
    the asset, never recolour" rule, which a themeable palette cannot satisfy — the *reason* behind it
    survives, since the mask reuses an asset that already existed rather than adding another copy of
    the geometry to keep in sync.) The old "white on black — never invert it" rule still holds for
-   `thinktanktom_logo.png` / `ttt_logo.png` — the raster with the black ground baked in, used only
-   as the **OG/Twitter card image**. That is consumed outside the page by social scrapers, cannot be
-   themed, and stays dark-ground. (This used to say "and the favicon", which was already wrong
-   before the themed favicon landed: `layout.tsx` has pointed `icon`/`shortcut`/`apple-touch-icon`
-   at an SVG, not the raster, for some time. Corrected 2026-10-16; it now points at
-   `ttt_icon_dark-mono.svg`.)
+   `ttt_logo.png` — the **OG/Twitter card image**, consumed outside the page by social scrapers, so
+   it cannot be themed and is baked dark-ground instead.
+
+   **That sentence was wrong until 2026-10-17, and the file was wrong with it.** It named a
+   `thinktanktom_logo.png` that does not exist in `public/` at all, and it claimed `ttt_logo.png`
+   had "the black ground baked in" when the file was **8000×4500 RGBA and 96.5% fully transparent**
+   — every corner `[255,255,255,0]`. It had no ground of any kind. Its only two inks were
+   **funky's**: `#E1F708` for the computer mark and `#F6F4F1` for the wordmark, so it had survived
+   the funky removal untouched. The consequence was not cosmetic: a scraper flattens transparency
+   onto its own card ground, which in light mode is white, and `#F6F4F1` on white is invisible —
+   every light-mode preview showed an acid-yellow mark floating beside nothing. Do not trust a
+   sentence here about an asset's pixels without decoding the file; this one had been wrong for as
+   long as it had existed.
+
+   The replacement is a real dark-mono card: **1200×630** (OG's 1.91:1, and 16× smaller at 13,046
+   bytes against 213,879), **colour type 2 — no alpha channel at all**, so it is opaque by
+   construction rather than opaque by every pixel happening to carry alpha 255. 96.4% pure
+   `#000000`, 3.1% pure `#ffffff`, the rest antialiasing, and **zero pixels carry any hue**
+   (R=G=B everywhere), which is the same rule dark-mono's tokens follow. Rendered from
+   `ttt_horizontal_dark-mono.svg` at 840px wide on a 1200×630 black ground, by driving the nixpkgs
+   headless Chromium over CDP — no image toolchain was installed, and the source of the artwork is
+   the same brand export the site ships rather than a second copy of the geometry.
+
+   Regenerating it: `scripts/` holds no harness for this because it is a one-off, but the recipe is
+   exactly the above — serve `public/`, load a 1200×630 page with `background:#000` and the
+   horizontal `*_dark-mono.svg` at `width:840px`, `Emulation.setDeviceMetricsOverride` to pin the
+   CSS viewport (headless reports its own width otherwise — the same trap the mobile harness
+   documents), then `Page.captureScreenshot` clipped to the full 1200×630. Verify the result by
+   decoding it: corners pure black, no alpha channel, no hue.
+
+   **Keep the filename.** `ttt_logo.png` is referenced from `layout.tsx` metadata, every route's
+   `generateMetadata` (26 references) and two JSON-LD `image` fields, and it is live at
+   `https://thinktanktom.com/ttt_logo.png` — renaming it is a URL break for every preview already
+   cached by a scraper, for no gain.
+
+   Not done, and worth knowing: the metadata declares no `og:image:width` / `og:image:height` /
+   `alt`. Next supports them as an object in the `images` array, but they would have to be added at
+   all 26 call sites to stay consistent, which is its own change.
+   (The favicon line that used to sit here was already wrong before the themed favicon landed:
+   `layout.tsx` has pointed `icon`/`shortcut`/`apple-touch-icon` at an SVG, not the raster, for
+   some time. Corrected 2026-10-16; it now points at `ttt_icon_dark-mono.svg`.)
    **A role's mask asset must carry the reference `viewBox` for that role.** Before 2026-10-17
    this read "a role's file variant and its mask asset must carry the same viewBox", because there
    were two assets per role to keep aligned; now only the mask is rendered, and the thing it has to
