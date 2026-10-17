@@ -1,13 +1,7 @@
 import Link from 'next/link'
 import { Github, ExternalLink } from 'lucide-react'
 import type { ProjectMeta } from '@lib/projects'
-
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('en-US', {
-    month: 'short',
-    year: 'numeric',
-  })
-}
+import { formatMonthYear } from '@lib/format'
 
 const statusStyles: Record<ProjectMeta['status'], string> = {
   active: 'text-accent border-accent/40 bg-accent/10',
@@ -28,7 +22,7 @@ export default function ProjectCard({ project }: { project: ProjectMeta }) {
         <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
           <div className="flex items-center gap-3">
             <time className="font-mono text-xs text-muted tracking-wider">
-              {formatDate(project.date)}
+              {formatMonthYear(project.date)}
             </time>
             <span className="text-border">·</span>
             <span className="font-mono text-xs text-muted">{project.readTime}</span>

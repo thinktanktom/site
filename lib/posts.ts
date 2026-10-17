@@ -1,5 +1,6 @@
 import fs from 'fs'
 import path from 'path'
+import { cache } from 'react'
 import matter from 'gray-matter'
 import readingTime from 'reading-time'
 
@@ -19,7 +20,11 @@ export interface Post extends PostMeta {
   content: string
 }
 
-export function getAllPosts(): PostMeta[] {
+// Memoised per render pass: every post route calls getPostBySlug twice, once in
+// generateMetadata and once in the page body, and getAllPosts is called by
+// several routes in the same build. cache() keys on the arguments, which are
+// primitives here, so the second call is free rather than a re-read and re-parse.
+export const getAllPosts = cache((): PostMeta[] => {
   if (!fs.existsSync(postsDirectory)) return []
 
   const fileNames = fs.readdirSync(postsDirectory)
@@ -43,9 +48,9 @@ export function getAllPosts(): PostMeta[] {
       }
     })
     .sort((a, b) => (a.date < b.date ? 1 : -1))
-}
+})
 
-export function getPostBySlug(slug: string): Post | null {
+export const getPostBySlug = cache((slug: string): Post | null => {
   const fullPath = path.join(postsDirectory, `${slug}.mdx`)
   if (!fs.existsSync(fullPath)) return null
 
@@ -63,4 +68,4 @@ export function getPostBySlug(slug: string): Post | null {
     aiGenerated: (data.aiGenerated as boolean) ?? false,
     content,
   }
-}
+})

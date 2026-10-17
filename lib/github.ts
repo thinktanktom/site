@@ -56,11 +56,16 @@ export async function getOpenSourcePRs(): Promise<PullRequest[]> {
   try {
     res = await fetch(
       'https://api.github.com/search/issues?q=type:pr+author:thinktanktom+is:public+-user:thinktanktom&sort=created&order=desc&per_page=50',
-      { headers }
+      // A rejected connection was already handled below, but nothing bounded a
+      // connection that is accepted and then never answered — that would hang
+      // the build indefinitely rather than degrading to an empty list. The
+      // typical call measures ~0.9s, so 8s is slack rather than a tight budget.
+      // AbortSignal.timeout throws a TimeoutError, which the same catch takes.
+      { headers, signal: AbortSignal.timeout(8000) }
     )
   } catch {
-    // The build must not fail because GitHub is unreachable.
-    console.warn('[contributions] GitHub unreachable; publishing an empty list')
+    // The build must not fail because GitHub is unreachable or too slow.
+    console.warn('[contributions] GitHub unreachable or timed out; publishing an empty list')
     return []
   }
 

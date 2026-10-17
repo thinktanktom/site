@@ -5,12 +5,12 @@ import type { Config } from 'tailwindcss'
 const token = (name: string) => `rgb(var(--${name}) / <alpha-value>)`
 
 const config: Config = {
+  // This project is App Router with src/, and components/ at the repo root.
+  // Globs for ./src/pages, ./src/components and ./app were carried over from the
+  // create-next-app default and match nothing here.
   content: [
-    './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
-    './src/components/**/*.{js,ts,jsx,tsx,mdx}',
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
-    './app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
   theme: {
     extend: {

@@ -1,13 +1,6 @@
 import { ExternalLink, GitPullRequest, GitMerge, GitPullRequestClosed, type LucideIcon } from 'lucide-react'
 import { getOpenSourcePRs, getPRStatus, type PullRequest, type PRStatus } from '@lib/github'
-
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('en-US', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })
-}
+import { formatShortDate } from '@lib/format'
 
 function stripMarkdown(text: string): string {
   return text
@@ -112,7 +105,7 @@ function PRCard({ pr }: { pr: PullRequest }) {
           ))}
         </div>
         <time className="font-mono text-xs text-muted tracking-wider">
-          {formatDate(pr.created_at)}
+          {formatShortDate(pr.created_at)}
         </time>
       </div>
     </article>

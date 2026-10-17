@@ -413,8 +413,7 @@ html[data-theme='random'] .hover\:border-accent\/40:hover {
    accents land in the same place here because both are near-maximum luminance
    on a near-black ground, which is why the >= 2.4 parity bar in
    scripts/e2e-palette.mjs did not have to move). */
-html[data-theme='random'] .border-accent\/30,
-html[data-theme='random'] .hover\:border-accent\/30:hover {
+html[data-theme='random'] .border-accent\/30 {
   border-color: rgb(var(--accent) / 0.6);
 }
 
