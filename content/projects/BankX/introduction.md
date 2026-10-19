@@ -102,3 +102,9 @@ All ratio and price variables use `1e6` (6-decimal) precision unless stated othe
 
 Token amounts use `1e18` (18-decimal) precision, matching the ERC-20 standard for both XSD and BankX.
 
+
+---
+
+## Contract Fix History
+
+The contracts documented in this tree reached their current shape through a sequence of code-level fixes — a confused-deputy cooldown check, fixed-point division ordering, an underflow that DoS'd the protocol's own maintenance entrypoint, two unit mismatches, and three successive attempts at a manipulation-resistant price average. [Fix History](/projects/BankX/fixes/overview) records each one with its root cause and diff. It is a development record, not an incident report.

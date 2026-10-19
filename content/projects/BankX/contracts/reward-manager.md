@@ -11,7 +11,7 @@
 - **Three vesting tiers.** Each deficit is divided into three equal thirds. Tier 1 fills the first third (shortest vesting), Tier 2 fills the second third, Tier 3 fills the final third (longest vesting).
 - **`Liquidity_Provider` struct.** Stores per-address, per-pool, per-vesting-tier state: `vestingtimestamp`, `ethvalue` (USD contributed), `xsdrewards` (USD-denominated), `bankxrewards` (USD-denominated).
 - **Rewards denominated in USD.** Stored reward amounts are denominated in ETH value (USD equivalent). At redemption they are converted to BankX/XSD token amounts using the current PID Controller prices.
-- **`block_delay` modifier.** User liquidity provision (BankX and XSD pools) requires a valid `priceCheck` in the PID Controller (same anti-flash-loan mechanism as CollateralPool).
+- **`block_delay` modifier.** User liquidity provision (BankX and XSD pools) requires a valid `priceCheck` in the PID Controller (same anti-flash-loan mechanism as CollateralPool). The gate is keyed on the `to` beneficiary, not on `msg.sender`, so a relayed call is checked against the right address — see [Access Control & Principal Confusion](/projects/BankX/fixes/access-and-principals) for the fix that made it so.
 - **`lock` modifier.** A UniswapV2-style mutex prevents reentrancy within reward manager calls.
 - **Collateral pool provision has no `blockDelay`.** The urgency of a `bucket3` event means users can provide collateral immediately without the `priceCheck` prerequisite.
 

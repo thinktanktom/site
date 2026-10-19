@@ -13,7 +13,7 @@ This is a critical distinction from USD-pegged stablecoins. XSD is not a dollar 
 - **XAG** — The ticker symbol for silver in commodity markets, used by Chainlink's `XAG/USD` price feed.
 - **Troy ounce** — A unit of mass equal to 31.1034768 grams, the standard for precious metals pricing.
 - **XSD target price** — `xag_usd_price / 1000`, expressed in USD with 1e6 precision.
-- **Gram price** — The per-gram silver price, derived as `(xag_usd_price * 1e4) / 311035`. This constant (`311035`) encodes troy oz in milligrams (31.1035 × 10,000) to preserve integer arithmetic precision.
+- **Gram price** — The per-gram silver price, derived as `(xag_usd_price * 1e4) / 311035`. This constant (`311035`) encodes troy oz in milligrams (31.1035 × 10,000) to preserve integer arithmetic precision. The first implementation used the avoirdupois-ounce constant instead, and in the wrong direction — see [Fixed-Point & Unit Errors](/projects/BankX/fixes/fixed-point-and-units).
 - **PRICE_PRECISION** — `1e6` (6 decimal places). All price values in the protocol use this unit.
 
 ---

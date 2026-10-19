@@ -58,5 +58,14 @@ export const sidebarNav: SidebarEntry[] = [
       { title: 'Overview', slug: ['aidefi', 'overview'] },
     ],
   },
+  {
+    title: 'Fix History',
+    items: [
+      { title: 'Overview', slug: ['fixes', 'overview'] },
+      { title: 'Access & Principals', slug: ['fixes', 'access-and-principals'] },
+      { title: 'Fixed-Point & Units', slug: ['fixes', 'fixed-point-and-units'] },
+      { title: 'Liveness & Oracles', slug: ['fixes', 'liveness-and-oracles'] },
+    ],
+  },
   { title: 'Deployments', slug: ['deployments'] },
 ]

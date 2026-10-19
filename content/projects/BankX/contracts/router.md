@@ -89,7 +89,7 @@ All swap functions:
 | `creatorAddLiquidityTokens(address tokenB, uint amountB, uint deadline)` | Treasury or owner | Transfers XSD or BankX to the appropriate pool; triggers creator reward accounting. |
 | `creatorAddLiquidityETH(address pool, uint256 deadline)` | Treasury or owner | Wraps ETH to WETH, sends to pool, triggers creator accounting. |
 | `userAddLiquidityETH(address pool, uint deadline)` | Any user | Wraps ETH, sends to pool, triggers user reward accounting via RewardManager. Requires `!liquidity_paused`. |
-| `userRedeemLiquidity(address pool, uint deadline)` | Any user | Calls `RewardManager.LiquidityRedemption()` for the specified pool. |
+| `userRedeemLiquidity(address pool, uint deadline)` | Any user | Calls `RewardManager.LiquidityRedemption()` for the specified pool. Reverts "Invalid pool" on any other address — it silently no-opped before [this fix](/projects/BankX/fixes/access-and-principals). |
 
 ### Admin (onlyByOwner)
 
