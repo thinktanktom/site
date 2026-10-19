@@ -307,7 +307,7 @@ a {
    are the only thing driving which theme is shown.
 
    Every selector is anchored at html[data-theme=…] on purpose: rehype-pretty-code
-   puts its OWN data-theme attribute (value "one-dark-pro vesper vitesse-light") on
+   puts its OWN data-theme attribute (value "vesper vitesse-light") on
    each <pre> and <code>, so an unanchored [data-theme='…'] would be ambiguous.
 
    The background goes on the <pre> only — custom properties inherit, so painting
