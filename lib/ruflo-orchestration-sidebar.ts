@@ -11,6 +11,7 @@ export const sidebarNav: SidebarEntry[] = [
     items: [
       { title: 'System Overview', slug: ['architecture', 'overview'] },
       { title: 'Exposing the MCP Bridge', slug: ['architecture', 'mcp-bridge'] },
+      { title: 'Alternative Access Paths', slug: ['architecture', 'access-paths'] },
     ],
   },
   {
@@ -18,6 +19,7 @@ export const sidebarNav: SidebarEntry[] = [
     items: [
       { title: 'Getting Ruflo Running', slug: ['setup', 'getting-running'] },
       { title: 'Issues Encountered', slug: ['setup', 'debugging-issues'] },
+      { title: 'Debugging a Remote MCP Connection', slug: ['setup', 'mcp-connection-failures'] },
     ],
   },
   {

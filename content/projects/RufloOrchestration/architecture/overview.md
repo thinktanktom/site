@@ -4,7 +4,7 @@
 
 Everything runs on a single DigitalOcean VM (Ubuntu, 2 vCPU / 4 GB RAM), orchestrated with Docker Compose:
 
-```
+```text
 DigitalOcean VM
     │
     ├── Caddy               — reverse proxy, TLS termination, the only
@@ -32,6 +32,8 @@ The chat UI uses basic auth rather than the Google OIDC path Ruflo's documentati
 
 The MCP bridge route is bearer-token authenticated separately from the chat UI, so the two credentials can be rotated or revoked independently. See [Exposing the MCP Bridge](/projects/RufloOrchestration/architecture/mcp-bridge) for the routing detail, and [Security Posture](/projects/RufloOrchestration/security/posture) for the risk analysis behind that separation.
 
+Those are the two surfaces reachable from the internet. Two further paths reach the bridge without going through Caddy at all — an SSH tunnel for operator access and a packaged stdio client — covered in [Alternative Access Paths](/projects/RufloOrchestration/architecture/access-paths).
+
 ---
 
 ## Repo Layout vs. Documented Layout
@@ -46,7 +48,7 @@ Ruflo's actual repository does not match its own documentation in several places
 | Docker Compose at the repo root | Nested at `ruflo/ruflo/docker-compose.yml` |
 | `OPENAI_BASE_URL` baked in at build time | Injected at runtime via `entrypoint.sh` using `DOTENV_LOCAL` |
 
-The chat UI being a fork (ruvocal) rather than a stock install is the detail that mattered most — the build and runtime behavior differ from what the documentation implies in ways that directly caused two of the three issues covered in [Issues Encountered](/projects/RufloOrchestration/setup/debugging-issues).
+The chat UI being a fork (ruvocal) rather than a stock install is the detail that mattered most. Its build and runtime behavior differ from what the documentation implies, and that difference directly caused Issue 3 in [Issues Encountered](/projects/RufloOrchestration/setup/debugging-issues): the chat UI baking HuggingFace URLs in at compile time.
 
 ---
 

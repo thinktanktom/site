@@ -374,7 +374,11 @@ check('press after recovery re-rolls rather than restoring', s6.storedSeed !== s
   `seed ${seedAfterRecovery} -> ${s6.storedSeed}`)
 
 // 7. a code block borrows a Shiki set by polarity (writing page has one)
-await goto(ORIGIN + `/writing/mcp-connected-no-tools`)
+// The post here must have LANGUAGE-TAGGED fences: rehype-pretty-code only wraps
+// tagged blocks in [data-rehype-pretty-code-figure], so an untagged-fence post
+// (agentic-workflow-nixos, 20 fences, 0 figures) fails the next check rather
+// than testing anything. hardening-the-peg has 44 ```solidity blocks.
+await goto(ORIGIN + `/writing/hardening-the-peg`)
 const code = await evalJs(`(() => {
   const pre = document.querySelector('[data-rehype-pretty-code-figure] pre');
   if (!pre) return { none: true };

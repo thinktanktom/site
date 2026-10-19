@@ -17,7 +17,7 @@ const KNOWN_MODELS = [
 ];
 ```
 
-This isn't called out prominently anywhere in the documentation — the UI loads and runs fine without it, it just silently shows no models to select from, which reads more like a configuration problem elsewhere than a missing registration step.
+This isn't called out prominently anywhere in the documentation — the UI loads and runs fine without it, it just silently shows no models to select from, which reads more like a configuration problem elsewhere than a missing registration step. ([commit `dbc60d9`](https://github.com/thinktanktom/ruflo/commit/dbc60d9c68bd25f63a74846c56b7ccce342c4da0))
 
 ---
 
@@ -38,13 +38,15 @@ source ~/.bashrc
 docker compose up -d --force-recreate
 ```
 
-The general lesson: if a containerized app is reading the wrong value for something that's correctly set in `.env`, check the shell environment before anything else — `printenv | grep <key>` is the first diagnostic step, not the last.
+The general lesson: if a containerized app is reading the wrong value for something that's correctly set in `.env`, check the shell environment before anything else — `printenv | grep <key>` is the first diagnostic step, not the last. ([commit `068a072`](https://github.com/thinktanktom/ruflo/commit/068a0720159a1e1dbfa92e17a9632d2516bcefc3))
 
 ---
 
 ## Issue 3 — Chat UI Hitting HuggingFace's Servers
 
-Before the full Docker stack was adopted, ruvocal was run directly under PM2 during earlier testing. `.env.local` was configured to route model calls through OpenRouter, but the UI kept responding with a HuggingFace rate-limit message instead of a model response.
+Before the full Docker stack was adopted, ruvocal was run directly under PM2 during earlier testing. `.env.local` was configured to route model calls through OpenRouter, but the UI kept responding with a HuggingFace rate-limit message instead of a model response:
+
+> "You've reached your message limit. Upgrade to Hugging Face PRO..."
 
 The cause: the SvelteKit build had baked HuggingFace URLs in at compile time. Setting environment variables after the build had no effect, because the built JavaScript already contained the hardcoded endpoint. The fix was to set `.env.local` correctly *first*, then rebuild:
 
@@ -73,3 +75,5 @@ If you're setting up something similar, these are the traps worth knowing about 
 3. Models must be manually added to `KNOWN_MODELS` in `mcp-bridge/index.js` — they don't auto-discover.
 4. Stale `export` lines in `~/.bashrc` silently override `.env` values with no warning.
 5. A SvelteKit-based chat UI bakes URLs in at compile time — set `.env.local` before building, not after.
+
+Those five are the stack-level traps. The separate set that surfaces when a *remote* MCP client tries to connect to the finished bridge — all of which report as "connected but not authenticated" — is in [Debugging a Remote MCP Connection](/projects/RufloOrchestration/setup/mcp-connection-failures).

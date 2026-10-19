@@ -27,7 +27,7 @@ Once inside the cloned repo, several more mismatches surfaced between what the d
 | Docker Compose at repo root | Nested at `ruflo/ruflo/docker-compose.yml` |
 | `OPENAI_BASE_URL` baked in at build time | Injected at runtime via `entrypoint.sh` using `DOTENV_LOCAL` |
 
-The most consequential of these: the chat UI is not a stock install of anything — it's ruvocal, a fork with its own build and runtime behavior. That distinction directly caused one of the three issues in [Issues Encountered](/projects/RufloOrchestration/setup/debugging-issues).
+The most consequential of these: the chat UI is not a stock install of anything — it's ruvocal, a fork with its own build and runtime behavior. That distinction directly caused Issue 3 in [Issues Encountered](/projects/RufloOrchestration/setup/debugging-issues) — the chat UI baking HuggingFace URLs in at compile time.
 
 ---
 

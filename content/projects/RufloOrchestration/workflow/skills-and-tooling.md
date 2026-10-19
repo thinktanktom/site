@@ -2,13 +2,13 @@
 
 ## Skill Files
 
-The client's project is a complex multi-component system. To give Claude agents the right context for each kind of work rather than one undifferentiated context window, 12 specialist skill files were set up under `.claude/skills/`, each scoped to a distinct engineering domain the client's product touches — cryptography, the gRPC API, the EVM bridge, DAG persistence, admin auth, and other areas of the codebase. Each skill loads only when the work at hand matches its domain.
+The client's project is a complex multi-component system. To give Claude agents the right context for each kind of work rather than one undifferentiated context window, 12 specialist skill files were set up under `.claude/skills/`, each scoped to a distinct engineering domain the client's product touches — cryptography, the gRPC API, the EVM bridge, DAG persistence, admin auth, and other areas of the codebase. Each skill loads only when the work at hand matches its domain. ([commit `c1314e5`](https://github.com/thinktanktom/ruflo/commit/c1314e589a80dbbdb75ce4d7afcf43c084ba542f))
 
 ---
 
 ## The Workflow Runner
 
-A bash script, `run-lockbox-workflow.sh`, orchestrates Claude Code in headless mode across 12 sequential development passes. Each pass targets a specific area of the codebase, loads the relevant skill files as context, and writes a timestamped log.
+A bash script, `run-lockbox-workflow.sh`, orchestrates Claude Code in headless mode across 12 sequential development passes. Each pass targets a specific area of the codebase, loads the relevant skill files as context, and writes a timestamped log. ([commit `a752e76`](https://github.com/thinktanktom/ruflo/commit/a752e76b4b9623033e5709c38b6f5a7bcdc821aa))
 
 ```bash
 # Run all 12 passes

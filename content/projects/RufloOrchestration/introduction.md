@@ -4,7 +4,7 @@
 
 This documents a self-hosted AI agent-orchestration environment I built, deployed, and continue to harden for an independent client, starting April 2026 and ongoing. The client uses the environment to develop their own product; the infrastructure itself — the VM, the container stack, the auth layer, the workflow tooling, and the run-control layer — is what I built and own.
 
-The platform is [Ruflo](https://github.com/ruvnet/ruflo), an AI orchestration tool that bundles a chat UI fork (ruvocal), an MCP bridge exposing 200+ tools, and a Claude Code orchestration layer. Rather than accept Ruflo's documented setup path, I diagnosed and worked around several places where the actual repo diverges from its own docs, then built a production deployment and a client-facing workflow on top of it.
+The platform is [Ruflo](https://github.com/ruvnet/ruflo), an AI orchestration tool that bundles a chat UI fork (ruvocal), an MCP bridge exposing 200+ tools, and a Claude Code orchestration layer. Rather than accept Ruflo's documented setup path, I diagnosed and worked around several places where the actual repo diverges from its own docs, then built a production deployment and a client-facing workflow on top of it. The fork carrying those changes is at [github.com/thinktanktom/ruflo](https://github.com/thinktanktom/ruflo), and the commits behind each change are linked from the pages that describe them.
 
 ---
 
@@ -31,6 +31,8 @@ This documentation tree covers:
 
 - The deployment architecture — the Docker Compose stack, Caddy routing, and the two exposed surfaces (chat UI, MCP bridge)
 - The setup and debugging process — where Ruflo's documentation fell short of the actual repo, and the issues that surfaced getting the stack running cleanly
+- The remote MCP connection itself — the three distinct faults that each surfaced as a client reporting the bridge "connected but not authenticated", and the diagnostic that separates them
+- The alternative access paths — an SSH tunnel for operator access and a packaged stdio client for a user who should not have shell access to the VM
 - The client workflow tooling — the skill files, the workflow runner script, and the custom MCP tools built on top of the bridge
 - The run-control layer added after early agent runs fell into re-assessment loops
 - The security posture — bearer token risk analysis, blast radius if a credential leaks, and the hardening checklist that followed from it
