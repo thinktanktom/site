@@ -26,6 +26,8 @@ Note: `buyBackBankX()` and `buyBackXSD()` do **not** carry `nonReentrant`. They 
 
 ### Router — OpenZeppelin ReentrancyGuard
 
+Router carried no reentrancy guard at all for most of its history; see [Access Control & Principal Confusion](/projects/BankX/fixes/access-and-principals) for the hand-rolled lock that preceded this and why it was replaced.
+
 `Router` inherits `ReentrancyGuard` and applies `nonReentrant` to all four swap functions (`swapETHForXSD`, `swapXSDForETH`, `swapETHForBankX`, `swapBankXForETH`). Liquidity functions (`userAddLiquidityETH`, `creatorAddLiquidity*`) do not carry `nonReentrant`.
 
 ### AMM Pools — UniswapV2-Style Mutex

@@ -10,7 +10,7 @@
 
 - **`global_collateral_ratio`** — Shared ratio (`1e6` precision) read by `CollateralPool` for all mint/redeem operations. Starts at `1000000` (100%) at deployment.
 - **`xsd_step`** — CR change increment per `systemCalculations()` call. Default: `2500` (0.25%).
-- **Rolling price average** — 10-slot circular buffer (`xsdPriceHistory`, `bankxPriceHistory`). Updated every `priceUpdateInterval` seconds (default: 180 seconds). Spot prices are derived from AMM pool reserves and the Chainlink ETH/USD feed.
+- **Rolling price average** — 10-slot circular buffer (`xsdPriceHistory`, `bankxPriceHistory`). Updated every `priceUpdateInterval` seconds (default: 180 seconds). Spot prices are derived from AMM pool reserves and the Chainlink ETH/USD feed. This is the third of three TWAP designs; the two it replaced, and the manipulation bound it relies on `Router.sol` for, are in [Liveness & Oracle Design](/projects/BankX/fixes/liveness-and-oracles).
 - **`neededWETH` / `neededBankX`** — WETH and BankX amounts (in 1e6 precision of dollars per XSD unit) required to mint 1 XSD at the current CR. Updated by `priceCheck()`.
 - **`interest_rate`** — Annual interest rate for minters. Computed as `max((1e6 - CR) / 2, 52800)`. Updated with every CR change.
 - **Three deficit buckets** — `bucket1` (XSD/WETH pool), `bucket2` (BankX/WETH pool), `bucket3` (CollateralPool). Each tracks `diff`, `timestamp`, and `amountpaid`.

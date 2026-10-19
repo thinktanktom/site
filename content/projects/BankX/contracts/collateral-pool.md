@@ -56,6 +56,8 @@ CollateralPool
 | `buyback_paused` | `bool` | Pauses buyback functions |
 | `mintMapping` | `mapping(address => MintInfo)` | Per-user mint state |
 | `redeemBankXTokenBalances` | `mapping(address => uint256)` | Queued BankX token amounts (in tokens, not USD) |
+
+The "in tokens, not USD" distinction on `redeemBankXTokenBalances` and `unclaimedPoolBankX` is load-bearing, not incidental: the ledger was dollar-denominated originally, which re-priced every obligation across the mandatory delay window. See [Fixed-Point & Unit Errors](/projects/BankX/fixes/fixed-point-and-units).
 | `redeemBankXBalances` | `mapping(address => uint256)` | Queued BankX USD values |
 | `redeemCollateralBalances` | `mapping(address => uint256)` | Queued WETH values in USD |
 | `vestingtimestamp` | `mapping(address => uint256)` | (Unused in current version) |

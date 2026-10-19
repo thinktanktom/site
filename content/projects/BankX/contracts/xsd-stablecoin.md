@@ -11,7 +11,7 @@
 - **Pool registry.** `xsd_pools` is a mapping of `address → bool`. Any contract added via `addPool()` can call `pool_mint()` and `pool_burn_from()`. Only the `CollateralPool` is added in the current deployment.
 - **`cap_rate`** — Maximum total supply that the `creatorMint()` function will not exceed. Set at construction.
 - **`genesis_supply`** — Initial supply minted at construction, split between the owner (pool bootstrap) and treasury.
-- **`PRICE_PRECISION = 1e6`** — All price values returned by this contract are in 1e6 precision (6 decimal places).
+- **`PRICE_PRECISION = 1e6`** — All price values returned by this contract are in 1e6 precision (6 decimal places). The internal `pool_price()` helper scales before dividing; doing it the other way round truncated to zero in thin liquidity — see [Fixed-Point & Unit Errors](/projects/BankX/fixes/fixed-point-and-units).
 - **`burnpoolXSD`** — Burns XSD from the XSD/WETH AMM pool and calls `sync()`. Callable only by the Router. Used during XSD-for-ETH swaps to apply deflationary pressure.
 - **`burnUserXSD`** — Allows any user to voluntarily burn their own XSD, subject to the constraint that uncollateralised XSD supply (`totalSupply - collat_XSD`) remains positive.
 

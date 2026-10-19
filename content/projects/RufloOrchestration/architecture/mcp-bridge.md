@@ -37,7 +37,7 @@ your-domain.example.com {
 }
 ```
 
-`flush_interval -1` is required for Server-Sent Events streaming to work correctly through the proxy — without it, responses buffer instead of streaming to the client as they're produced.
+`flush_interval -1` is required for Server-Sent Events streaming to work correctly through the proxy — without it, responses buffer instead of streaming to the client as they're produced. ([commit `c34fde2`](https://github.com/thinktanktom/ruflo/commit/c34fde271a27ee1874121a81e34bcdd68064fc22))
 
 ---
 
@@ -60,6 +60,8 @@ The client adds a single entry to `~/.claude/settings.json` on their own machine
 ```
 
 Once configured, all 204 MCP tools — including the two custom workflow tools described in [Skills & Workflow Tooling](/projects/RufloOrchestration/workflow/skills-and-tooling) — show up natively in the client's own Claude Code session, as if the bridge were running locally.
+
+When it does not go that smoothly, [Debugging a Remote MCP Connection](/projects/RufloOrchestration/setup/mcp-connection-failures) covers the three faults that each present as a client reporting the bridge "connected but not authenticated" — and [Alternative Access Paths](/projects/RufloOrchestration/architecture/access-paths) covers the two ways of reaching the bridge that avoid this route entirely.
 
 ---
 

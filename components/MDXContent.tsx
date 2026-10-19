@@ -4,20 +4,24 @@ import rehypePrettyCode from 'rehype-pretty-code'
 import type { Options } from 'rehype-pretty-code'
 
 // An object `theme` makes rehype-pretty-code pass defaultColor:false to Shiki,
-// which emits --shiki-funky / --shiki-dark / --shiki-light per token span (and
-// the -bg pair on the <pre>) instead of a baked-in `color`. The keys become the
-// variable suffixes verbatim. The CSS that selects between them lives in
+// which emits --shiki-dark / --shiki-light per token span (and the -bg pair on
+// the <pre>) instead of a baked-in `color`. The keys become the variable
+// suffixes verbatim. The CSS that selects between them lives in
 // src/app/globals.css, anchored at html[data-theme=…] because
 // rehype-pretty-code sets its own data-theme attribute on every <pre>/<code>.
 //
-// IMPORTANT: 'dark' and 'light' are NOT page themes — the site ships only funky
-// and random. They are kept here purely as the two POLARITY variable sets the
-// random theme borrows: Shiki runs at build time and a randomly generated
-// palette does not exist then, so globals.css maps
+// IMPORTANT: 'dark' and 'light' are NOT page themes — the site ships only
+// dark-mono and random. They are kept here purely as the two POLARITY variable
+// sets the random theme borrows: Shiki runs at build time and a randomly
+// generated palette does not exist then, so globals.css maps
 // html[data-theme='random'][data-polarity='dark'|'light'] onto --shiki-dark /
 // --shiki-light. Delete either key and every random-theme reader gets unstyled
 // code blocks. For the same reason there is deliberately no 'random' key: it
 // would emit a set of variables nothing could ever select.
+//
+// A third key, funky: 'one-dark-pro', was dropped with the funky theme on
+// 2026-10-16. The default theme now takes the --shiki-dark (vesper) set, which
+// is what vesper was picked for in the first place.
 const prettyCodeOptions = {
   theme: {
     dark: 'vesper',
