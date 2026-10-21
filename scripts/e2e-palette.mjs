@@ -377,9 +377,8 @@ check('press after recovery re-rolls rather than restoring', s6.storedSeed !== s
 // The page here must have LANGUAGE-TAGGED fences: rehype-pretty-code only wraps
 // tagged blocks in [data-rehype-pretty-code-figure], and an untagged fence is a
 // bare <pre> that fails the next check rather than testing anything. NO blog
-// post qualifies any more -- the two that did were folded into the project doc
-// trees and deleted, and agentic-workflow-nixos has 20 fences but all untagged
-// (0 figures). This BankX reference page carries 3 ```solidity blocks and is
+// post qualifies any more -- the ones that did were folded into the project doc
+// trees and deleted. This BankX reference page carries 3 ```solidity blocks and is
 // long-standing; prefer a reference page over a fix-history one, which is
 // likelier to be reorganised.
 await goto(ORIGIN + `/projects/BankX/security/reentrancy`)
