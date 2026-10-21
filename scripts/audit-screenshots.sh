@@ -40,7 +40,7 @@ OUTDIR="$OUTROOT/$LABEL"
 PAGES=(
   "home|/"
   "writing-index|/writing"
-  "writing-post|/writing/agentic-workflow-nixos"
+  "writing-post|/writing/the-proud-robot"
   "about|/about"
   "experience|/experience"
   "projects-index|/projects"
