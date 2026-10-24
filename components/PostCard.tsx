@@ -6,13 +6,9 @@ export default function PostCard({ post }: { post: PostMeta }) {
   return (
     <Link href={`/writing/${post.slug}`} className="block group">
       <article className="border border-border rounded-sm p-6 bg-surface/20 hover:border-accent/40 hover:-translate-y-1 transition-all duration-300">
-        <div className="flex items-center gap-3 mb-3">
-          <time className="font-mono text-xs text-muted tracking-wider">
-            {formatMonthYear(post.date)}
-          </time>
-          <span className="text-border">·</span>
-          <span className="font-mono text-xs text-muted">{post.readTime}</span>
-        </div>
+        <time className="block font-mono text-xs text-muted tracking-wider mb-3">
+          {formatMonthYear(post.date)}
+        </time>
 
         <h3 className="font-mono text-xl tracking-tight text-text group-hover:text-accent transition-colors duration-200 mb-2 leading-snug">
           {post.title}

@@ -20,13 +20,9 @@ export default function ProjectCard({ project }: { project: ProjectMeta }) {
     <Link href={project.link ?? `/projects/${project.slug}`} className="block group">
       <article className="border border-border rounded-sm p-6 bg-surface/20 hover:border-accent/40 hover:-translate-y-1 transition-all duration-300">
         <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
-          <div className="flex items-center gap-3">
-            <time className="font-mono text-xs text-muted tracking-wider">
-              {formatMonthYear(project.date)}
-            </time>
-            <span className="text-border">·</span>
-            <span className="font-mono text-xs text-muted">{project.readTime}</span>
-          </div>
+          <time className="font-mono text-xs text-muted tracking-wider">
+            {formatMonthYear(project.date)}
+          </time>
           <span
             className={`font-mono text-xs px-2 py-0.5 border rounded-sm tracking-wider ${statusStyles[project.status]}`}
           >

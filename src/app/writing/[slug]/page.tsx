@@ -84,13 +84,12 @@ export default function PostPage({ params }: Props) {
         </Link>
 
         <header className="mt-6 mb-12">
-          <div className="flex flex-wrap items-center gap-3 mb-5">
-            <time dateTime={post.date} className="font-mono text-xs text-muted tracking-wider">
-              {formatLongDate(post.date)}
-            </time>
-            <span className="text-border">·</span>
-            <span className="font-mono text-xs text-muted">{post.readTime}</span>
-          </div>
+          <time
+            dateTime={post.date}
+            className="block font-mono text-xs text-muted tracking-wider mb-5"
+          >
+            {formatLongDate(post.date)}
+          </time>
 
           <h1 className="font-mono text-3xl sm:text-4xl lg:text-5xl tracking-tight text-text mb-6 leading-tight">
             {post.title}
