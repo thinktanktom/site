@@ -2,7 +2,6 @@ import fs from 'fs'
 import path from 'path'
 import { cache } from 'react'
 import matter from 'gray-matter'
-import readingTime from 'reading-time'
 
 const postsDirectory = path.join(process.cwd(), 'content/posts')
 
@@ -12,7 +11,6 @@ export interface PostMeta {
   date: string
   excerpt: string
   tags: string[]
-  readTime: string
   aiGenerated: boolean
 }
 
@@ -34,8 +32,7 @@ export const getAllPosts = cache((): PostMeta[] => {
       const slug = fileName.replace(/\.mdx$/, '')
       const fullPath = path.join(postsDirectory, fileName)
       const fileContents = fs.readFileSync(fullPath, 'utf8')
-      const { data, content } = matter(fileContents)
-      const stats = readingTime(content)
+      const { data } = matter(fileContents)
 
       return {
         slug,
@@ -43,7 +40,6 @@ export const getAllPosts = cache((): PostMeta[] => {
         date: data.date as string,
         excerpt: data.excerpt as string,
         tags: (data.tags as string[]) ?? [],
-        readTime: stats.text,
         aiGenerated: (data.aiGenerated as boolean) ?? false,
       }
     })
@@ -56,7 +52,6 @@ export const getPostBySlug = cache((slug: string): Post | null => {
 
   const fileContents = fs.readFileSync(fullPath, 'utf8')
   const { data, content } = matter(fileContents)
-  const stats = readingTime(content)
 
   return {
     slug,
@@ -64,7 +59,6 @@ export const getPostBySlug = cache((slug: string): Post | null => {
     date: data.date as string,
     excerpt: data.excerpt as string,
     tags: (data.tags as string[]) ?? [],
-    readTime: stats.text,
     aiGenerated: (data.aiGenerated as boolean) ?? false,
     content,
   }

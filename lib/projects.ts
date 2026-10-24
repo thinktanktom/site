@@ -2,7 +2,6 @@ import fs from 'fs'
 import path from 'path'
 import { cache } from 'react'
 import matter from 'gray-matter'
-import readingTime from 'reading-time'
 
 const projectsDirectory = path.join(process.cwd(), 'content/projects')
 
@@ -16,7 +15,6 @@ export interface ProjectMeta {
   github?: string
   demo?: string
   link?: string
-  readTime: string
 }
 
 export interface Project extends ProjectMeta {
@@ -36,8 +34,7 @@ export const getAllProjects = cache((): ProjectMeta[] => {
       const slug = fileName.replace(/\.mdx$/, '')
       const fullPath = path.join(projectsDirectory, fileName)
       const fileContents = fs.readFileSync(fullPath, 'utf8')
-      const { data, content } = matter(fileContents)
-      const stats = readingTime(content)
+      const { data } = matter(fileContents)
 
       return {
         slug,
@@ -49,7 +46,6 @@ export const getAllProjects = cache((): ProjectMeta[] => {
         github: data.github as string | undefined,
         demo: data.demo as string | undefined,
         link: data.link as string | undefined,
-        readTime: stats.text,
       }
     })
     .sort((a, b) => (a.date < b.date ? 1 : -1))
@@ -61,7 +57,6 @@ export const getProjectBySlug = cache((slug: string): Project | null => {
 
   const fileContents = fs.readFileSync(fullPath, 'utf8')
   const { data, content } = matter(fileContents)
-  const stats = readingTime(content)
 
   return {
     slug,
@@ -73,7 +68,6 @@ export const getProjectBySlug = cache((slug: string): Project | null => {
     github: data.github as string | undefined,
     demo: data.demo as string | undefined,
     link: data.link as string | undefined,
-    readTime: stats.text,
     content,
   }
 })
