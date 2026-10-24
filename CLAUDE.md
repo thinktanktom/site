@@ -697,6 +697,12 @@ The styling is settled — **do not redesign it**:
 
 ## Placeholder Content
 
+**Historical — the original brief's seed spec, kept for reference.** That placeholder was replaced
+by a real post long ago, and on **2026-10-24** it was retitled `"Bubble Wrap"` and the file renamed
+to `content/posts/bubble-wrap.mdx`. **There is no `hello-world.mdx` any more**, and
+`/writing/hello-world` is a dead URL — the slug is the filename (`lib/posts.ts`), so renaming the
+file moved the route, and the static export has no redirect for the old one.
+
 Seed the project with **one example post** at `content/posts/hello-world.mdx`:
 
 ```mdx
