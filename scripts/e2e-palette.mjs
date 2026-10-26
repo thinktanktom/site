@@ -442,8 +442,33 @@ check('the press after a restore rolls a new palette',
 // 8. The alpha-composited accent utilities. These are the one family the
 // generator cannot bound -- it picks colours, and these are composites of one --
 // so the fix is CSS and has to be verified as rendered, not as intended.
-await goto(ORIGIN + '/projects')
-const chip = await evalJs(`(() => {
+//
+// Target moved from /projects to a project WRITEUP on 2026-10-26. /projects had
+// been the accent-chip page via components/ProjectCard.tsx; the merge into
+// /work replaced that index with a signpost and ProjectCard was deleted, so the
+// old target rendered ZERO accent borders and every check below passed
+// vacuously on an empty set (`worst undefined`, `0 boundary borders`).
+//
+// /work is deliberately NOT the replacement: its stack chips are the neutral
+// `border-border text-muted` the old /experience timeline used, because 22 rows
+// of accent chips would breach the "keep --accent disciplined, not scattered"
+// rule in CLAUDE.md. The alpha utilities now live on the writeup pages -- the
+// status pill (`border-accent/40 bg-accent/10`) and the stack chips
+// (`bg-accent/10 border-accent/30 text-accent/80`) in
+// src/app/projects/[slug]/page.tsx. If these checks ever report `undefined`
+// again, the target page stopped rendering them -- fix the target, not the
+// assertion.
+//
+// CtrlbitSDWAN specifically, and not any writeup: the status pill's classes
+// vary by frontmatter `status`, and `border-border/40` -- the neutral
+// decorative hairline CLAUDE.md deliberately leaves at ~1.11:1 -- is only on
+// the `archived` variant. It is the only archived project, so it is the only
+// page carrying all THREE border families (boundary accent, decorative accent,
+// neutral hairline) that these checks compare against each other. The old
+// /projects index got them for free by rendering every project's card at once.
+// If its status ever changes, the 'faintest border' check below fails loudly
+// rather than passing on a missing set -- which is the intended behaviour.
+const BORDER_PROBE = `(() => {
   const srgb = (s) => s.match(/[0-9.]+/g).slice(0, 3).map(Number);
   const lin = (c) => { const x = c / 255; return x <= 0.04045 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4) };
   const lum = (c) => 0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2]);
@@ -509,26 +534,80 @@ const chip = await evalJs(`(() => {
     out.chipContrast = +cr(tfg, tbg).toFixed(3);
   }
   return JSON.stringify(out);
-})()`)
+})()`
+
+/* TWO pages, because no single one renders the whole border family any more.
+   The status pill's classes are chosen by frontmatter `status`, so
+   `border-accent/40` (the boundary, held to the 3:1 UI floor) is only on an
+   ACTIVE project and `border-border/40` (the neutral hairline deliberately left
+   at ~1.11:1) is only on an ARCHIVED one. The old /projects index had every
+   variant at once because it rendered all seven cards; after the /work merge
+   deleted it, a single writeup covers at most three of the four.
+
+   Probing both and merging is what keeps every check backed by a real
+   measurement. The presence assertion below is the guard that matters: if a
+   frontmatter status changes and a family disappears, that check fails instead
+   of the family's own check passing on an empty set. */
+const BORDER_PAGES = [
+  /* Chosen by frontmatter `status`, NOT by name. If one of these fails the
+     presence check, look at content/projects/*.mdx first: the page probably
+     changed status rather than the CSS breaking. That has already happened
+     once -- BankX was the active page until its engagement closed in Dec 2025
+     and it became `completed` (2026-10-26). RufloOrchestration is also active
+     today; CtrlbitSDWAN is the only archived project. */
+  { url: '/projects/FractalWebhook', why: 'status: active -> border-accent/40 boundary' },
+  { url: '/projects/CtrlbitSDWAN', why: 'status: archived -> border-border/40 neutral hairline' },
+]
+
+const probes = []
+for (const page of BORDER_PAGES) {
+  await goto(ORIGIN + page.url)
+  probes.push({ ...page, ...JSON.parse(await evalJs(BORDER_PROBE)) })
+}
+
 {
-  const c = JSON.parse(chip)
-  check('projects page is in the random theme', c.theme === 'random', JSON.stringify(c))
+  /* Merge: worst case wins per family, counts sum, min alpha is the min. */
+  const worst = (key) =>
+    probes.map((p) => p[key]).filter(Boolean).sort((a, b) => a.cr - b.cr)[0]
+  const sum = (key) => probes.reduce((n, p) => n + (p[key] || 0), 0)
+  const c = {
+    boundaryBorders: sum('boundaryBorders'),
+    decorativeBorders: sum('decorativeBorders'),
+    worstBoundaryBorder: worst('worstBoundaryBorder'),
+    worstDecorativeBorder: worst('worstDecorativeBorder'),
+    worstAnyBorder: worst('worstAnyBorder'),
+    minAccentAlpha: Math.min(...probes.map((p) => p.minAccentAlpha ?? Infinity)),
+    chip: probes.find((p) => p.chipBg !== undefined),
+  }
+
+  check('both border probe pages are in the random theme',
+    probes.every((p) => p.theme === 'random'),
+    probes.map((p) => `${p.url}=${p.theme}`).join(' '))
+
+  /* The anti-vacuity guard. Every check below would pass on an empty set. */
+  check('the probe pages actually render all three measurable border families',
+    c.boundaryBorders > 0 && c.decorativeBorders > 0 && c.worstAnyBorder &&
+      !c.worstAnyBorder.accentish,
+    `boundary=${c.boundaryBorders} decorative=${c.decorativeBorders} ` +
+      `neutralWorst=${c.worstAnyBorder && !c.worstAnyBorder.accentish}`)
+
   check('every border-accent/40 BOUNDARY composites to >= 3:1 (UI floor)',
-    !c.worstBoundaryBorder || c.worstBoundaryBorder.cr >= 3,
+    c.worstBoundaryBorder && c.worstBoundaryBorder.cr >= 3,
     `${c.boundaryBorders} boundary borders; worst ${JSON.stringify(c.worstBoundaryBorder)}`)
   check('decorative accent chip borders stay at least as strong as dark-mono\'s 2.48:1',
-    !c.worstDecorativeBorder || c.worstDecorativeBorder.cr >= 2.4,
+    c.worstDecorativeBorder && c.worstDecorativeBorder.cr >= 2.4,
     `${c.decorativeBorders} decorative; worst ${JSON.stringify(c.worstDecorativeBorder)}`)
   check('no accent border is left at the stock 0.4 alpha',
-    c.minAccentAlpha === undefined || c.minAccentAlpha > 0.4,
+    c.minAccentAlpha > 0.4 && c.minAccentAlpha !== Infinity,
     `min accent alpha ${c.minAccentAlpha}`)
   check('the faintest border overall is a neutral one, not an accent one',
-    !c.worstAnyBorder || !c.worstAnyBorder.accentish,
+    c.worstAnyBorder && !c.worstAnyBorder.accentish,
     `worst overall: ${JSON.stringify(c.worstAnyBorder)}`)
   check('chip background is the opaque surface token, not an accent tint',
-    c.chipBg === undefined || c.chipBg === c.chipSurface, `chipBg=${c.chipBg} surface=${c.chipSurface}`)
+    c.chip && c.chip.chipBg === c.chip.chipSurface,
+    `chipBg=${c.chip?.chipBg} surface=${c.chip?.chipSurface}`)
   check('chip text clears WCAG AA on small text',
-    c.chipContrast === undefined || c.chipContrast >= 4.5, `chipContrast=${c.chipContrast}`)
+    c.chip && c.chip.chipContrast >= 4.5, `chipContrast=${c.chip?.chipContrast}`)
 }
 
 /* 9. The browser-tab icon follows the palette.

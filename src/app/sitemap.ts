@@ -31,9 +31,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: 'https://thinktanktom.com', lastModified: new Date() },
     { url: 'https://thinktanktom.com/writing', lastModified: new Date() },
     { url: 'https://thinktanktom.com/about', lastModified: new Date() },
-    { url: 'https://thinktanktom.com/projects', lastModified: new Date() },
-    { url: 'https://thinktanktom.com/experience', lastModified: new Date() },
-    { url: 'https://thinktanktom.com/contributions', lastModified: new Date() },
+    /* /projects, /experience and /contributions merged into /work on
+       2026-10-26 and their routes were DELETED, so those three URLs now 404.
+       That was a deliberate URL-breaking change, Tom's call, made after
+       weighing a signpost page against it -- do not re-add the old entries
+       here, and do not re-create the routes, without asking. The static export
+       on GitHub Pages has no redirect mechanism, so there is nothing else to
+       list. */
+    { url: 'https://thinktanktom.com/work', lastModified: new Date() },
     ...postUrls,
     ...projectUrls,
     ...docUrls,

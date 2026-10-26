@@ -26,10 +26,10 @@ export default function ProjectDocLayout({
       <div className="border-b border-border bg-surface/60 backdrop-blur-sm sticky top-16 z-30">
         <div className="max-w-[1200px] mx-auto px-6 py-3 flex items-center gap-3">
           <Link
-            href="/projects"
+            href="/work"
             className="font-mono text-xs text-muted hover:text-accent tracking-wider transition-colors duration-200"
           >
-            Projects
+            Work
           </Link>
           <span className="text-border font-mono text-xs">/</span>
           <Link

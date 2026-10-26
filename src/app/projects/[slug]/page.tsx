@@ -79,10 +79,10 @@ export default function ProjectPage({ params }: Props) {
       />
       <div className="max-w-article mx-auto">
         <Link
-          href="/projects"
+          href="/work"
           className="font-mono text-sm text-muted hover:text-accent tracking-wider transition-colors duration-200 mb-10 inline-block"
         >
-          ← Back to projects
+          ← Back to work
         </Link>
 
         <header className="mt-6 mb-12">

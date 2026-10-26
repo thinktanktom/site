@@ -12,29 +12,34 @@ export interface ExperienceEntry {
 // Curated from a private work-history record — short consultations are
 // merged or omitted for readability; financial figures are left out.
 // Direct clients and named companies below; standalone Upwork-channel
-// engagements are grouped separately in `upworkProjects`. Order is
-// deliberate (BankX and the AI orchestration role lead), not strict
-// chronology.
+// engagements are grouped separately in `upworkProjects`.
+//
+// Order is now plain reverse-chronological by `start`, because /work sorts it
+// that way regardless (lib/work.ts) and two orderings disagreeing was just a
+// trap. It used to be "deliberate (BankX and the AI orchestration role lead)",
+// which stopped making sense when BankX ended.
+//
+// Reconciled against the work-experience record (draft 9, 26 Oct 2026) on
+// 2026-10-26. Three changes from that pass:
+//   - BankX ENDED Dec 2025. It is no longer the lead entry and no longer
+//     "Present"; the Upwork contract is still open only because the client
+//     still pays through it, which is not the engagement.
+//   - The single "AI Agent-Orchestration Engineer / Independent client /
+//     Apr 2026" entry was a conflation of two engagements for the SAME client
+//     as BankX, and the start date was wrong. It is now LockBox
+//     (Jan – Jul 2026) and AgentXSD (Jul 2026 – present).
+//   - NOT represented here: the Community Outreach Ruflo droplet for the same
+//     client. Its dates are an open item in the record, and a page sorted by
+//     date cannot place an undated entry without inventing one.
 export const experience: ExperienceEntry[] = [
   {
-    role: 'Lead Smart Contract Engineer',
-    org: 'BankX Protocol',
-    orgLink: 'https://bankx.io',
-    start: 'Oct 2021',
-    end: 'Present',
-    summary:
-      'Wrote and deployed the XSD/BankX contract suite — a silver-pegged stablecoin with no liquidations, PID-controlled collateral ratios, and protocol-owned liquidity — live across 8 chains and covered by CoinFabrik and independent audits plus an active Immunefi bug bounty.',
-    stack: ['Solidity', 'Hardhat', 'Foundry', 'Chainlink', 'OpenZeppelin'],
-    link: { href: '/projects/BankX/introduction', label: 'Project writeup' },
-  },
-  {
     role: 'AI Agent-Orchestration Engineer',
-    org: 'Independent client',
-    start: 'Apr 2026',
+    org: 'AgentXSD',
+    start: 'Jul 2026',
     end: 'Present',
     summary:
-      'Built, deployed, and hardened self-hosted Claude Code / Ruflo agent-orchestration servers the client uses to develop their own product — plus a permanent run-control layer (locked plans, retry caps, human approval gates) after early runs fell into re-assessment loops.',
-    stack: ['Ruflo', 'Claude Code', 'MCP', 'Docker Compose', 'Caddy', 'DigitalOcean'],
+      'Built and hardened a dedicated self-hosted Claude Code / Ruflo box for AgentXSD, the component LockBox is deployed behind — plus a permanent run-control layer (one version at a time, locked plans, retry caps, human approval gates) after early runs fell into re-assessment loops, and a Claude Desktop extension so a non-technical client can drive it.',
+    stack: ['Ruflo', 'Claude Code', 'MCP', 'Docker Compose', 'Caddy', 'MongoDB', 'DigitalOcean'],
     link: { href: '/projects/RufloOrchestration/introduction', label: 'Project writeup' },
   },
   {
@@ -48,6 +53,15 @@ export const experience: ExperienceEntry[] = [
     link: { href: '/projects/FractalWebhook/introduction', label: 'Project writeup' },
   },
   {
+    role: 'AI Payment System Engineer',
+    org: 'LockBox',
+    start: 'Jan 2026',
+    end: 'Jul 2026',
+    summary:
+      'Developed a multi-asset, multi-chain AI payment system — policy engine, LockScript compiler, ZKP circuits and SDKs — almost entirely through Ruflo agent orchestration, generating the agents, skills and instruction files for the build. All components finished and tested; deployment waits on the AgentXSD integration.',
+    stack: ['Ruflo', 'Anthropic Claude', 'Claude Code', 'MCP', 'DigitalOcean'],
+  },
+  {
     role: 'Network Engineer',
     org: 'Ctrlbit',
     orgLink: 'https://ctrlbit.com',
@@ -57,6 +71,17 @@ export const experience: ExperienceEntry[] = [
       'Co-built an SD-WAN product for MikroTik hardware with a family friend — dual-SIM failover via GenieACS/TR-069 and a guide for network-booting OpenWRT onto RouterBOARD devices. The venture wound down after import-tax changes on the hardware.',
     stack: ['MikroTik RouterOS', 'OpenWRT', 'GenieACS', 'Node.js'],
     link: { href: '/projects/CtrlbitSDWAN', label: 'Project writeup' },
+  },
+  {
+    role: 'Lead Smart Contract Engineer',
+    org: 'BankX Protocol',
+    orgLink: 'https://bankx.io',
+    start: 'Oct 2021',
+    end: 'Dec 2025',
+    summary:
+      'Wrote and deployed the XSD/BankX contract suite — a silver-pegged stablecoin with no liquidations, PID-controlled collateral ratios, and protocol-owned liquidity — live across 8 chains and covered by CoinFabrik and independent audits plus an active Immunefi bug bounty. Four years as the sole contract engineer, closing in Dec 2025.',
+    stack: ['Solidity', 'Hardhat', 'Foundry', 'Chainlink', 'OpenZeppelin'],
+    link: { href: '/projects/BankX/introduction', label: 'Project writeup' },
   },
   {
     role: 'Blockchain Developer',
@@ -116,7 +141,13 @@ export const upworkProjects: ExperienceEntry[] = [
     summary:
       'Built and deployed the Based Agents contract suite — Protocol Rewards, Bonding Curve, Bag Token, Bag Governance, and an upgradeable Bag Factory — with Hardhat tests run against a mainnet fork.',
     stack: ['Solidity', 'Hardhat', 'Sepolia'],
-    link: { href: 'https://github.com/BasedAgents/smart-contracts', label: 'GitHub' },
+    /* Points at the writeup, not the repo, so lib/work.ts's generic
+       "an entry whose link goes into /projects/ owns that writeup" rule absorbs
+       it like the other six. This was the last project needing a hand-written
+       pairing; changed 2026-10-26 so that no pairing table is needed at all.
+       The repo is not lost -- content/projects/BasedAgents.mdx carries it as
+       `github`, and lib/work.ts surfaces that alongside the writeup link. */
+    link: { href: '/projects/BasedAgents/introduction', label: 'Project writeup' },
   },
   {
     role: 'Rust / Soroban Smart Contract Engineer',

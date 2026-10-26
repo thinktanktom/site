@@ -6,11 +6,27 @@ import { usePathname } from 'next/navigation'
 import { Menu, X } from 'lucide-react'
 import ThemeSwitcher from '@components/ThemeSwitcher'
 
+/* Three links since 2026-10-26, when /projects, /experience and /contributions
+   merged into /work. Those three routes are still live as canonical signposts
+   but are deliberately not linked from here.
+
+   The breakpoint stays `lg`, and that is now a choice rather than a constraint.
+   Re-measured in a real browser after the merge: the wordmark is 224px and this
+   row (3 tracked uppercase links + the compact switcher) is 295.5px, so the
+   chrome needs 519.5px of content -- down from the 643px the five-link row
+   measured. `md` leaves ~705px after `px-6` and a classic scrollbar, so md
+   would fit with ~185px of clearance and `md:flex` is now viable on width
+   alone.
+
+   It was NOT lowered, because fitting is not the same as reading well: at 768px
+   the row would sit 519px of content in 705px with the links crowding the
+   wordmark, and the full-screen overlay is the better experience on a tablet.
+   Lowering it is a deliberate design change, not a cleanup -- and CLAUDE.md is
+   explicit that any new number here is measured in a browser with scrollbars
+   VISIBLE, which is what invalidated an earlier reading. */
 const navLinks = [
   { href: '/writing', label: 'Writing' },
-  { href: '/projects', label: 'Projects' },
-  { href: '/experience', label: 'Experience' },
-  { href: '/contributions', label: 'Contributions' },
+  { href: '/work', label: 'Work' },
   { href: '/about', label: 'About' },
 ]
 

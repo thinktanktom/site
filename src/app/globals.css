@@ -193,6 +193,129 @@ a {
   }
 }
 
+/* ---- /work: the spine and its kind filter -------------------------------
+   Added 2026-10-26, when /projects, /experience and /contributions merged into
+   one reverse-chronological page.
+
+   The filter is four radios, visually hidden, that sit BEFORE both the pill row
+   and the list inside one fieldset. Everything below selects off them with the
+   general sibling combinator, so the page needs no JavaScript at all and works
+   with JS off -- the same property the .annot round trip above has.
+
+   Two deliberate choices:
+
+   `~`, not `:has()`. The inputs precede their targets, so a sibling selector is
+   sufficient; it also avoids the specificity trap the random-theme alpha rules
+   at the bottom of this file document, since none of these rules compete with a
+   higher-specificity variant.
+
+   Real classes, not Tailwind utilities, for the state rules. Next inlines the
+   RSC flight payload beside the markup, so a utility string on a repeated
+   element is emitted several times per entry -- the measured reason .annot
+   exists as a class rather than `text-accent underline underline-offset-4`.
+
+   `data-kind` and `data-writeup` are written by components/WorkEntryRow.tsx.
+   Renaming either attribute silently breaks the filter: the pills keep
+   responding and nothing is ever hidden. */
+.work-filter {
+  border: 0;
+}
+
+/* The two columns. Below lg they stack -- spine, then the upstream block --
+   and the layout is a plain block, so nothing here applies.
+
+   The widths are arithmetic, not taste: the page container is max-w-chrome
+   (1100px) and 1100 - 17rem(272) - 3rem(48) = 780px, which is exactly
+   max-w-article. The rail buys its column out of the chrome width without
+   narrowing the reading measure of the spine. If you change one of the three
+   numbers, change another to match. */
+@media (min-width: 1024px) {
+  .work-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 17rem;
+    gap: 3rem;
+    align-items: start;
+  }
+
+  /* With one column hidden the grid must collapse, or the surviving column
+     keeps its track and the page renders with a 272px hole beside it.
+     Upstream-only is capped near the article measure instead of being allowed
+     to stretch a repo row across the full 1100px. */
+  #wf-built:checked ~ .work-layout,
+  #wf-roles:checked ~ .work-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  #wf-upstream:checked ~ .work-layout {
+    grid-template-columns: minmax(0, 48rem);
+  }
+}
+
+/* Hide the rows the active filter excludes. "Built" is the entries that carry a
+   project writeup, which after the merge is a subset of the engagements rather
+   than a separate kind of row -- every project belongs to an engagement.
+   Note the descendant step: .work-spine and .work-rail are nested inside
+   .work-layout, which is the element that is the radios' sibling. */
+#wf-built:checked ~ .work-layout .work-spine > :not([data-writeup]) {
+  display: none;
+}
+
+/* The rail holds only upstream clusters and the spine only engagements, so
+   these two filters hide whole columns rather than individual rows. */
+#wf-built:checked ~ .work-layout .work-rail,
+#wf-roles:checked ~ .work-layout .work-rail,
+#wf-upstream:checked ~ .work-layout .work-spine {
+  display: none;
+}
+
+/* Light the active pill. The pressed look comes from CSS keyed on :checked, not
+   from React state -- the same reasoning as .theme-btn-*: it is correct on
+   first paint and with JS off. Inverting bg and fg rather than shifting hue
+   keeps it legible in dark-mono, which has no hue to shift (WCAG 1.4.1). */
+#wf-all:checked ~ .work-pills label[for='wf-all'],
+#wf-built:checked ~ .work-pills label[for='wf-built'],
+#wf-roles:checked ~ .work-pills label[for='wf-roles'],
+#wf-upstream:checked ~ .work-pills label[for='wf-upstream'] {
+  background-color: rgb(var(--accent));
+  border-color: rgb(var(--accent));
+  color: rgb(var(--bg));
+}
+
+/* The radio itself is sr-only, so :focus-visible on it paints nothing the user
+   can see. Forward the ring to the pill that labels it, or the filter is
+   unusable by keyboard (WCAG 2.4.7). */
+#wf-all:focus-visible ~ .work-pills label[for='wf-all'],
+#wf-built:focus-visible ~ .work-pills label[for='wf-built'],
+#wf-roles:focus-visible ~ .work-pills label[for='wf-roles'],
+#wf-upstream:focus-visible ~ .work-pills label[for='wf-upstream'] {
+  outline: 2px solid rgb(var(--accent));
+  outline-offset: 2px;
+}
+
+/* Below lg the rail is a block following the spine, so it needs its own top
+   separation; at lg it sits beside the spine and the gap provides it. */
+.work-rail {
+  margin-top: 4rem;
+  max-width: 48rem;
+}
+
+@media (min-width: 1024px) {
+  .work-rail {
+    margin-top: 0;
+    max-width: none;
+  }
+}
+
+/* Upstream rows are native <details>. Drop the default marker in both engines;
+   the ↗ glyph in the summary is the affordance. */
+.work-summary {
+  list-style: none;
+}
+
+.work-summary::-webkit-details-marker {
+  display: none;
+}
+
 /* The logo mark, every theme: a stencil, not a recolour.
    components/ThemedLogo.tsx renders one empty span per role and sets only the
    per-role mask url inline; everything shared lives here so autoprefixer emits
