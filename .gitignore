@@ -72,9 +72,17 @@ content/posts/*.txt
 /claude_desktop_config.json
 
 
-# NOTE the three *_dark-mono.svg marks under public/ are deliberately TRACKED.
-# They were ignored here between 2026-10-16 (when the dark theme was dropped)
-# and later the same day, when dark-mono became the DEFAULT theme and
-# ThemedLogo started serving them. They are required for the build: ignoring
-# them again ships a site with no logo. The *_light-primary marks stay tracked
-# too, as the random theme's mask stencils and the favicon's stencil.
+# NOTE the three *_dark-mono.svg marks under public/ are deliberately TRACKED,
+# and the *_light-primary marks with them.
+#
+# Corrected 2026-10-26. This used to say ThemedLogo serves the dark-mono files
+# and that ignoring them "ships a site with no logo". That stopped being true at
+# the 2026-10-17 mask unification: ThemedLogo now stencils ONLY the three
+# *_light-primary.svg files (one masked span per role, in every theme), so those
+# are the build-critical ones. Of the dark-mono set, only
+# ttt_icon_dark-mono.svg is still referenced — layout.tsx's static icon /
+# shortcut / apple-touch-icon and DEFAULT_URL in lib/palette/favicon.ts.
+# ttt_horizontal_dark-mono.svg and ttt_stacked-tagline_dark-mono.svg are
+# referenced by nothing and stay anyway: CLAUDE.md note 7 keeps them as the
+# record of what the mark's ink is supposed to be, which is the evidence behind
+# the single masked mark's one condition.

@@ -37,18 +37,24 @@ OUTDIR="$OUTROOT/$LABEL"
 # dynamic route is enough — but note that each project's documentation route
 # renders its own sidebar component, so they are listed separately rather than
 # treated as one [...slug] route.
+# A dead route here is WORSE than noise: headless Chrome still writes a PNG for
+# a 404 body, so the capture prints OK and the before/after comparison silently
+# covers nothing. That is the same trap CLAUDE.md records for the e2e harnesses
+# ("the browser renders the 404 body with the right URL and no <nav>, which
+# looks exactly like a broken component"). /experience, /projects and
+# /contributions were listed here until 2026-10-26 and had all three become
+# 404s when they merged into /work.
 PAGES=(
   "home|/"
   "writing-index|/writing"
   "writing-post|/writing/the-proud-robot"
   "about|/about"
-  "experience|/experience"
-  "projects-index|/projects"
+  "work|/work"
   "project-bankx|/projects/BankX"
   "doc-bankx|/projects/BankX/introduction"
   "doc-basedagents|/projects/BasedAgents/introduction"
   "doc-ruflo|/projects/RufloOrchestration/introduction"
-  "contributions|/contributions"
+  "doc-fractal|/projects/FractalWebhook/introduction"
 )
 
 # width,height. The height is deliberately oversized so that headless Chrome,

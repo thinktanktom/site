@@ -74,7 +74,12 @@ export default function ProjectDocPage({ params }: Props) {
     '@type': 'BreadcrumbList',
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://thinktanktom.com' },
-      { '@type': 'ListItem', position: 2, name: 'Projects', item: 'https://thinktanktom.com/projects' },
+      /* /work, not /projects. The visible breadcrumb in ../layout.tsx was
+         repointed when the three pages merged on 2026-10-26 but this structured
+         copy was missed, so all 66 doc pages shipped a BreadcrumbList whose
+         position 2 resolved to a 404 and disagreed with the crumb beside it.
+         These two must change together -- there is no test that compares them. */
+      { '@type': 'ListItem', position: 2, name: 'Work', item: 'https://thinktanktom.com/work' },
       {
         '@type': 'ListItem',
         position: 3,

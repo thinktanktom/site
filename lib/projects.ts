@@ -22,8 +22,9 @@ export interface Project extends ProjectMeta {
 }
 
 // Memoised per render pass — see the note in lib/posts.ts. getAllProjects is
-// called by the projects index, the overview route's generateStaticParams and
-// the sitemap; getProjectBySlug twice per project route.
+// called by the overview route's generateStaticParams, the sitemap and
+// lib/work.ts; getProjectBySlug twice per project route. (The /projects index
+// was a caller until it merged into /work on 2026-10-26.)
 export const getAllProjects = cache((): ProjectMeta[] => {
   if (!fs.existsSync(projectsDirectory)) return []
 

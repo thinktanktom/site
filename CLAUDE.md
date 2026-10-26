@@ -18,7 +18,7 @@ Since **2026-10-16** the default theme is `dark-mono`, which takes that descript
 - **Fonts**: Load via `next/font` from Google Fonts
   - Display / headings: `"Space Mono"` (monospaced, retro-pixel feel that echoes the logo)
   - Body: `"DM Sans"` (clean, readable, modern contrast to the mono headings)
-- **Deployment**: Vercel (add `vercel.json` if needed)
+- **Deployment**: GitHub Pages via `output: 'export'` in `next.config.mjs` and `.github/workflows/deploy.yml` (`peaceiris/actions-gh-pages`). The original brief said Vercel; it was never used, so do NOT reach for Vercel-only features — no ISR, no `revalidate`, no server actions, no API routes, no redirects/rewrites.
 - **No database** — all content is file-based MDX
 
 ---
@@ -145,8 +145,134 @@ because both hand-picked accents are near-maximum luminance on a near-black grou
 /                   → Home / Hero
 /writing            → Blog index (list of all MDX posts)
 /writing/[slug]     → Individual post page
+/work               → EVERYTHING built and shipped, one dated spine (2026-10-26)
+/projects/[slug]    → Project writeup (overview)
+/projects/[slug]/…  → Project doc trees (registry-driven; see note 11)
 /about              → Short bio page
 ```
+
+**`/projects`, `/experience` and `/contributions` merged into `/work` on 2026-10-26.** One
+reverse-chronological spine replaced three pages that each had a different organizing idea
+(artifacts / chronology / an external record feed). Chronology is the one axis all three shared.
+
+**The three old routes were DELETED, and `/projects`, `/experience` and `/contributions` now 404.**
+That was Tom's explicit call, taken over the alternative, not an oversight — all three were in
+`sitemap.ts` and had been crawled, so this is a deliberate URL-breaking change in the same class as
+the `hello-world` rename. **Do not re-create those routes or re-add them to `sitemap.ts` without
+asking.** A static export on GitHub Pages has no redirect or rewrite mechanism, so there is no
+middle option that preserves the URLs.
+
+Signpost pages (`robots: noindex, follow` + `alternates.canonical: '/work'` + a visible link) were
+built first and then removed when Tom chose the 404s. **One finding from that detour is worth keeping
+even though the code is gone:** only `<meta http-equiv="refresh">` actually redirects, and Next's
+`metadata.other` emits `name=` attributes — a `refresh` key there renders `<meta name="refresh">`,
+which every browser ignores. That shipped and was caught only by decoding the built export, so don't
+reach for `metadata.other` to redirect anything. `redirect()` from `next/navigation` needs a server
+the static export does not have.
+
+Three things about `/work` are load-bearing:
+
+- **`lib/work.ts` is the only module that knows how the three content sets relate.** The three
+  sources stay independent and unchanged. It emits **two** shapes, not three: an `engagement` (a
+  role or Upwork contract, carrying its project writeup when it has one) and an `upstream` cluster
+  (every PR to one repo, as a single collapsed `<details>` row).
+- **There is no standalone `project` row, and that was a discovery rather than a choice.** Every
+  one of the seven experience entries that owns a writeup points at it via `link.href`, so **one
+  generic "absorb by link" rule folds in all 7 and there is no pairing table at all.** So `◆` marks
+  *an engagement that has a writeup*, and the **Built** filter is a subset of **Roles** rather than
+  a separate kind. A one-entry `PROJECT_PAIRINGS` map existed briefly for `BasedAgents`, whose
+  Upwork entry linked to GitHub; it was deleted on 2026-10-26 by **fixing the data** — that entry
+  now links the writeup, and `toEngagement` surfaces the repo from the project's own `github`
+  frontmatter, so nothing was lost. Prefer that fix over a table if an eighth project ever fails
+  to pair.
+- **`buildEntries()` throws at build time on two conditions**, and both are deliberate: a project
+  belonging to *no* engagement, and a project claimed by *two*. A mistyped slug would otherwise
+  yield an *empty* result — a silently missing row in the shipped export, the same failure class
+  note 11 records for `DOC_PROJECTS` — and a duplicate claim would render the same writeup link on
+  two rows while still passing the orphan check. Current counts: **23 rows — 15 engagements (7 with
+  writeups) + 8 upstream clusters.**
+
+`/work` is an **async server component and must stay one** — `getWorkEntries()` pulls in
+`lib/github.ts`, whose PR fetch runs at build time against `process.env.GITHUB_TOKEN`. Its only
+interactivity is CSS: four `sr-only` radios ahead of the list, selected with the **general sibling
+combinator** (`~`, not `:has()` — the inputs precede their targets, so a sibling selector suffices).
+**No `'use client'` anywhere on the page**, so the filter works with JS off, like the `.annot` round
+trip. `data-kind` and `data-writeup` on each row are what those rules select on; rename either and
+the pills keep responding while nothing is ever hidden.
+
+### The `lg` upstream rail
+
+Added 2026-10-26, right after the merge, because chronology front-loaded the upstream work: the PRs
+are recent, so **seven of the eight clusters landed in the top ten rows**, above everything from
+2024 and earlier. The rail takes them out of the spine entirely.
+
+- **The widths are arithmetic, not taste.** The page container is `max-w-chrome` (1100px) — *not*
+  `max-w-article` — and `.work-layout` is `grid-template-columns: minmax(0, 1fr) 17rem` with a
+  `3rem` gap. `1100 − 272 − 48 = 780`, which is exactly `max-w-article`. **The rail buys its column
+  out of the chrome width rather than out of the reading measure.** Change one of those three
+  numbers and you must change another; `scripts/e2e-work.mjs` asserts the spine is still 780px.
+- **Hiding a column must COLLAPSE the grid.** Built and Roles hide the rail; without the
+  single-track override the spine renders beside a 272px hole. Upstream-only is capped at `48rem`
+  rather than stretching a repo row across the full 1100px.
+- **Below `lg` the rail is a block following the spine**, under its own `Upstream · N repos`
+  heading, and `.work-layout` is a plain block so none of the grid rules apply.
+- The filter is unchanged in kind — the same four radios and sibling selectors — but `.work-spine`
+  and `.work-rail` are now nested inside `.work-layout`, so the rules need **a descendant step
+  after the sibling combinator**. The radios' sibling is the layout, not the lists.
+
+**Accepted consequence, and it is the whole trade:** the clusters are **no longer interleaved into
+the dated spine at any width**, not just at `lg`. Each still carries its own date label, so nothing
+becomes undated — but you can no longer read one column and watch a PR land between two
+engagements. That is what was exchanged for a spine of purely first-party work.
+
+**Both columns cap themselves at 780px below `lg`, and that is a fix, not decoration.** Moving the
+container to `max-w-chrome` left no 780px wrapper around the lists between 781px and 1023px of
+viewport, so every summary rendered up to 960px wide at 1023px and snapped back at 1024px. The
+original harness measured 1280/375/390 only and could not see the band. `e2e-work.mjs` §6 now
+measures 1023 and 900, negative-controlled by deleting the cap in source and rebuilding (spine
+960px at 1023, 837px at 900).
+
+### Two guards on `/work` that exist because the degraded path is reachable
+
+- **A zero-PR build is a real state, not a hypothetical.** `lib/github.ts` publishes an empty list
+  rather than failing the build when the search API 403s on the shared unauthenticated rate limit
+  or the 8s timeout fires. Without guards that build shipped an empty `<aside>` headed
+  "Upstream · 0 repos", a live `Upstream · 0` pill whose rule hides the spine — leaving a page whose
+  entire body was one bottom-bordered heading — and at `lg` the 272px rail track reserved for
+  nothing. So `page.tsx` drops any pill whose set is empty (never `All`) and omits the rail
+  entirely. `work-layout-solo` collapses the grid in that state, because no filter is checked for
+  the ID-specificity rules to match on.
+- **The filter wrapper is a plain `<div>`, deliberately NOT a `<fieldset>`.** The sibling selectors
+  only need the radios and the targets to share a parent, so the fieldset had to enclose the lists
+  — which put all 23 rows and the `<aside>` complementary landmark inside a `role="group"` named
+  "Filter by kind of work". It is valid HTML, which is why it survived review. The radios keep
+  native grouping via their shared `name`.
+
+`lib/experience.ts` is now **plain reverse-chronological by `start`**, matching what `lib/work.ts`
+sorts it into. Its order used to be "deliberate (BankX and the AI orchestration role lead), not
+strict chronology", and two orderings disagreeing was just a trap. The reason the old order stopped
+making sense is the data change below.
+
+### The 2026-10-26 work-history reconciliation
+
+`lib/experience.ts` was reconciled against the private work-experience record (draft 9). Three
+changes, and the first two are facts about the world rather than code decisions:
+
+- **BankX ENDED Dec 2025.** It is no longer `Present` and no longer the lead entry. Its Upwork
+  contract is still open, but only because the client still pays through it — that is not the
+  engagement. `content/projects/BankX.mdx` moved `status: active` → `completed` to match; leaving
+  it `active` next to an end date would have been a contradiction in the data.
+- **The single "AI Agent-Orchestration Engineer / Independent client / Apr 2026" entry was a
+  conflation**, and its start date was wrong. It is now two entries for the **same client as
+  BankX**: **LockBox** (Jan – Jul 2026, the multi-asset multi-chain AI payment system) and
+  **AgentXSD** (Jul 2026 – present, its own Ruflo box, and the one that owns the
+  `RufloOrchestration` writeup).
+- **Not represented, deliberately:** the Community Outreach Ruflo droplet for the same client. Its
+  dates are an open item in the source record, and a page sorted by date cannot place an undated
+  entry without inventing one. Add it when the dates are known.
+
+**Changing a project's `status` has a non-obvious consequence** — see the `e2e-palette.mjs` row in
+the verification table. BankX going `completed` moved the harness's border-probe target.
 
 ### File layout
 
@@ -175,6 +301,8 @@ thinktanktom/
 │   ├── Nav.tsx
 │   ├── Footer.tsx
 │   ├── PostCard.tsx
+│   ├── ProjectCard.tsx          ← UNREFERENCED since the /work merge; kept, Tom's call
+│   ├── WorkEntryRow.tsx         ← one /work spine row (server)
 │   ├── MDXContent.tsx
 │   ├── ThemeSwitcher.tsx        ← 2-way theme control (client)
 │   └── ThemedLogo.tsx           ← one CSS-masked mark per role (server)
@@ -211,10 +339,9 @@ that are worth thinking about.
 - Each card: post title, date, 1-line excerpt, tag chips
 - A "View all writing →" link at the bottom
 
-**"Find me" section** (minimal link list):
-- GitHub → `https://github.com/YOUR_USERNAME`
-- LinkedIn → `https://linkedin.com/in/YOUR_USERNAME`
-- Upwork → `https://www.upwork.com/freelancers/YOUR_USERNAME`
+**"Find me" section** (minimal link list): GitHub, LinkedIn, Upwork — the real
+URLs are in the "External Links" table near the end of this file, not here, so
+there is one copy to keep correct.
 - Each link: icon + label, opens in new tab, hover turns `--accent`
 
 ---
@@ -238,7 +365,7 @@ that are worth thinking about.
   - `<pre><code>`: syntax-highlighted code block (use `rehype-pretty-code` with a dark theme)
   - `<a>`: `--accent` underline
   - `<blockquote>`: left-border `--accent`, italic, muted text
-- Show: title, date, estimated read time, tags at the top
+- Show: title, date, tags at the top. **No read time** — `reading-time` and the `readTime` field were removed in `3c24c58c`; do not re-add them from the brief below.
 - "← Back to writing" link below the title
 - No comments section; no like buttons — keep it clean
 
@@ -267,10 +394,10 @@ tags: ["tag1", "tag2"]
 
 **Desktop nav** (sticky, top bar):
 ```
-[TTT wordmark — 32px high]   Writing  Projects  Experience  Contributions  About   [⚡🎲]  [Hire me ↗]
+[TTT wordmark — 32px high]   Writing  Work  About   [◐🎲]
 ```
 
-**Mobile nav**: hamburger → full-screen overlay with large links, the Hire me pill, and the
+**Mobile nav**: hamburger → full-screen overlay with large links and the theme control last. (The brief said a Hire me pill went here too; it does not — the only live "Hire me" is the hero CTA in `src/app/page.tsx`.)
 theme control last.
 
 The overlay's theme control (`ThemeSwitcher variant="full"`) is a **grid, not a flex row**, and that
@@ -287,12 +414,17 @@ content to yield. Verify with `node scripts/e2e-palette-mobile.mjs` after a buil
 `buttonBoxes` every run, so re-read the numbers there rather than trusting this file.
 
 - Active page: nav item gets `--accent` colour
-- "Hire me" button: small pill button, `--accent` bg, `--bg` text — links to Upwork
-- **The desktop cluster breaks at `lg`, not `md`** — this is deliberate and measured, not a typo.
-  The wordmark (224px) plus five `tracking-widest uppercase` mono links plus the pill already
-  measured 904px of `scrollWidth` against the 720px available at `md`; it overflowed and was
-  merely hidden by `overflow-x: hidden` on `html, body`. Below `lg` the full-screen overlay
-  carries both the navigation and the theme control.
+- ~~"Hire me" button in the nav~~ — **not in `Nav.tsx`.** It lives in the hero (`src/app/page.tsx`), as a pill with `--accent` bg and `--bg` text linking to Upwork. Lines below that cite nav measurements "with the pill" are describing a layout that no longer exists.
+- **The desktop cluster breaks at `lg`, not `md`.** This used to be a hard constraint and is now a
+  **design choice** — the distinction matters, because the old justification no longer holds. With
+  five links plus the Hire me pill the row measured 904px of `scrollWidth` against the 720px
+  available at `md`, overflowing and merely hidden by `overflow-x: hidden`. The nav dropped to
+  **three** links on 2026-10-26 (`/work` replaced three pages), and re-measuring in a real browser
+  gives wordmark **224px** + row **295.5px** = **519.5px of content**, against the ~705px `md`
+  leaves after `px-6` and a classic scrollbar: ~185px of clearance. **`md:flex` would now fit.**
+  It was not lowered because fitting is not reading well — at 768px the links crowd the wordmark,
+  and the full-screen overlay is the better tablet experience. Lowering it is a deliberate design
+  change, not a cleanup. Below `lg` the overlay carries both the navigation and the theme control.
 - Gaps are measured, not guessed — **but measure them, do not trust this file.** The Hire me pill has
   since moved out of the desktop row, so the earlier `gap-4`/26px figures no longer describe it. See
   the comment in `Nav.tsx` for the current numbers, and re-measure in a real browser **with scrollbars
@@ -372,12 +504,26 @@ rule written this way.)
 
 ## Verifying this site
 
-`npm test` (vitest, ~3s) covers the palette engine. Three things it cannot cover, because they need
-a real browser, live in `scripts/` and run against a built export:
+`npm test` (vitest, ~3.5s, **136 tests**) covers the palette engine and `lib/work.ts`.
+
+`lib/__tests__/work.test.ts` was added 2026-10-26 after a bug audit named its absence as a finding:
+the riskiest module on the site — a date parser, two build-time `throw`s, a clustering pass and a
+comparator — had no runner touching it, only a browser harness that needs a build and can see only
+the one dataset on disk. It covers `monthYearToISO` against **every real `start` value**, both
+throws, the clustering and counts, and the ordering invariant. Two notes for extending it:
+`buildEntries` takes the curated lists as **optional arguments** defaulting to the real data, which
+is what lets tests pass synthetic ones instead of mocking; and the test must `vi.mock('@lib/projects')`,
+because that module wraps its readers in React's `cache()`, which throws outside a server render at
+*import* time. `vitest.config.ts` carries the `@lib`/`@components`/`@` aliases for the same reason —
+Vite does not read `tsconfig.json` paths.
+
+Four things vitest cannot cover, because they need a real browser, live in `scripts/` and run
+against a built export:
 
 | command | what it proves |
 |---|---|
-| `node scripts/e2e-palette.mjs` | 50 checks: the switcher has exactly 2 buttons, the palette is actually painted, a reload restores it pre-paint, switching back to dark-mono *removes* the inline properties, the mark's ink follows `--accent`, a stale cache recovers from the seed with React state in step, that there is exactly **one** logo mark and no `<img>` in the nav, that its **mask has already been fetched while dark-mono is live** (read from the CDP request log, because Resource Timing does not report memory-cache hits) and that it carries a `background-color` transition — the two halves of the 2026-10-17 switch-stutter fix, negative-controlled by re-hiding the mark in source and rebuilding, which gives `requested=0 mask assets`, and (§5b) **a stale stored `funky` self-heals to a PAINTED dark-mono** — the migration path every existing reader takes once, asserted on the attribute because the self-heal is invisible in the pixels. Also the dice's two-state action (§7b): entering random **restores** the stored seed *and* repaints the same `--bg`, the press after that rolls, and the button renames itself in all three states. **The empty-store roll has no check of its own on purpose** — section 2's press happens on cleared storage, so `dice applies a random palette` already *is* that assertion; breaking the empty-store path fails it (plus 8 downstream checks), which is what licensed dropping the duplicate. Negative-controlled the same way for the restore itself: with the old always-roll `select()` rebuilt from source, the restore check fails and the roll checks still pass. §9 covers the **themed favicon**: dark-mono serves the brand file, a roll repaints both `rel~="icon"` links as a tinted data URI with exactly one fill, that URI **decodes as a real image**, `apple-touch-icon` is untouched, dark-mono puts the file back, and a reload repaints from the applied accent. **§9b is the one that shipped broken** — the themed icon must survive a CLIENT-SIDE navigation. It is driven by clicking a real nav anchor, because `Page.navigate` is a full document load that re-runs the mount path and therefore *cannot* reproduce the bug; and its expected default is read out of `favicon.ts` rather than hard-coded, so it cannot drift when the default mark changes |
+| `node scripts/e2e-palette.mjs` | 51 checks: the switcher has exactly 2 buttons, the palette is actually painted, a reload restores it pre-paint, switching back to dark-mono *removes* the inline properties, the mark's ink follows `--accent`, a stale cache recovers from the seed with React state in step, that there is exactly **one** logo mark and no `<img>` in the nav, that its **mask has already been fetched while dark-mono is live** (read from the CDP request log, because Resource Timing does not report memory-cache hits) and that it carries a `background-color` transition — the two halves of the 2026-10-17 switch-stutter fix, negative-controlled by re-hiding the mark in source and rebuilding, which gives `requested=0 mask assets`, and (§5b) **a stale stored `funky` self-heals to a PAINTED dark-mono** — the migration path every existing reader takes once, asserted on the attribute because the self-heal is invisible in the pixels. Also the dice's two-state action (§7b): entering random **restores** the stored seed *and* repaints the same `--bg`, the press after that rolls, and the button renames itself in all three states. **The empty-store roll has no check of its own on purpose** — section 2's press happens on cleared storage, so `dice applies a random palette` already *is* that assertion; breaking the empty-store path fails it (plus 8 downstream checks), which is what licensed dropping the duplicate. Negative-controlled the same way for the restore itself: with the old always-roll `select()` rebuilt from source, the restore check fails and the roll checks still pass. §9 covers the **themed favicon**: dark-mono serves the brand file, a roll repaints both `rel~="icon"` links as a tinted data URI with exactly one fill, that URI **decodes as a real image**, `apple-touch-icon` is untouched, dark-mono puts the file back, and a reload repaints from the applied accent. **§9b is the one that shipped broken** — the themed icon must survive a CLIENT-SIDE navigation. It is driven by clicking a real nav anchor, because `Page.navigate` is a full document load that re-runs the mount path and therefore *cannot* reproduce the bug; and its expected default is read out of `favicon.ts` rather than hard-coded, so it cannot drift when the default mark changes. §8 (the alpha-composited accent utilities) moved target on 2026-10-26 and gained a check: it used to probe /projects, which the /work merge turned into a signpost, so every border assertion there passed VACUOUSLY on an empty set (`0 boundary borders`, `worst undefined`) -- a green run proving nothing. It now probes **two** pages and merges, because no single page renders the whole family any more: the status pill's classes come from frontmatter `status`, so `border-accent/40` is only on an **active** project (`/projects/BankX`) and the neutral `border-border/40` hairline only on an **archived** one (`/projects/CtrlbitSDWAN`, the only one) -- the old index got every variant free by rendering all seven cards. The ACTIVE page is `/projects/FractalWebhook`, not BankX: BankX held that slot until its engagement closed in Dec 2025 and it became `completed` (2026-10-26). So **changing a project's frontmatter `status` can break this harness**, and it fails on the presence check rather than going quiet. The added check is the anti-vacuity guard: it asserts all three families were actually FOUND, so a frontmatter status change fails loudly instead of quietly emptying the set. /work is deliberately not the target -- its stack chips are neutral, because 22 rows of accent chips would breach the "keep `--accent` disciplined" rule |
+| `node scripts/e2e-work.mjs` | 38 checks on `/work`, added with the page on 2026-10-26: the spine holds all 15 engagements and the rail all 8 clusters, exactly 7 carry `data-writeup`, the rail sits **beside** the spine at `lg` while the spine still measures **780px** (the rail's whole arithmetic), each filter shows exactly its own set *and* collapses the grid to one track, the pressed pill **inverts** rather than tints, and below `lg` the rail stacks under the spine with no horizontal overflow at 375px and 390px. **§5 is the load-bearing one: the filter must keep working with JavaScript DISABLED** (`Emulation.setScriptExecutionDisabled` before the navigation, then a real `Input.dispatchMouseEvent` on the label) — a rewrite of the filter into React state would pass every other check here and fail only that one. Two traps it already paid for: `.work-rail li` also matches the PR items inside each cluster's `<details>` (18 rows for 8 clusters), so the probe uses `.work-rail > ol > li`; and the pills carry `transition-colors duration-200`, so a measurement taken straight after the click reads a colour **mid-transition** — it polls until the value holds across three samples, the same discipline `e2e-annotations.mjs` uses for smooth scroll |
 | `node scripts/e2e-palette-mobile.mjs` | the overlay control fits at 375px and 390px, no horizontal overflow, picking a theme does not close the overlay |
 | `node scripts/e2e-annotations.mjs` | 305 checks: every annotation round-trips to its note and back, both ends land **clear of the fixed nav** rather than under it, the phrase (not the superscript) is the hit target, the phrase survives into the accessible name with an additive `sr-only` cue and **no** `aria-label`, ids are unique and paired, no nested `<a>`. The `:target` highlight lands on the right note and no other, tints to `--surface`, measures ≥4.5:1, clears itself on the back-link, and does **not** reflow the note — a `border-left` in place of the inset shadow shifts the text 3px and fails here. Covers the MDX components on a post *and* the hand-rolled copy on `/about` |
 
@@ -567,10 +713,10 @@ Install and configure:
   silently coupled to whatever Shiki theme the default happens to use, with no rule anywhere saying
   so. The `[data-polarity='light']` pair is doing real work either way.
 - `remark-gfm` for GitHub Flavored Markdown (tables, strikethrough, etc.)
-- `reading-time` for estimated read time
+- ~~`reading-time` for estimated read time~~ — **REMOVED in `3c24c58c`.** Nothing in `lib/`, `src/`, `components/` or `package.json` references it; this line is kept struck through because the brief above still implies it.
 
 `lib/posts.ts` should export:
-- `getAllPosts()` → sorted array of `{ slug, title, date, excerpt, tags, readTime }`
+- `getAllPosts()` → sorted array of `{ slug, title, date, excerpt, tags }` (no `readTime`, see above)
 - `getPostBySlug(slug)` → `{ frontmatter, content }` for rendering
 
 ### Inline annotations (how Tom likes them)
@@ -811,7 +957,7 @@ Every developer eventually builds their own website...
    decoding it: corners pure black, no alpha channel, no hue.
 
    **Keep the filename.** `ttt_logo.png` is referenced from `layout.tsx` metadata, every route's
-   `generateMetadata` (26 references) and two JSON-LD `image` fields, and it is live at
+   `generateMetadata` (16 references across `src/`) and two JSON-LD `image` fields, and it is live at
    `https://thinktanktom.com/ttt_logo.png` — renaming it is a URL break for every preview already
    cached by a scraper, for no gain.
 
@@ -975,7 +1121,7 @@ Every developer eventually builds their own website...
       The live URLs have never had one (`/projects/BankX/introduction`) — "Docs" is only a
       breadcrumb *label*. Inserting a segment breaks every indexed URL. Nesting under the existing
       `[slug]` is also forced: App Router forbids two differently-named dynamic siblings at one
-      level, and `projects/[slug]/page.tsx` (the project overview, for all 8 projects) owns it.
+      level, and `projects/[slug]/page.tsx` (the project overview, for all 7 projects) owns it.
     - **`layout.tsx` sits in the `[...docSlug]/` leaf, not at `[slug]/`.** One level up it would
       also wrap the project overview pages, which deliberately have no sidebar or doc top-bar.
     - **`DocSidebar` receives its nav as a prop from the server layout.** It is a client component;
@@ -991,13 +1137,18 @@ Every developer eventually builds their own website...
 
 ## External Links to Wire Up
 
-Replace placeholders before first deploy:
+**Already wired — this is the record, not a to-do.** The brief's `YOUR_USERNAME`
+placeholders were replaced long before first deploy. Single source of truth is
+`components/Footer.tsx`; the hero CTA and `/about` use the same Upwork URL.
 
 | Label    | URL |
 |----------|-----|
-| GitHub   | `https://github.com/YOUR_USERNAME` |
-| LinkedIn | `https://linkedin.com/in/YOUR_USERNAME` |
-| Upwork   | `https://www.upwork.com/freelancers/YOUR_USERNAME` |
+| GitHub   | `https://github.com/thinktanktom` |
+| LinkedIn | `https://linkedin.com/in/thinktanktom` |
+| Upwork   | `https://www.upwork.com/freelancers/~018a1dbf1094588c7e` |
+
+Note the Upwork URL is an opaque freelancer id, not the handle — don't "tidy" it
+into `/freelancers/thinktanktom`, which does not resolve.
 
 ---
 

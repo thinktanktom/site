@@ -1,8 +1,15 @@
+/*
+ * Only what /work actually renders. `id`, `body` and `labels` were dropped on
+ * 2026-10-26 with the /contributions page that was their sole consumer: it used
+ * `id` as a React key (clusters key on `number`), `body` for a stripped-down
+ * excerpt, and `labels` for chips. Carrying `body` also meant ~1KB x 50 PRs of
+ * build-time payload for nothing, and `labels[].color` was the one place in the
+ * codebase that rendered a raw GitHub hex, which the "never hardcode a colour"
+ * rule forbids. Re-add a field here only together with something that reads it.
+ */
 export interface PullRequest {
-  id: number
   number: number
   title: string
-  body: string | null
   html_url: string
   state: 'open' | 'closed'
   merged_at: string | null
@@ -11,7 +18,6 @@ export interface PullRequest {
     full_name: string
     html_url: string
   }
-  labels: Array<{ name: string; color: string }>
 }
 
 export type PRStatus = 'merged' | 'open' | 'closed'
@@ -22,17 +28,18 @@ export function getPRStatus(pr: PullRequest): PRStatus {
   return 'closed'
 }
 
+/* The wire shape, narrowed to the fields that are actually mapped. The response
+   carries far more; declaring only what is read keeps this honest about the
+   dependency surface. `id`, `body` and `labels` went with PullRequest's copies
+   on 2026-10-26 -- see the note there. */
 interface GitHubSearchIssueItem {
-  id: number
   number: number
   title: string
-  body: string | null
   html_url: string
   state: 'open' | 'closed'
   created_at: string
   repository_url?: string
   pull_request?: { merged_at: string | null }
-  labels?: Array<{ name: string; color: string }>
 }
 
 /*
@@ -65,12 +72,12 @@ export async function getOpenSourcePRs(): Promise<PullRequest[]> {
     )
   } catch {
     // The build must not fail because GitHub is unreachable or too slow.
-    console.warn('[contributions] GitHub unreachable or timed out; publishing an empty list')
+    console.warn('[work] GitHub unreachable or timed out; publishing an empty list')
     return []
   }
 
   if (!res.ok) {
-    console.warn(`[contributions] GitHub returned ${res.status}; publishing an empty list`)
+    console.warn(`[work] GitHub returned ${res.status}; publishing an empty list`)
     return []
   }
 
@@ -84,10 +91,8 @@ export async function getOpenSourcePRs(): Promise<PullRequest[]> {
       : (item.repository_url ?? '')
 
     return {
-      id: item.id,
       number: item.number,
       title: item.title,
-      body: item.body ?? null,
       html_url: item.html_url,
       state: item.state,
       merged_at: item.pull_request?.merged_at ?? null,
@@ -96,7 +101,6 @@ export async function getOpenSourcePRs(): Promise<PullRequest[]> {
         full_name: repoFullName,
         html_url: repoHtmlUrl,
       },
-      labels: item.labels ?? [],
     }
   })
 }

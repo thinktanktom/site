@@ -1,3 +1,15 @@
+/*
+ * UNREFERENCED since 2026-10-26, and kept deliberately -- Tom's call.
+ *
+ * Its only consumer was the /projects index, which the merge into /work
+ * deleted. /work renders engagements as rows on a spine (components/
+ * WorkEntryRow.tsx) rather than projects as cards, so nothing imports this.
+ *
+ * It is not dead-code debt to clear on sight: it is the accent-chip card
+ * treatment (`bg-accent/10 border-accent/30 text-accent/80`) in its original
+ * form, and the obvious starting point if a project gallery is ever wanted
+ * again. Do not delete it without asking.
+ */
 import Link from 'next/link'
 import { Github, ExternalLink } from 'lucide-react'
 import type { ProjectMeta } from '@lib/projects'
