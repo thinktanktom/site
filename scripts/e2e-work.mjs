@@ -349,7 +349,28 @@ try {
     `spine=${noJsAfter.spineVisible} rail=${noJsAfter.railRowsVisible}`)
   await send('Emulation.setScriptExecutionDisabled', { value: false })
 
-  console.log('\n6. Mobile: the rail stacks under the spine, nothing overflows')
+  console.log('\n6. The reading measure survives the gap between article and lg')
+  /* The band this harness originally missed, and a real regression lived in it.
+     The page container moved from max-w-article to max-w-chrome to make room
+     for the rail, so between 781px and 1023px of viewport there was no 780px
+     wrapper around these lists at all -- every summary rendered up to 975px
+     wide at 1023px and snapped back at 1024px. Measuring only 1280/375/390
+     could not see it. 1023 is the last pixel before the grid takes over. */
+  for (const w of [1023, 900]) {
+    await viewport(w, 900)
+    await goto(ORIGIN + '/work')
+    const m = await probe()
+    check(`${w}px: the spine is still capped at the article measure`,
+      m.spineBox && m.spineBox.w <= ARTICLE + 2,
+      `${m.spineBox?.w}px (cap ${ARTICLE})`)
+    check(`${w}px: the rail is capped too, and to the SAME measure`,
+      m.railBox && m.railBox.w <= ARTICLE + 2,
+      `${m.railBox?.w}px (cap ${ARTICLE})`)
+    check(`${w}px: still stacked, not yet a grid`,
+      m.layoutDisplay !== 'grid', `display=${m.layoutDisplay}`)
+  }
+
+  console.log('\n7. Mobile: the rail stacks under the spine, nothing overflows')
   for (const [w, h] of [[375, 812], [390, 844]]) {
     await viewport(w, h)
     await goto(ORIGIN + '/work')

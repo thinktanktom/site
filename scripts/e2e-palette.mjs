@@ -445,9 +445,10 @@ check('the press after a restore rolls a new palette',
 //
 // Target moved from /projects to a project WRITEUP on 2026-10-26. /projects had
 // been the accent-chip page via components/ProjectCard.tsx; the merge into
-// /work replaced that index with a signpost and ProjectCard was deleted, so the
-// old target rendered ZERO accent borders and every check below passed
-// vacuously on an empty set (`worst undefined`, `0 boundary borders`).
+// /work DELETED that index outright (it 404s now), so the old target rendered
+// ZERO accent borders and every check below passed vacuously on an empty set
+// (`worst undefined`, `0 boundary borders`). ProjectCard.tsx itself still
+// exists, unreferenced and kept on purpose -- see its header.
 //
 // /work is deliberately NOT the replacement: its stack chips are the neutral
 // `border-border text-muted` the old /experience timeline used, because 22 rows

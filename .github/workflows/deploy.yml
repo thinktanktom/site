@@ -31,7 +31,9 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          # The contributions page queries the GitHub search API at build time.
+          # /work queries the GitHub search API at build time for its upstream
+          # rail (it was the /contributions page until 2026-10-26; the token is
+          # still required, only the page name changed).
           # Unauthenticated it is 10 req/min against a per-IP pool that Actions
           # runners share, so CI would intermittently 403 and publish an empty
           # page. This token is build-only and never reaches the browser.

@@ -246,6 +246,14 @@ a {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  /* The rail can also be absent from the markup entirely -- a build where the
+     GitHub fetch returned nothing omits it rather than rendering it empty. No
+     filter is checked in that state, so the ID rules above cannot match; this
+     needs its own hook. Two classes (0,2,0) beats the base rule (0,1,0). */
+  .work-layout.work-layout-solo {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   #wf-upstream:checked ~ .work-layout {
     grid-template-columns: minmax(0, 48rem);
   }
@@ -292,17 +300,41 @@ a {
   outline-offset: 2px;
 }
 
+/* Below lg BOTH columns must cap themselves back to the article measure, or
+   adding the rail silently widens the prose. The page container moved from
+   max-w-article to max-w-chrome to make room for the rail, so between 781px
+   and 1023px of viewport there is no 780px wrapper around these lists at all
+   -- every engagement summary rendered up to 975px wide at 1023px and snapped
+   back at 1024px. That was a real regression against the old /experience page,
+   which wrapped everything in max-w-article.
+
+   780px, matching tailwind.config.ts `maxWidth.article` exactly -- not 48rem,
+   which is 768px and 12px short of the measure it is meant to mirror. */
+.work-spine,
+.work-rail {
+  max-width: 780px;
+}
+
 /* Below lg the rail is a block following the spine, so it needs its own top
-   separation; at lg it sits beside the spine and the gap provides it. */
+   separation; at lg it sits beside the spine and the grid gap provides it. */
 .work-rail {
   margin-top: 4rem;
-  max-width: 48rem;
+}
+
+/* ...but not when the spine is hidden: upstream-only would otherwise open with
+   4rem of nothing between the pills and the only heading on the page. */
+#wf-upstream:checked ~ .work-layout .work-rail {
+  margin-top: 0;
 }
 
 @media (min-width: 1024px) {
+  .work-spine,
+  .work-rail {
+    max-width: none;
+  }
+
   .work-rail {
     margin-top: 0;
-    max-width: none;
   }
 }
 
@@ -540,9 +572,14 @@ html[data-theme='random'] .border-accent\/30 {
   border-color: rgb(var(--accent) / 0.6);
 }
 
-html[data-theme='random'] .border-success\/40 {
-  border-color: rgb(var(--success) / 0.6);
-}
+/* `.border-success/40` was here too, with the same 0.6 nudge. It was removed on
+   2026-10-26: the only element that ever carried it was the PR status chip on
+   /contributions, which the /work merge deleted, so the selector matched
+   nothing. `--success` itself STAYS -- it is still gated by
+   lib/palette/validate.ts and asserted by calibration.test.ts, and CLAUDE.md
+   documents its fixed 152° hue as deliberate ("open to work" must not go red on
+   a red seed). Re-add this rule if any element ever carries a success alpha
+   again; nothing currently does. */
 
 /* The accent-tinted chip is the other alpha trap, and a worse one, because BOTH
    sides move: bg-accent/10 pulls the background toward the accent, and

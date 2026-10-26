@@ -7,8 +7,8 @@ import { Menu, X } from 'lucide-react'
 import ThemeSwitcher from '@components/ThemeSwitcher'
 
 /* Three links since 2026-10-26, when /projects, /experience and /contributions
-   merged into /work. Those three routes are still live as canonical signposts
-   but are deliberately not linked from here.
+   merged into /work. Those three routes were deleted and now 404 -- a
+   deliberate URL break, so there is nothing to link to even if we wanted it.
 
    The breakpoint stays `lg`, and that is now a choice rather than a constraint.
    Re-measured in a real browser after the merge: the wordmark is 224px and this
@@ -107,18 +107,19 @@ export default function Nav({ wordmark }: NavProps) {
             {wordmark}
           </Link>
 
-          {/* Desktop. Breakpoint is lg. It was raised to xl while the Hire me
-              pill was in this row: wordmark + 5 tracked uppercase links + the
-              switcher + the pill needed more width than lg gives, and an
-              earlier lg measurement that said otherwise had been taken with
-              scrollbars hidden. Without the pill the row measured 643px against
-              the 961px lg leaves after padding and a classic scrollbar — 94px of
-              clearance, measured in a browser. That was with a four-button
-              switcher; dropping the dark and light buttons only widened the
-              clearance, so the breakpoint still holds and `lg` is still the
-              right one. (The e2e harness asserts nav scrollWidth === clientWidth
-              rather than trusting this number.) Below lg the full-screen overlay
-              carries the navigation and the theme control. */}
+          {/* Desktop. Breakpoint is lg — see the measurement note above the
+              navLinks array, which is the single current record of it.
+
+              History, because the numbers in it keep getting quoted: the
+              breakpoint was xl while the Hire me pill lived in this row, then
+              lg once the pill moved to the hero, where the five-link row
+              measured 643px against the 961px lg leaves. Both of those figures
+              are now stale — the pill is gone from this file entirely and the
+              row is three links. Do not reuse them.
+
+              The e2e harness asserts nav scrollWidth === clientWidth rather
+              than trusting any number written here. Below lg the full-screen
+              overlay carries the navigation and the theme control. */}
           <div className="hidden lg:flex items-center gap-6">
             {navLinks.map(({ href, label }) => (
               <Link

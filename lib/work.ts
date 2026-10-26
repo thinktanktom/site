@@ -110,6 +110,19 @@ function entryId(prefix: string, value: string): string {
   return `${prefix}-${value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`
 }
 
+/*
+ * Keyed on role AND org, not role alone. All 23 ids are unique either way
+ * today, but the role titles are generic -- "Network Engineer", "Blockchain
+ * Developer", "Deep Learning Engineer" -- and org is the field that
+ * distinguishes them. Two entries with the same title at different orgs would
+ * collide into one React key. That is not abstract: the work-history record has
+ * a pending entry (the Community Outreach droplet) for the SAME client as the
+ * existing AgentXSD row.
+ */
+function engagementId(entry: ExperienceEntry): string {
+  return entryId('eng', `${entry.role} ${entry.org ?? ''}`)
+}
+
 function toEngagement(
   entry: ExperienceEntry,
   project: ProjectMeta | undefined,
@@ -118,8 +131,13 @@ function toEngagement(
   const links: WorkLink[] = []
 
   if (project) {
+    /* The ENTRY's own href wins, because that is what claimed the project in
+       the first place and it is the more specific destination. Falling straight
+       through to `project.link` silently rewrote it: an entry pointing at
+       /projects/Foo/architecture whose MDX carries no `link` field rendered
+       /projects/Foo instead -- a wrong destination with no error. */
     links.push({
-      href: project.link ?? `/projects/${project.slug}`,
+      href: entry.link?.href ?? project.link ?? `/projects/${project.slug}`,
       label: 'Project writeup',
       external: false,
     })
@@ -145,7 +163,7 @@ function toEngagement(
   }
 
   return {
-    id: entryId('eng', entry.role),
+    id: engagementId(entry),
     kind: 'engagement',
     sortKey: monthYearToISO(entry.start) ?? '0000-00',
     dateLabel: `${entry.start} — ${entry.end}`,
@@ -179,7 +197,15 @@ function toClusters(prs: PullRequest[]): WorkEntry[] {
   }
 
   return order.map((repo) => {
-    const sorted = byRepo[repo].slice().sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
+    /* A 3-way comparator, not `a < b ? 1 : -1`. For two PRs opened in the same
+       second -- a scripted or batch push to one repo -- the 2-way form returns
+       -1 for BOTH cmp(a,b) and cmp(b,a), which is not a total order, and the
+       resulting order is then unspecified. `sorted[0]` feeds both `sortKey` and
+       `repoUrl`, so it would become arbitrary. Matches the shape of the
+       top-level comparator in buildEntries(). */
+    const sorted = byRepo[repo]
+      .slice()
+      .sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0))
     const years = sorted.map((pr) => pr.created_at.slice(0, 4))
     const newest = years[0]
     const oldest = years[years.length - 1]
@@ -188,7 +214,11 @@ function toClusters(prs: PullRequest[]): WorkEntry[] {
     for (const pr of sorted) counts[getPRStatus(pr)] += 1
 
     return {
-      id: entryId('up', repo),
+      /* The raw repo name, not a slug: slugifying collapses the separators, so
+         'ethereum-optimism/actions' and 'ethereum/optimism-actions' would both
+         become 'up-ethereum-optimism-actions'. A React key may contain any
+         character, and full_name is already unique per repo. */
+      id: 'up-' + repo,
       kind: 'upstream' as const,
       /* the most recent PR in the repo, so an active repo stays near the top */
       sortKey: sorted[0].created_at.slice(0, 7),
@@ -212,7 +242,21 @@ function toClusters(prs: PullRequest[]): WorkEntry[] {
   })
 }
 
-function buildEntries(projects: ProjectMeta[], prs: PullRequest[]): WorkEntry[] {
+/*
+ * Exported for lib/__tests__/work.test.ts, not for callers -- use
+ * getWorkEntries(). Taking its two inputs as arguments is what makes this
+ * module testable without `fs` or a network: the tests feed it synthetic
+ * experience/project/PR data to exercise the two throws, the clustering and the
+ * ordering, none of which a browser harness can reach.
+ */
+export function buildEntries(
+  projects: ProjectMeta[],
+  prs: PullRequest[],
+  /* The curated lists default to the real data, so getWorkEntries() reads
+     normally; the tests pass synthetic ones instead of mocking the module. */
+  direct: ExperienceEntry[] = experience,
+  upwork: ExperienceEntry[] = upworkProjects,
+): WorkEntry[] {
   const bySlug: Record<string, ProjectMeta> = {}
   for (const project of projects) bySlug[project.slug] = project
 
@@ -245,8 +289,8 @@ function buildEntries(projects: ProjectMeta[], prs: PullRequest[]): WorkEntry[] 
   }
 
   const engagements = [
-    ...experience.map((entry) => engagementFor(entry, undefined)),
-    ...upworkProjects.map((entry) => engagementFor(entry, 'upwork')),
+    ...direct.map((entry) => engagementFor(entry, undefined)),
+    ...upwork.map((entry) => engagementFor(entry, 'upwork')),
   ]
 
   /*

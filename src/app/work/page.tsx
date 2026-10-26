@@ -5,8 +5,9 @@ import WorkEntryRow from '@components/WorkEntryRow'
 /*
  * /work replaced /projects, /experience and /contributions on 2026-10-26 --
  * one reverse-chronological spine instead of three pages with three different
- * organizing ideas. The three old routes survive as canonical stubs so their
- * indexed URLs keep resolving; see the header comment in each.
+ * organizing ideas. Those three routes were DELETED and now 404; that was a
+ * deliberate URL break, chosen over canonical signpost pages. See the note in
+ * src/app/sitemap.ts.
  *
  * This is an ASYNC SERVER COMPONENT and must stay one: getWorkEntries() pulls
  * in lib/github.ts, whose PR fetch runs at build time against
@@ -61,6 +62,24 @@ export default async function WorkPage() {
   const engagements = entries.filter((e) => e.kind === 'engagement')
   const upstream = entries.filter((e) => e.kind === 'upstream')
 
+  /*
+   * A zero-PR build is REACHABLE, not hypothetical: lib/github.ts publishes an
+   * empty list rather than failing the build when the search API 403s on the
+   * shared unauthenticated rate limit or the 8s timeout fires. Without these
+   * two guards that build shipped an empty <aside> with the heading
+   * "Upstream · 0 repos", a live "Upstream · 0" pill whose rule hides the
+   * spine -- leaving a page whose entire body was one bottom-bordered heading
+   * -- and, at lg, the 272px rail track reserved for nothing, which is exactly
+   * the hole the grid-collapse rules in globals.css exist to prevent.
+   *
+   * So: drop any pill whose set is empty (never "All", which is the reset), and
+   * omit the rail entirely rather than rendering it empty. `work-layout-solo`
+   * is what collapses the grid when the rail is absent, since no filter is
+   * checked in that state for the ID-specificity rules to match on.
+   */
+  const hasUpstream = upstream.length > 0
+  const visibleFilters = FILTERS.filter((f) => f.id === 'wf-all' || counts[f.countKey] > 0)
+
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
@@ -96,10 +115,21 @@ export default async function WorkPage() {
         {/* The radios come BEFORE both the pill row and the list so the filter
             rules in globals.css can reach them with the general sibling
             combinator. Uncontrolled (defaultChecked), which is what keeps this
-            page free of client JavaScript. */}
-        <fieldset className="work-filter mb-14">
-          <legend className="sr-only">Filter by kind of work</legend>
+            page free of client JavaScript.
 
+            A plain <div>, deliberately NOT a <fieldset>. The sibling selectors
+            only need the radios and the targets to share a parent, so the
+            fieldset bought nothing -- while costing real accessibility: it has
+            to enclose the lists to keep that sibling relationship, so every
+            entry and the <aside> complementary landmark sat inside a
+            role="group" named "Filter by kind of work". A screen-reader user
+            reading four years of BankX work was told they were still inside the
+            filter. Valid HTML, which is why it survived review.
+
+            The radios keep their own grouping natively -- same `name`, so they
+            are announced as "N of 4" -- and each takes its accessible name from
+            its visible <label for>. */}
+        <div className="work-filter mb-14">
           {FILTERS.map(({ id }) => (
             <input
               key={id}
@@ -112,7 +142,7 @@ export default async function WorkPage() {
           ))}
 
           <div className="work-pills flex flex-wrap gap-2">
-            {FILTERS.map(({ id, label, glyph, countKey }) => (
+            {visibleFilters.map(({ id, label, glyph, countKey }) => (
               <label
                 key={id}
                 htmlFor={id}
@@ -124,7 +154,7 @@ export default async function WorkPage() {
             ))}
           </div>
 
-          <div className="work-layout mt-10">
+          <div className={`work-layout mt-10${hasUpstream ? '' : ' work-layout-solo'}`}>
             {/* flex + gap, not space-y: `space-y` puts the margin on `* + *`, so
                 a filtered-out first row would still give the next one a top
                 margin. A flex gap is not applied to `display: none` children. */}
@@ -134,21 +164,23 @@ export default async function WorkPage() {
               ))}
             </ol>
 
-            <aside className="work-rail" aria-labelledby="work-rail-heading">
-              <h2
-                id="work-rail-heading"
-                className="font-mono text-xs tracking-widest uppercase text-muted mb-5 pb-3 border-b border-border"
-              >
-                Upstream · {counts.upstream} repos
-              </h2>
-              <ol className="flex flex-col gap-5">
-                {upstream.map((entry) => (
-                  <WorkEntryRow key={entry.id} entry={entry} variant="rail" />
-                ))}
-              </ol>
-            </aside>
+            {hasUpstream && (
+              <aside className="work-rail" aria-labelledby="work-rail-heading">
+                <h2
+                  id="work-rail-heading"
+                  className="font-mono text-xs tracking-widest uppercase text-muted mb-5 pb-3 border-b border-border"
+                >
+                  Upstream · {counts.upstream} {counts.upstream === 1 ? 'repo' : 'repos'}
+                </h2>
+                <ol className="flex flex-col gap-5">
+                  {upstream.map((entry) => (
+                    <WorkEntryRow key={entry.id} entry={entry} variant="rail" />
+                  ))}
+                </ol>
+              </aside>
+            )}
           </div>
-        </fieldset>
+        </div>
 
         <div className="mt-16 pt-8 border-t border-border max-w-article">
           <h2 className="font-mono text-xs tracking-widest uppercase text-muted mb-4">

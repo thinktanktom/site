@@ -7,8 +7,12 @@ import type { WorkEntry } from '@lib/work'
  * is server-rendered and its only interactivity (the kind filter, the upstream
  * disclosures) is CSS and native <details>, so nothing here needs 'use client'.
  *
- * `data-kind` and `data-writeup` are what the filter rules in globals.css
- * select on. Do not rename them without changing those rules.
+ * `data-writeup` is what the "Built" filter rule in globals.css selects on --
+ * do not rename it without changing that rule. There is no `data-kind`: it was
+ * written here and read by nothing (the other filters hide whole COLUMNS,
+ * `.work-spine` / `.work-rail`, not individual rows), and the comment claiming
+ * it was load-bearing was wrong. It cost ~24 bytes per row twice over, since
+ * Next inlines the RSC flight payload beside the markup.
  */
 
 const STATUS_ICON = {
@@ -85,7 +89,14 @@ function UpstreamCluster({ entry }: { entry: WorkEntry }) {
               >
                 <Icon size={12} className="mt-0.5 shrink-0" aria-hidden="true" />
                 <span>
-                  <span className="text-border">#{pr.number}</span> {pr.title}
+                  {/* Inherits the link's `text-muted`. It was `text-border`
+                      (42 42 42), which composites to 1.42:1 against this row's
+                      bg-surface/30 -- effectively invisible, and a PR number is
+                      content, not a separator. `--border` is gated with a
+                      contrast WINDOW against --bg and never a text floor, so no
+                      palette makes it readable; `text-muted` measures 5.90:1.
+                      The `text-border` uses elsewhere are decorative `·`. */}
+                  <span>#{pr.number}</span> {pr.title}
                   <span className="sr-only"> ({pr.status}, opens in new tab)</span>
                 </span>
               </a>
@@ -110,11 +121,16 @@ function UpstreamCluster({ entry }: { entry: WorkEntry }) {
 
 /*
  * `rail` is the narrow variant used by the upstream column at lg (see
- * .work-layout in globals.css). The only difference is the date: the spine
- * puts it in a 6rem grid gutter, which a ~272px column cannot spare, so the
- * rail stacks it above instead. Everything else is shared deliberately -- the
- * left rule, the hover and the disclosure are the same component in both
- * places.
+ * .work-layout in globals.css). The only difference is the date gutter: the
+ * spine puts the date in a 6rem grid column at sm and up, which a ~272px rail
+ * cannot spare, so the rail stacks it above instead. Everything else is shared
+ * deliberately -- the left rule, the hover and the disclosure are the same
+ * component in both places.
+ *
+ * In practice the page pairs them one-to-one -- engagements render as `spine`
+ * and clusters as `rail` -- so the cluster-in-a-spine and engagement-in-a-rail
+ * combinations never occur. The branch stays general rather than being split
+ * into two components because the shared half is most of the file.
  */
 export default function WorkEntryRow({
   entry,
@@ -127,9 +143,8 @@ export default function WorkEntryRow({
 
   return (
     <li
-      data-kind={entry.kind}
       {...(entry.hasWriteup ? { 'data-writeup': '' } : {})}
-      className={`work-entry border-l-[3px] border-border hover:border-accent transition-colors duration-200 pl-5 ${
+      className={`border-l-[3px] border-border hover:border-accent transition-colors duration-200 pl-5 ${
         variant === 'rail'
           ? ''
           : 'sm:pl-6 sm:grid sm:grid-cols-[6rem_minmax(0,1fr)] sm:gap-x-6'
