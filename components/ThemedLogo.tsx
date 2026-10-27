@@ -1,12 +1,17 @@
-/* Give exactly one dimension; the other is derived from the role's aspect
-   ratio. Which one you pin decides what stays put in the surrounding layout:
-   pin the height for a lockup sitting in a row (the nav, the footer), pin the
-   width for a mark centred in a column (the hero). See the note on Role. */
-type ThemedLogoSize =
-  | { height: number; width?: never }
-  | { width: number; height?: never }
+/* The reference canvases, the aspect helper and the element-box maths live in
+   components/logo-roles.ts, so the client-side TrackingLogo can share them
+   without importing this module's JSX. See the note on Role below -- the
+   invariant they carry is unchanged, only its address is. */
+import {
+  ICON_VIEWBOX,
+  WORDMARK_VIEWBOX,
+  LOGO_FULL_VIEWBOX,
+  aspectOf,
+  logoBox,
+  type LogoSize,
+} from '@components/logo-roles'
 
-export type ThemedLogoProps = ThemedLogoSize & {
+export type ThemedLogoProps = LogoSize & {
   className?: string
   alt?: string
 }
@@ -102,28 +107,18 @@ type Role = {
  * hue-shifted, and the file contributes only its alpha.
  */
 
-/** aspect ratio straight out of a role's viewBox, so there is one number */
-function aspectOf(viewBox: string): number {
-  const [, , w, h] = viewBox.trim().split(/[\s,]+/).map(Number)
-  if (!w || !h) throw new Error(`unusable viewBox: "${viewBox}"`)
-  return w / h
-}
-
-const ICON_VIEWBOX = '0 0 623.62 623.62'
 const ICON: Role = {
   viewBox: ICON_VIEWBOX,
   maskSrc: '/ttt_icon_light-primary.svg',
   aspect: aspectOf(ICON_VIEWBOX),
 }
 
-const WORDMARK_VIEWBOX = '0 0 1339.99 191.14'
 const WORDMARK: Role = {
   viewBox: WORDMARK_VIEWBOX,
   maskSrc: '/ttt_horizontal_light-primary.svg',
   aspect: aspectOf(WORDMARK_VIEWBOX),
 }
 
-const LOGO_FULL_VIEWBOX = '0 0 1920 1080'
 const LOGO_FULL: Role = {
   viewBox: LOGO_FULL_VIEWBOX,
   maskSrc: '/ttt_stacked-tagline_light-primary.svg',
@@ -140,10 +135,7 @@ function ThemedLogo({
   /* The element box is computed from the one role aspect and handed over
      explicitly, so the mark reserves its space before the mask has loaded and
      the surrounding layout never depends on when it arrives. */
-  const size =
-    height === undefined
-      ? { width: width as number, height: Math.round((width as number) / role.aspect) }
-      : { width: Math.round(height * role.aspect), height }
+  const size = logoBox(role.aspect, (height === undefined ? { width } : { height }) as LogoSize)
   return (
     /* An empty box: the colour is `background-color` from the --accent token
        (never a hardcoded hex, or it stops following the palette) and the shape

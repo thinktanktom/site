@@ -305,7 +305,9 @@ thinktanktom/
 │   ├── WorkEntryRow.tsx         ← one /work spine row (server)
 │   ├── MDXContent.tsx
 │   ├── ThemeSwitcher.tsx        ← 2-way theme control (client)
-│   └── ThemedLogo.tsx           ← one CSS-masked mark per role (server)
+│   ├── ThemedLogo.tsx           ← one CSS-masked mark per role (server)
+│   ├── TrackingLogo.tsx         ← the stacked lockup, eyes following the pointer (client)
+│   └── logo-roles.ts            ← the three reference canvases, shared by both of the above
 ├── lib/
 │   ├── posts.ts                 ← MDX reading + frontmatter utils
 │   └── palette/                 ← the seeded palette engine (no React, no DOM)
@@ -479,11 +481,14 @@ choice.
   **Accepted consequence:** no single press yields a *fresh* palette from dark-mono any more — you get
   your last one back, then press again. A reload and a first press now do the same thing, which is
   more coherent than the split it replaced.
-- **The logo mark no longer branches on the theme at all** — changed 2026-10-17. There is ONE
-  masked `<span>` per role, mounted in every theme, with its ink from `--accent`; the
+- **The logo mark no longer branches on the theme at all** — changed 2026-10-17. Every mark is a
+  masked `<span>` mounted in every theme, with its ink from `--accent`; the
   `.only-dark-mono` / `.only-random` visibility utilities were **deleted** with the `<img>` half
   they used to reveal. See implementation note 7 — the dual path was a measured rendering bug, not
-  just extra machinery.
+  just extra machinery. (This used to say ONE span per role. The tracking lockup made that three
+  on 2026-10-27; what matters here is unchanged — nothing branches on the theme, and every layer
+  is mounted rather than revealed. `e2e-logo-eyes.mjs` asserts all three repaint on a roll, since
+  a layer that missed `.logo-mask` would render the mark two-tone in a random palette.)
 
 **Adding a third, named theme** touches: a token block, the `.theme-btn-*` rule and the Shiki
 selector set in `globals.css`; the validation in the `layout.tsx` script **and its static `icons`
@@ -504,7 +509,19 @@ rule written this way.)
 
 ## Verifying this site
 
-`npm test` (vitest, ~3.5s, **136 tests**) covers the palette engine and `lib/work.ts`.
+`npm test` (vitest, ~8s, **141 tests**) covers the palette engine, `lib/work.ts` and the lockup
+mask split.
+
+`components/__tests__/lockup-mask-split.test.ts` was added 2026-10-27 with the tracking lockup, and
+it is the **first automated guard on a logo asset** since `components/logo/extract-paths.mjs` went
+away with the inline-`<svg>` mark it generated. `TrackingLogo` stacks three mask layers that are
+*derived* from one drawing, and nothing at build time notices if they drift: a re-export of the
+lockup that skips `scripts/split-lockup-mask.mjs` leaves the layers stale, and the mark then renders
+with the old eyes baked into the face (two static discs plus two moving ones) or with none at all.
+Neither is a build error. The split is exact string surgery, so the test asserts reassembly
+**exactly** — which is the reason for doing it that way rather than re-emitting parsed paths. Note
+that `vitest.config.ts`'s `include` gained `components/**` for it; keep component tests to the same
+shape (no React, no DOM, `environment: 'node'`).
 
 `lib/__tests__/work.test.ts` was added 2026-10-26 after a bug audit named its absence as a finding:
 the riskiest module on the site — a date parser, two build-time `throw`s, a clustering pass and a
@@ -525,13 +542,14 @@ against a built export:
 | `node scripts/e2e-palette.mjs` | 51 checks: the switcher has exactly 2 buttons, the palette is actually painted, a reload restores it pre-paint, switching back to dark-mono *removes* the inline properties, the mark's ink follows `--accent`, a stale cache recovers from the seed with React state in step, that there is exactly **one** logo mark and no `<img>` in the nav, that its **mask has already been fetched while dark-mono is live** (read from the CDP request log, because Resource Timing does not report memory-cache hits) and that it carries a `background-color` transition — the two halves of the 2026-10-17 switch-stutter fix, negative-controlled by re-hiding the mark in source and rebuilding, which gives `requested=0 mask assets`, and (§5b) **a stale stored `funky` self-heals to a PAINTED dark-mono** — the migration path every existing reader takes once, asserted on the attribute because the self-heal is invisible in the pixels. Also the dice's two-state action (§7b): entering random **restores** the stored seed *and* repaints the same `--bg`, the press after that rolls, and the button renames itself in all three states. **The empty-store roll has no check of its own on purpose** — section 2's press happens on cleared storage, so `dice applies a random palette` already *is* that assertion; breaking the empty-store path fails it (plus 8 downstream checks), which is what licensed dropping the duplicate. Negative-controlled the same way for the restore itself: with the old always-roll `select()` rebuilt from source, the restore check fails and the roll checks still pass. §9 covers the **themed favicon**: dark-mono serves the brand file, a roll repaints both `rel~="icon"` links as a tinted data URI with exactly one fill, that URI **decodes as a real image**, `apple-touch-icon` is untouched, dark-mono puts the file back, and a reload repaints from the applied accent. **§9b is the one that shipped broken** — the themed icon must survive a CLIENT-SIDE navigation. It is driven by clicking a real nav anchor, because `Page.navigate` is a full document load that re-runs the mount path and therefore *cannot* reproduce the bug; and its expected default is read out of `favicon.ts` rather than hard-coded, so it cannot drift when the default mark changes. §8 (the alpha-composited accent utilities) moved target on 2026-10-26 and gained a check: it used to probe /projects, which the /work merge turned into a signpost, so every border assertion there passed VACUOUSLY on an empty set (`0 boundary borders`, `worst undefined`) -- a green run proving nothing. It now probes **two** pages and merges, because no single page renders the whole family any more: the status pill's classes come from frontmatter `status`, so `border-accent/40` is only on an **active** project (`/projects/BankX`) and the neutral `border-border/40` hairline only on an **archived** one (`/projects/CtrlbitSDWAN`, the only one) -- the old index got every variant free by rendering all seven cards. The ACTIVE page is `/projects/FractalWebhook`, not BankX: BankX held that slot until its engagement closed in Dec 2025 and it became `completed` (2026-10-26). So **changing a project's frontmatter `status` can break this harness**, and it fails on the presence check rather than going quiet. The added check is the anti-vacuity guard: it asserts all three families were actually FOUND, so a frontmatter status change fails loudly instead of quietly emptying the set. /work is deliberately not the target -- its stack chips are neutral, because 22 rows of accent chips would breach the "keep `--accent` disciplined" rule |
 | `node scripts/e2e-work.mjs` | 38 checks on `/work`, added with the page on 2026-10-26: the spine holds all 15 engagements and the rail all 8 clusters, exactly 7 carry `data-writeup`, the rail sits **beside** the spine at `lg` while the spine still measures **780px** (the rail's whole arithmetic), each filter shows exactly its own set *and* collapses the grid to one track, the pressed pill **inverts** rather than tints, and below `lg` the rail stacks under the spine with no horizontal overflow at 375px and 390px. **§5 is the load-bearing one: the filter must keep working with JavaScript DISABLED** (`Emulation.setScriptExecutionDisabled` before the navigation, then a real `Input.dispatchMouseEvent` on the label) — a rewrite of the filter into React state would pass every other check here and fail only that one. Two traps it already paid for: `.work-rail li` also matches the PR items inside each cluster's `<details>` (18 rows for 8 clusters), so the probe uses `.work-rail > ol > li`; and the pills carry `transition-colors duration-200`, so a measurement taken straight after the click reads a colour **mid-transition** — it polls until the value holds across three samples, the same discipline `e2e-annotations.mjs` uses for smooth scroll |
 | `node scripts/e2e-palette-mobile.mjs` | the overlay control fits at 375px and 390px, no horizontal overflow, picking a theme does not close the overlay |
+| `node scripts/e2e-logo-eyes.mjs` | 15 checks on the tracking lockup, added with it on 2026-10-27: three mask layers and two of them eyes, no `<img>` and no inline `<svg>`, all three layers **hidden from the accessibility tree** behind the wrapper's one `role="img"`, **all three masks already fetched** before anything moves (the 2026-10-17 switch-stutter lesson applied to a new feature, read from the CDP request log for the same reason), both eyes at `translate(0,0)` at first paint so the static export is the unchanged mark, direction, the elliptical clamp holding from the far corner, the eyes **converging** (proving each aims from its own centre rather than sharing a vector), returning to centre on `pointerleave`, **all three layers repainting** on a random palette rather than just the face, and `prefers-reduced-motion` pinning the eyes. **The trap it paid for on its first run: headless chromium reports `(hover: none)` and `(pointer: coarse)`**, so `TrackingLogo` correctly refused to attach and every motion check passed vacuously — looking exactly like a product bug. It launches chromium with `--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4` (`Emulation.setEmulatedMedia` cannot set these) and §0 asserts the override took, the same discipline as the mobile harness asserting its emulated width. Negative-controlled by rebuilding from source with the reduced-motion guard deleted and `TRAVEL_X` ×10: exactly those two checks fail and no others |
 | `node scripts/e2e-annotations.mjs` | 305 checks: every annotation round-trips to its note and back, both ends land **clear of the fixed nav** rather than under it, the phrase (not the superscript) is the hit target, the phrase survives into the accessible name with an additive `sr-only` cue and **no** `aria-label`, ids are unique and paired, no nested `<a>`. The `:target` highlight lands on the right note and no other, tints to `--surface`, measures ≥4.5:1, clears itself on the back-link, and does **not** reflow the note — a `border-left` in place of the inset shadow shifts the text 3px and fails here. Covers the MDX components on a post *and* the hand-rolled copy on `/about` |
 
 Build first — they serve `out/`, not a dev server. Chromium comes from nixpkgs
 (`nix run nixpkgs#chromium`); **Playwright's bundled Chromium cannot run on NixOS**. No script
 installs anything; they drive CDP over Node's built-in `WebSocket`.
 
-If you write another browser harness, six traps already paid for:
+If you write another browser harness, seven traps already paid for:
 
 - Use an **absolute** static root. A relative `'out'` resolves against `process.cwd()`, so running
   from another directory serves 404s — and the browser renders the 404 body with the right URL and
@@ -546,6 +564,13 @@ If you write another browser harness, six traps already paid for:
   the scroll is still in flight when `.click()` returns and an immediate `getBoundingClientRect()`
   reads the *old* position — which passes for the wrong reason. `e2e-annotations.mjs` polls
   `window.scrollY` until it holds the same value across three consecutive samples.
+- **Headless chromium lies about its input device.** It reports `(hover: none)` and
+  `(pointer: coarse)`, so anything gated on a cursor existing never runs and every check of it
+  passes vacuously — which is indistinguishable from a product bug, and is what `e2e-logo-eyes.mjs`
+  saw on its first run. `Emulation.setEmulatedMedia` cannot set these; the launch flag
+  `--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4`
+  can. Assert the override took before trusting anything downstream of it. Same family as the
+  `--window-size` trap in note 9.
 - **Never fake a regression by mutating `out/*.html`.** React hydrates from the RSC flight payload
   inlined beside the markup and restores the correct DOM, so the mutation vanishes before any
   assertion runs and a broken check looks like a passing one. This cost two invalid negative
@@ -877,6 +902,9 @@ Every developer eventually builds their own website...
 7. **The logo mark follows the theme by CSS mask; the raster logo does not.**
    `components/ThemedLogo.tsx` renders **one** thing per role, in every theme: an empty `<span>`
    painted `background-color: rgb(var(--accent))` and stencilled by a single-fill SVG.
+   (`components/TrackingLogo.tsx` renders the full logo as **three** such spans so the eyes can
+   track the pointer — same technique, same token, more stencils. See the role table below; every
+   rule in this note applies to each of its layers unchanged.)
    `.logo-mask` in `globals.css` holds the shared `mask-repeat/position/size` (autoprefixer adds
    the `-webkit-` pair) plus a `background-color` transition, and only the per-role `mask-image`
    url is inline. The file contributes **nothing but its alpha**, so the screen cutout stays a hole
@@ -993,6 +1021,48 @@ Every developer eventually builds their own website...
    | icon | `ttt_icon_light-primary.svg` | `ttt_icon_dark-mono.svg` *(still the static favicon)* |
    | wordmark | `ttt_horizontal_light-primary.svg` | `ttt_horizontal_dark-mono.svg` |
    | full logo | `ttt_stacked-tagline_light-primary.svg` | `ttt_stacked-tagline_dark-mono.svg` |
+   | full logo, tracking | `ttt_stacked-tagline_face_light-primary.svg` + `_eyeleft_` + `_eyeright_` | — *(derived; see below)* |
+
+   **"One masked span per role" stopped being true on 2026-10-27, deliberately.** The role above
+   it is still one span; `components/TrackingLogo.tsx` renders the full logo as **three**, so the
+   eyes can move independently of the face. That is not a regression of the 2026-10-17 unification
+   — every layer is still mounted in every theme (so every mask is fetched with the page and none
+   is revealed out of `display: none`), still takes its ink from `rgb(var(--accent))`, and still
+   contributes nothing but its alpha. What changed is only how many stencils one mark needs.
+   `TttLogoFull` is unchanged and still available for a mark that should not track.
+
+   Three things about those derived layers are load-bearing:
+
+   - **They are generated, never hand-edited.** `scripts/split-lockup-mask.mjs` writes all three
+     from `ttt_stacked-tagline_light-primary.svg`, which stays the single source of the artwork.
+     `node scripts/split-lockup-mask.mjs --check` verifies the committed output, and
+     `components/__tests__/lockup-mask-split.test.ts` does the same inside `npm test`.
+   - **The split is string surgery and must stay that way.** The obvious implementation —
+     extract the 40 `<path>` elements and re-emit them under one `<g>` — is *wrong and it
+     renders*: **25 of those paths are the wordmark and the tagline and live inside nested
+     `<g transform="translate(…)">` groups**, so their coordinates are meaningless outside them.
+     Doing it that way clipped the wordmark and put the mark to the right of it. Only the frame
+     (path 37) and the two eyes (38, 39) sit in untransformed canvas space. So the face layer is
+     the original file with two `<path>` elements *deleted*, and each eye layer is one of those
+     elements under a fresh `<svg>`. Every other byte is untouched, which is also what lets the
+     test assert reassembly exactly rather than approximately.
+   - **All four files must carry `0 0 1920 1080`.** The layers are stacked in one box at
+     `mask-size: contain`, so a layer with a different viewBox scales differently and its eye
+     drifts out of the socket — which looks like a positioning bug and is an asset bug. This is
+     the same invariant note 7 already carried for a single mask, with a second reason now.
+     `components/logo-roles.ts` holds the constant; the test asserts all four agree with it.
+
+   `components/logo-roles.ts` is new with this and exists because `TrackingLogo` is a **client**
+   component: importing `ThemedLogo` from it would pull that module's JSX into the client graph for
+   one string, and copying the numbers instead would recreate exactly the drift this note warns
+   about. The three reference canvases, `aspectOf` and the element-box maths live there now;
+   `ThemedLogo` imports them and is otherwise unchanged.
+
+   Cost, measured: eyes 249 + 250 bytes raw (243 / 249 gzip), face 27,750 (6,112 gzip), against
+   the single 28,085 (6,232 gzip) they sit beside — **+164 bytes raw and two extra requests** on
+   the page that uses it. No geometry enters the JavaScript bundle (`grep` for the eye path data
+   finds it in 0 build chunks); `/about`'s page JS went 137 B → 1.25 kB and **First Load JS shared
+   by all is unchanged at 87.4 kB**.
 
    The three `*_dark-mono.svg` files were **restored to `public/` on 2026-10-16** from
    `8522281^` — the commit that had untracked them when the dark theme was removed. Restored from
