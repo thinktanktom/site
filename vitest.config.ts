@@ -24,6 +24,12 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['lib/**/__tests__/**/*.test.ts'],
+    /* `components/**` joined `lib/**` when the lockup mask split landed. That
+       test touches no React and no DOM -- it reads four SVG files off disk and
+       asserts they still reassemble into one another -- so it belongs under
+       `environment: 'node'` with everything else. Keep component tests to that
+       shape; anything needing a rendered tree would need a DOM environment and
+       is a bigger decision than adding a glob. */
+    include: ['lib/**/__tests__/**/*.test.ts', 'components/**/__tests__/**/*.test.ts'],
   },
 })

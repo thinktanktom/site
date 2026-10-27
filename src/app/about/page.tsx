@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { TttLogoFull } from '@components/ThemedLogo'
+import TrackingLogoFull from '@components/TrackingLogo'
 
 const description =
   'Thomas Cyriac — DeFi Protocol Developer, Smart Contract Engineer, Open Source Contributor.'
@@ -32,7 +32,7 @@ export default function AboutPage() {
 
         {/* Logo as title */}
         <div className="mb-16 flex justify-center">
-          <TttLogoFull height={225} />
+          <TrackingLogoFull height={225} />
         </div>
 
         {/* Bio */}

@@ -375,6 +375,26 @@ a {
   mask-size: contain;
 }
 
+/* One eye of the tracking lockup (components/TrackingLogo.tsx). Three mask
+   layers share the wrapper's box at `mask-size: contain`, so they coincide
+   exactly at translate(0, 0) -- the eye layers simply move off that identity.
+
+   The fallbacks are what make the feature invisible until JavaScript says
+   otherwise: the static export ships these spans with no custom properties
+   set, so the server HTML and a reader with JS off get the mark unchanged.
+
+   NO TRANSITION ON `transform`, deliberately. The easing is done by the
+   component's requestAnimationFrame loop, which writes a new value every
+   frame; a CSS transition on top would chase each of those and turn a glance
+   into a smear. The `background-color` transition inherited from `.logo-mask`
+   is a different property and is still wanted -- the eyes must change colour
+   in step with the rest of the mark when the palette changes. */
+.logo-eye {
+  position: absolute;
+  inset: 0;
+  transform: translate(var(--eye-x, 0px), var(--eye-y, 0px));
+}
+
 /* Hero pixel-grid dot texture */
 .pixel-grid {
   background-image: radial-gradient(circle, rgb(var(--grid-dot)) 1px, transparent 1px);
