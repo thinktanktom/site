@@ -28,7 +28,8 @@
  * be an additive sr-only span. Both halves of that are asserted.
  *
  * Covers /writing/god-in-a-bottle (8 annotations, the MDX component path) and
- * /about (3, the hand-rolled copy CLAUDE.md requires to stay in sync).
+ * / (3, the hand-rolled copy CLAUDE.md requires to stay in sync -- it lived
+ * on /about until that page became the landing page on 2026-10-26).
  *
  * One trap when negative-controlling this harness: do NOT mutate out/*.html to
  * fake a regression. React hydrates from the RSC flight payload inlined beside
@@ -109,7 +110,7 @@ const settle = async () => {
 
 const PAGES = [
   { url: '/writing/god-in-a-bottle', count: 8, label: 'post (MDX components)' },
-  { url: '/about',                   count: 3, label: 'about (hand-rolled)' },
+  { url: '/',                        count: 3, label: 'landing page (hand-rolled)' },
 ]
 
 const out = []
