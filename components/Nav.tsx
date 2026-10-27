@@ -131,7 +131,7 @@ export default function Nav({ wordmark }: NavProps) {
               lg once the pill moved to the hero, where the five-link row
               measured 643px against the 961px lg leaves. Both of those figures
               are now stale — the pill is gone from this file entirely and the
-              row is three links. Do not reuse them.
+              row is two links. Do not reuse them.
 
               The e2e harness asserts nav scrollWidth === clientWidth rather
               than trusting any number written here. Below lg the full-screen

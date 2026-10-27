@@ -86,7 +86,7 @@ html {
 /* ---- Annotation anchors -------------------------------------------------
    The #ref-N <-> #note-N round trip behind the Annotated / Note components in
    components/MDXContent.tsx, and the hand-rolled copy of the same markup in
-   the /about footnotes. Pure HTML anchors: no JavaScript, no history API, no
+   the landing page footnotes (which lived on /about until 2026-10-26). Pure HTML anchors: no JavaScript, no history API, no
    scroll listener, so they work in the static export and with JS off.
 
    These are real classes rather than the equivalent Tailwind utility strings
@@ -186,11 +186,6 @@ a {
     scroll-behavior: auto !important;
   }
 
-  /* .animate-fade-up starts at opacity 0 and relies on the animation to
-     reveal it — pin the end state so nothing can stay invisible. */
-  .animate-fade-up {
-    opacity: 1;
-  }
 }
 
 /* ---- /work: the spine and its kind filter -------------------------------
@@ -198,7 +193,7 @@ a {
    one reverse-chronological page.
 
    The filter is four radios, visually hidden, that sit BEFORE both the pill row
-   and the list inside one fieldset. Everything below selects off them with the
+   and the list inside one plain div. Everything below selects off them with the
    general sibling combinator, so the page needs no JavaScript at all and works
    with JS off -- the same property the .annot round trip above has.
 
@@ -217,10 +212,6 @@ a {
    `data-kind` and `data-writeup` are written by components/WorkEntryRow.tsx.
    Renaming either attribute silently breaks the filter: the pills keep
    responding and nothing is ever hidden. */
-.work-filter {
-  border: 0;
-}
-
 /* The two columns. Below lg they stack -- spine, then the upstream block --
    and the layout is a plain block, so nothing here applies.
 
@@ -400,23 +391,6 @@ a {
   background-image: radial-gradient(circle, rgb(var(--grid-dot)) 1px, transparent 1px);
   background-size: 28px 28px;
   pointer-events: none;
-}
-
-/* Staggered fade-up on hero load */
-@keyframes fadeUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-fade-up {
-  animation: fadeUp 0.6s ease forwards;
-  opacity: 0;
 }
 
 /* Nav link underline draw */

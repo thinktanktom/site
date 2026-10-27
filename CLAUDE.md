@@ -124,7 +124,15 @@ because both hand-picked accents are near-maximum luminance on a near-black grou
 
 ### Motion Principles
 
-- Page load: staggered fade-up on hero elements (150ms delays between items)
+- ~~Page load: staggered fade-up on hero elements (150ms delays between items)~~ — **`@keyframes
+  fadeUp` and `.animate-fade-up` were DELETED on 2026-10-27**, along with the
+  `prefers-reduced-motion` override that existed only to pin their end state. They were orphaned
+  when the hero left `/` on 2026-10-26 and nothing referenced them: not a component, not
+  `content/`, not `scripts/`. **This is the one place the `.pixel-grid` precedent was NOT
+  followed, and that was Tom's call rather than an oversight** — `.pixel-grid` is two rules that a
+  future hero could use as-is, while the fade-up was three blocks whose staggering lived in inline
+  `animationDelay` styles on markup that no longer exists. Re-adding it means re-deciding the
+  choreography anyway, so there was nothing to preserve.
 - Nav links: underline draw animation on hover (CSS `::after` pseudo-element, width 0 → 100%)
 - Post cards: subtle `translateY(-4px)` + border-colour transition on hover
 - Keep all transitions `200ms–350ms ease`; nothing jarring
@@ -167,8 +175,10 @@ Four things about the merged `/` are decisions, not leftovers:
 - **No "Latest writing" section.** It left the page entirely rather than moving down it; the header
   already carries a Writing link. `src/app/page.tsx` no longer imports `getAllPosts` or `PostCard`.
 - **The Currently box was rewritten**, from a list of what Tom is working on into the place someone
-  hires him from: a `--success` status dot, the Upwork button, three lines of work drawn from
-  `lib/experience.ts` (so the box cannot drift from what `/work` says), and a plain `mailto:`.
+  hires him from: a `--success` status dot, the Upwork button, three lines of work **written by hand from** `lib/experience.ts`, and a plain `mailto:`.
+  **They are prose, not a rendering of the data — `page.tsx` imports nothing — so they CAN drift
+  from `/work` and must be updated deliberately when the engagements change.** This line and the
+  comment in `page.tsx` both claimed the opposite until 2026-10-27; it was a false safety claim.
   The address will be harvested and that is accepted knowingly — `thomas@` came with the domain and
   can be retired in one line, which is the measure that actually survives a leak; obfuscation only
   buys a delay. **It must never be added to the `Person` JSON-LD in `layout.tsx`**, which would
@@ -383,7 +393,7 @@ that are worth thinking about.
 - ~~"ThinkTankTom" should be in `--accent` yellow~~
 - ~~The two CTAs: primary button and ghost button~~ — the Upwork CTA survives as the button inside
   the Currently box; "Read my writing" is a nav item
-- ~~Tiny pixel-grid background texture behind the hero~~ — `.pixel-grid` is still in `globals.css`
+- ~~Tiny pixel-grid background texture behind the hero~~ — `.pixel-grid` is **still** in `globals.css` (unlike `.animate-fade-up`, which was deleted 2026-10-27 — see Motion Principles for why the two were treated differently)
   and is now **unreferenced by any component**; left there deliberately rather than deleted, since
   it is two rules and the next hero may want it. **Do not take `--grid-dot` with it** — that token
   is still solved for and gated by the randomizer (`lib/palette/validate.ts`, a contrast *window*
@@ -573,7 +583,7 @@ rule written this way.)
 
 ## Verifying this site
 
-`npm test` (vitest, ~8s, **141 tests**) covers the palette engine, `lib/work.ts` and the lockup
+`npm test` (vitest, ~3.5s, **142 tests**) covers the palette engine, `lib/work.ts` and the lockup
 mask split.
 
 `components/__tests__/lockup-mask-split.test.ts` was added 2026-10-27 with the tracking lockup, and
@@ -606,7 +616,7 @@ against a built export:
 | `node scripts/e2e-palette.mjs` | 53 checks: the switcher has exactly 2 buttons, the palette is actually painted, a reload restores it pre-paint, switching back to dark-mono *removes* the inline properties, the mark's ink follows `--accent`, a stale cache recovers from the seed with React state in step, that the hero mark is its **three** mounted layers with no `<img>` anywhere, that its **mask has already been fetched while dark-mono is live** (read from the CDP request log, because Resource Timing does not report memory-cache hits) and that it carries a `background-color` transition — the two halves of the 2026-10-17 switch-stutter fix, negative-controlled by re-hiding the mark in source and rebuilding, which gives `requested=0 mask assets`. **§1 was repointed from `nav .logo-mask` to `main .logo-mask` on 2026-10-26**, because `/` no longer has a nav wordmark and this section runs on `/` — left alone it would have failed on a page that is correct, and the tempting fix for a failing guard is deleting it. It now also asserts **both halves of the wordmark gating**: no nav mark on `/`, and exactly one linking home on an inner page (taken at the end, where §9b has already navigated to `/writing`),  and (§5b) **a stale stored `funky` self-heals to a PAINTED dark-mono** — the migration path every existing reader takes once, asserted on the attribute because the self-heal is invisible in the pixels. Also the dice's two-state action (§7b): entering random **restores** the stored seed *and* repaints the same `--bg`, the press after that rolls, and the button renames itself in all three states. **The empty-store roll has no check of its own on purpose** — section 2's press happens on cleared storage, so `dice applies a random palette` already *is* that assertion; breaking the empty-store path fails it (plus 8 downstream checks), which is what licensed dropping the duplicate. Negative-controlled the same way for the restore itself: with the old always-roll `select()` rebuilt from source, the restore check fails and the roll checks still pass. §9 covers the **themed favicon**: dark-mono serves the brand file, a roll repaints both `rel~="icon"` links as a tinted data URI with exactly one fill, that URI **decodes as a real image**, `apple-touch-icon` is untouched, dark-mono puts the file back, and a reload repaints from the applied accent. **§9b is the one that shipped broken** — the themed icon must survive a CLIENT-SIDE navigation. It is driven by clicking a real nav anchor, because `Page.navigate` is a full document load that re-runs the mount path and therefore *cannot* reproduce the bug; and its expected default is read out of `favicon.ts` rather than hard-coded, so it cannot drift when the default mark changes. §8 (the alpha-composited accent utilities) moved target on 2026-10-26 and gained a check: it used to probe /projects, which the /work merge turned into a signpost, so every border assertion there passed VACUOUSLY on an empty set (`0 boundary borders`, `worst undefined`) -- a green run proving nothing. It now probes **two** pages and merges, because no single page renders the whole family any more: the status pill's classes come from frontmatter `status`, so `border-accent/40` is only on an **active** project (`/projects/BankX`) and the neutral `border-border/40` hairline only on an **archived** one (`/projects/CtrlbitSDWAN`, the only one) -- the old index got every variant free by rendering all seven cards. The ACTIVE page is `/projects/FractalWebhook`, not BankX: BankX held that slot until its engagement closed in Dec 2025 and it became `completed` (2026-10-26). So **changing a project's frontmatter `status` can break this harness**, and it fails on the presence check rather than going quiet. The added check is the anti-vacuity guard: it asserts all three families were actually FOUND, so a frontmatter status change fails loudly instead of quietly emptying the set. /work is deliberately not the target -- its stack chips are neutral, because 22 rows of accent chips would breach the "keep `--accent` disciplined" rule |
 | `node scripts/e2e-work.mjs` | 38 checks on `/work`, added with the page on 2026-10-26: the spine holds all 15 engagements and the rail all 8 clusters, exactly 7 carry `data-writeup`, the rail sits **beside** the spine at `lg` while the spine still measures **780px** (the rail's whole arithmetic), each filter shows exactly its own set *and* collapses the grid to one track, the pressed pill **inverts** rather than tints, and below `lg` the rail stacks under the spine with no horizontal overflow at 375px and 390px. **§5 is the load-bearing one: the filter must keep working with JavaScript DISABLED** (`Emulation.setScriptExecutionDisabled` before the navigation, then a real `Input.dispatchMouseEvent` on the label) — a rewrite of the filter into React state would pass every other check here and fail only that one. Two traps it already paid for: `.work-rail li` also matches the PR items inside each cluster's `<details>` (18 rows for 8 clusters), so the probe uses `.work-rail > ol > li`; and the pills carry `transition-colors duration-200`, so a measurement taken straight after the click reads a colour **mid-transition** — it polls until the value holds across three samples, the same discipline `e2e-annotations.mjs` uses for smooth scroll |
 | `node scripts/e2e-palette-mobile.mjs` | the overlay control fits at 375px and 390px, no horizontal overflow, picking a theme does not close the overlay |
-| `node scripts/e2e-logo-eyes.mjs` | 15 checks on the tracking lockup on `/`, added with it on 2026-10-27 (it targeted `/about` for the one commit before that page became `/`): three mask layers and two of them eyes, no `<img>` and no inline `<svg>`, all three layers **hidden from the accessibility tree** behind the wrapper's one `role="img"`, **all three masks already fetched** before anything moves (the 2026-10-17 switch-stutter lesson applied to a new feature, read from the CDP request log for the same reason), both eyes at `translate(0,0)` at first paint so the static export is the unchanged mark, direction, the elliptical clamp holding from the far corner, the eyes **converging** (proving each aims from its own centre rather than sharing a vector), returning to centre on `pointerleave`, **all three layers repainting** on a random palette rather than just the face, and `prefers-reduced-motion` pinning the eyes. **The trap it paid for on its first run: headless chromium reports `(hover: none)` and `(pointer: coarse)`**, so `TrackingLogo` correctly refused to attach and every motion check passed vacuously — looking exactly like a product bug. It launches chromium with `--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4` (`Emulation.setEmulatedMedia` cannot set these) and §0 asserts the override took, the same discipline as the mobile harness asserting its emulated width. Negative-controlled by rebuilding from source with the reduced-motion guard deleted and `TRAVEL_X` ×10: exactly those two checks fail and no others |
+| `node scripts/e2e-logo-eyes.mjs` | 15 checks on the tracking lockup on `/`, added with it on 2026-10-27 (it targeted `/about` for the one commit before that page became `/`): three mask layers and two of them eyes, no `<img>` and no inline `<svg>`, all three layers **hidden from the accessibility tree** behind the wrapper's one `role="img"`, **all three masks already fetched** before anything moves (the 2026-10-17 switch-stutter lesson applied to a new feature, read from the CDP request log for the same reason), both eyes at `translate(0,0)` at first paint so the static export is the unchanged mark, direction, the response curve from BOTH ends — bounded, reaching most of the travel when the pointer is far and level, and collapsing to almost nothing when it is on the mark. **The upper bound alone was unfalsifiable and was claimed here as "the clamp holds" until 2026-10-27**: there is no clamp branch in the component, so `|tx| <= TRAVEL_X` is an identity of `reach = d/(d+REACH)`, and the envelope is unreachable from anywhere on the page (measured peak 3.99px against a 6.33px limit). Only a >2x inflation of `TRAVEL_X` could breach it, which is why the x10 negative control appeared to validate it and proved very little. The lower bounds are what make the check able to fail, the eyes **converging** (proving each aims from its own centre rather than sharing a vector), returning to centre on `pointerleave`, **all three layers repainting** on a random palette rather than just the face, and `prefers-reduced-motion` pinning the eyes. **The trap it paid for on its first run: headless chromium reports `(hover: none)` and `(pointer: coarse)`**, so `TrackingLogo` correctly refused to attach and every motion check passed vacuously — looking exactly like a product bug. It launches chromium with `--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4` (`Emulation.setEmulatedMedia` cannot set these) and §0 asserts the override took, the same discipline as the mobile harness asserting its emulated width. Negative-controlled by rebuilding from source with the reduced-motion guard deleted and `TRAVEL_X` ×10: exactly those two checks fail and no others |
 | `node scripts/e2e-annotations.mjs` | 305 checks: every annotation round-trips to its note and back, both ends land **clear of the fixed nav** rather than under it, the phrase (not the superscript) is the hit target, the phrase survives into the accessible name with an additive `sr-only` cue and **no** `aria-label`, ids are unique and paired, no nested `<a>`. The `:target` highlight lands on the right note and no other, tints to `--surface`, measures ≥4.5:1, clears itself on the back-link, and does **not** reflow the note — a `border-left` in place of the inset shadow shifts the text 3px and fails here. Covers the MDX components on a post *and* the hand-rolled copy on `/` (it lived on `/about` until that page became the landing page on 2026-10-26 — a dead route here would be worse than noise, since the browser renders a 404 body that looks like a working page) |
 
 Build first — they serve `out/`, not a dev server. Chromium comes from nixpkgs
@@ -711,7 +721,7 @@ This cannot be fixed in the generator — it picks colours, and these are compos
 | utility | random alpha | why |
 |---|---|---|
 | `border-accent/40` | `0.8` | a card/panel **boundary**, held to 3:1. Measured worst 3.26:1 over 20,000 seeds; 0.75 still failed 14 of them |
-| `border-accent/30`, `border-success/40` | `0.6` | **decorative** chip outlines (every chip carries an icon *and* a label) and already under 3:1 in dark-mono itself, so not held to 3:1 — only to parity with dark-mono's 2.48:1 (funky's was 2.44:1) |
+| `border-accent/30` | `0.6` | **decorative** chip outlines (every chip carries an icon *and* a label). `border-success/40` shared this row until its only carrier, the PR chip on `/contributions`, went with that page — the rule was deleted from `globals.css` on 2026-10-26 and this table was not corrected until 2026-10-27 and already under 3:1 in dark-mono itself, so not held to 3:1 — only to parity with dark-mono's 2.48:1 (funky's was 2.44:1) |
 | `bg-accent/10` | → `rgb(var(--surface))` | drops the tint so the chip pair reduces to accent-on-surface, which **is** gated |
 | `text-accent/80` | → solid `--accent` | same reason; makes the chip AA by construction rather than by luck |
 
@@ -1239,8 +1249,9 @@ Every developer eventually builds their own website...
    actually applied before trusting any other number.
 10. Run `next build` and fix all TypeScript errors before considering the site done
 11. **Project doc trees are ONE route, driven by a registry** (`lib/project-docs.ts`, consolidated
-    2026-10-17). Adding a doc tree is one entry in `DOC_PROJECTS` plus a `lib/<name>-sidebar.ts`
-    data file — nothing else.
+    2026-10-17). Adding a doc tree is one entry in `DOC_PROJECTS`, a `lib/<name>-sidebar.ts`
+    data file, **and an entry in `NAVS` in `components/DocSidebar.tsx`** — three edits, not two.
+    This said "nothing else" until 2026-10-27, which is exactly how the third one gets forgotten.
 
     Until 2026-10-17 there were **four** copies of the whole family: `[...slug]/page.tsx`,
     `layout.tsx`, a `<Name>DocSidebar.tsx` and a `lib/<name>-docs.ts` per project — 20 files,
@@ -1259,10 +1270,17 @@ Every developer eventually builds their own website...
       level, and `projects/[slug]/page.tsx` (the project overview, for all 7 projects) owns it.
     - **`layout.tsx` sits in the `[...docSlug]/` leaf, not at `[slug]/`.** One level up it would
       also wrap the project overview pages, which deliberately have no sidebar or doc top-bar.
-    - **`DocSidebar` receives its nav as a prop from the server layout.** It is a client component;
-      importing all four data modules into it would ship every project's nav to every reader. Same
-      reasoning as `Nav.tsx`'s wordmark prop. `lib/project-docs.ts` imports `fs` — never import it
-      from a `'use client'` module; the client-safe types live in `lib/doc-sidebar-types.ts`.
+    - **`DocSidebar` holds its OWN registry of the four navs** (`NAVS`); the layout passes it only
+      `project`, `label` and `navId`. **This note claimed the opposite — "receives its nav as a prop
+      from the server layout" — until 2026-10-27**, as did the header of `lib/project-docs.ts`. The
+      component's own comment carries the real measurements and calls importing them a deliberate
+      trade (2,700 B cached once, against a 1,973 B chunk plus 467 B per page for the prop form).
+      **The consequence the stale claim hid: there are now TWO registries that must both list every
+      doc tree.** `DocSidebar` does `NAVS[project] ?? []`, so a tree added to `DOC_PROJECTS` but not
+      to `NAVS` ships pages with an empty sidebar and no build error — the same silent failure class
+      the next bullet records for a `DOC_PROJECTS` typo, and it is currently unguarded.
+      `lib/project-docs.ts` imports `fs` — never import it from a `'use client'` module; the
+      client-safe types live in `lib/doc-sidebar-types.ts`.
     - **A typo in `DOC_PROJECTS` is a new failure class.** It yields an *empty* doc list for that
       project — 404s in the shipped export, not a build error. With four copies a mistake was
       contained to one project. **Verify a change here by diffing the full `out/` file listing

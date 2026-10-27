@@ -129,8 +129,20 @@ export default async function WorkPage() {
             The radios keep their own grouping natively -- same `name`, so they
             are announced as "N of 4" -- and each takes its accessible name from
             its visible <label for>. */}
+        {/* .work-filter carries NO styling — Tailwind preflight already zeroes the
+            border, and this is a div rather than the fieldset it once was. It is a
+            TEST HOOK: scripts/e2e-work.mjs selects
+            `.work-filter input[type=radio]` through it. A 2026-10-27 sweep proved
+            no CSS rule matched it and removed it as dead; the harness caught that
+            within minutes. Same for .work-pill below. Grep scripts/ too. */}
         <div className="work-filter mb-14">
-          {FILTERS.map(({ id }) => (
+          {/* visibleFilters, NOT FILTERS: in a zero-PR build the Upstream pill
+              is dropped (see the note above) but its radio used to stay --
+              sr-only is focusable, and the four share a name, so arrow keys
+              walked into a filter with no pill to label it. Its rule hides the
+              spine and the rail is absent from the markup, leaving exactly the
+              empty page the guard exists to prevent, reachable by keyboard. */}
+          {visibleFilters.map(({ id }) => (
             <input
               key={id}
               type="radio"

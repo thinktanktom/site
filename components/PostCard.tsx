@@ -6,7 +6,10 @@ export default function PostCard({ post }: { post: PostMeta }) {
   return (
     <Link href={`/writing/${post.slug}`} className="block group">
       <article className="border border-border rounded-sm p-6 bg-surface/20 hover:border-accent/40 hover:-translate-y-1 transition-all duration-300">
-        <time className="block font-mono text-xs text-muted tracking-wider mb-3">
+        {/* dateTime is required here: a <time> without it must have valid
+            machine-readable TEXT, and "Oct 2026" is not a valid date string.
+            The post and project pages both set it; only this card omitted it. */}
+        <time dateTime={post.date} className="block font-mono text-xs text-muted tracking-wider mb-3">
           {formatMonthYear(post.date)}
         </time>
 
