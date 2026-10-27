@@ -43,12 +43,12 @@ OUTDIR="$OUTROOT/$LABEL"
 # ("the browser renders the 404 body with the right URL and no <nav>, which
 # looks exactly like a broken component"). /experience, /projects and
 # /contributions were listed here until 2026-10-26 and had all three become
-# 404s when they merged into /work.
+# 404s when they merged into /work, and /about joined them when it became the
+# landing page on 2026-10-26 -- "home|/" already covers that content.
 PAGES=(
   "home|/"
   "writing-index|/writing"
   "writing-post|/writing/the-proud-robot"
-  "about|/about"
   "work|/work"
   "project-bankx|/projects/BankX"
   "doc-bankx|/projects/BankX/introduction"

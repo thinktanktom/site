@@ -6,28 +6,28 @@ import { usePathname } from 'next/navigation'
 import { Menu, X } from 'lucide-react'
 import ThemeSwitcher from '@components/ThemeSwitcher'
 
-/* Three links since 2026-10-26, when /projects, /experience and /contributions
-   merged into /work. Those three routes were deleted and now 404 -- a
-   deliberate URL break, so there is nothing to link to even if we wanted it.
+/* TWO links since 2026-10-26: /about merged into / the same week /projects,
+   /experience and /contributions merged into /work. All four of those routes
+   were deleted and now 404 -- deliberate URL breaks, so there is nothing to
+   link to even if we wanted it.
 
-   The breakpoint stays `lg`, and that is now a choice rather than a constraint.
-   Re-measured in a real browser after the merge: the wordmark is 224px and this
-   row (3 tracked uppercase links + the compact switcher) is 295.5px, so the
-   chrome needs 519.5px of content -- down from the 643px the five-link row
-   measured. `md` leaves ~705px after `px-6` and a classic scrollbar, so md
-   would fit with ~185px of clearance and `md:flex` is now viable on width
-   alone.
+   The breakpoint stays `lg`, and that is a choice rather than a constraint.
+   Re-measured in a real browser on 2026-10-26 with scrollbars VISIBLE (which is
+   what invalidated an earlier reading), after /about left the row: the wordmark
+   is 224px and this row (2 tracked uppercase links + the compact switcher) is
+   221.7px, so an inner page needs 445.7px of chrome -- down from 519.5px with
+   three links, and 643px with five. On / there is no wordmark at all, so it is
+   221.7px. `nav.scrollWidth === nav.clientWidth` at 1024, 1280 and 1440.
 
-   It was NOT lowered, because fitting is not the same as reading well: at 768px
-   the row would sit 519px of content in 705px with the links crowding the
-   wordmark, and the full-screen overlay is the better experience on a tablet.
-   Lowering it is a deliberate design change, not a cleanup -- and CLAUDE.md is
-   explicit that any new number here is measured in a browser with scrollbars
-   VISIBLE, which is what invalidated an earlier reading. */
+   `md` leaves ~705px after `px-6` and a classic scrollbar, so md fits with
+   ~260px of clearance and `md:flex` is viable on width alone. It was NOT
+   lowered, because fitting is not the same as reading well: the full-screen
+   overlay is the better experience on a tablet. Lowering it is a deliberate
+   design change, not a cleanup. Measure before quoting any number here -- the
+   e2e harness asserts no overflow rather than trusting this comment. */
 const navLinks = [
   { href: '/writing', label: 'Writing' },
   { href: '/work', label: 'Work' },
-  { href: '/about', label: 'About' },
 ]
 
 /* The wordmark arrives as an already-rendered node from the server layout
@@ -89,6 +89,20 @@ export default function Nav({ wordmark }: NavProps) {
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + '/')
 
+  /* THE WORDMARK IS DROPPED ON THE LANDING PAGE ONLY, and the "only" is the
+     whole decision. / renders the stacked lockup as its hero, so repeating the
+     wordmark 100px above it is noise -- but that reason holds on exactly one
+     route. The header lives in the root layout, so dropping it everywhere
+     would leave /writing, /work, every post and every project doc page with no
+     mark AND no way home: navLinks has no Home item, this wordmark is it.
+
+     Consequence handled in the same commit: scripts/e2e-palette.mjs section 1
+     used to select `nav .logo-mask` and runs on /, where there is now no such
+     element. It selects the hero mark instead. If that had been left alone it
+     would have failed on a page that is correct, and the tempting fix is
+     deleting the check -- which is the 2026-10-17 switch-stutter guard. */
+  const showWordmark = pathname !== '/'
+
   return (
     <>
       <header
@@ -99,13 +113,15 @@ export default function Nav({ wordmark }: NavProps) {
         }`}
       >
         <nav className="max-w-chrome mx-auto px-6 h-16 flex items-center justify-between">
-          <Link
-            href="/"
-            className="flex items-center shrink-0"
-            aria-label="thinktanktom, home"
-          >
-            {wordmark}
-          </Link>
+          {showWordmark && (
+            <Link
+              href="/"
+              className="flex items-center shrink-0"
+              aria-label="thinktanktom, home"
+            >
+              {wordmark}
+            </Link>
+          )}
 
           {/* Desktop. Breakpoint is lg — see the measurement note above the
               navLinks array, which is the single current record of it.
@@ -120,7 +136,12 @@ export default function Nav({ wordmark }: NavProps) {
               The e2e harness asserts nav scrollWidth === clientWidth rather
               than trusting any number written here. Below lg the full-screen
               overlay carries the navigation and the theme control. */}
-          <div className="hidden lg:flex items-center gap-6">
+          {/* ml-auto, not justify-between alone: on / the wordmark is gone, so
+              this row (or the hamburger below it) is the nav's ONLY flex item,
+              and justify-between puts a single item at the START. The first
+              build of the merge shipped the links hard against the left edge
+              because of exactly that. With two items ml-auto changes nothing. */}
+          <div className="hidden lg:flex items-center gap-6 ml-auto">
             {navLinks.map(({ href, label }) => (
               <Link
                 key={href}
@@ -138,7 +159,7 @@ export default function Nav({ wordmark }: NavProps) {
           {/* Mobile hamburger */}
           <button
             ref={menuButtonRef}
-            className="lg:hidden text-muted hover:text-text transition-colors"
+            className="lg:hidden ml-auto text-muted hover:text-text transition-colors"
             onClick={() => setMobileOpen(true)}
             aria-label="Open menu"
             aria-expanded={mobileOpen}
@@ -159,17 +180,22 @@ export default function Nav({ wordmark }: NavProps) {
           className="fixed inset-0 z-[100] bg-bg flex flex-col"
         >
           <div className="flex items-center justify-between px-6 h-16">
-            <Link
-              href="/"
-              onClick={closeMobileMenu}
-              aria-label="thinktanktom, home"
-            >
-              {wordmark}
-            </Link>
+            {showWordmark && (
+              <Link
+                href="/"
+                onClick={closeMobileMenu}
+                aria-label="thinktanktom, home"
+              >
+                {wordmark}
+              </Link>
+            )}
+            {/* ml-auto, not justify-between: with the wordmark gone on / this
+                row has one child, and justify-between would float the close
+                button to the LEFT. */}
             <button
               ref={closeButtonRef}
               onClick={closeMobileMenu}
-              className="text-muted hover:text-text transition-colors"
+              className="ml-auto text-muted hover:text-text transition-colors"
               aria-label="Close menu"
             >
               <X size={24} />

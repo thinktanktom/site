@@ -142,14 +142,41 @@ because both hand-picked accents are near-maximum luminance on a near-black grou
 ## Site Structure
 
 ```
-/                   → Home / Hero
+/                   → Home — the bio page, and the former /about (2026-10-26)
 /writing            → Blog index (list of all MDX posts)
 /writing/[slug]     → Individual post page
 /work               → EVERYTHING built and shipped, one dated spine (2026-10-26)
 /projects/[slug]    → Project writeup (overview)
 /projects/[slug]/…  → Project doc trees (registry-driven; see note 11)
-/about              → Short bio page
 ```
+
+**`/about` merged into `/` on 2026-10-26, and the route was DELETED — `/about` now 404s.**
+Tom's call, the same class of deliberate URL break as the three below, and taken for the same
+reason: the landing page *is* the former about page, so keeping the old URL alive would have meant
+either a duplicate of the whole bio or a signpost, and a static export on GitHub Pages has no
+redirect mechanism. **Do not re-create the route or re-add it to `sitemap.ts` without asking.**
+
+Four things about the merged `/` are decisions, not leftovers:
+
+- **No headline.** "Hi, I'm Thomas Cyriac." was removed as redundant beside a lockup that already
+  says the name. That leaves no *visible* heading, which is why the `sr-only` `h1` is load-bearing
+  rather than decorative — the mark is a `role="img"` span, not a heading, so without it the page
+  has none at all.
+- **No hero CTAs.** "Read my writing" is a nav item and "Hire me on Upwork" is the button inside
+  the Currently box.
+- **No "Latest writing" section.** It left the page entirely rather than moving down it; the header
+  already carries a Writing link. `src/app/page.tsx` no longer imports `getAllPosts` or `PostCard`.
+- **The Currently box was rewritten**, from a list of what Tom is working on into the place someone
+  hires him from: a `--success` status dot, the Upwork button, three lines of work drawn from
+  `lib/experience.ts` (so the box cannot drift from what `/work` says), and a plain `mailto:`.
+  The address will be harvested and that is accepted knowingly — `thomas@` came with the domain and
+  can be retired in one line, which is the measure that actually survives a leak; obfuscation only
+  buys a delay. **It must never be added to the `Person` JSON-LD in `layout.tsx`**, which would
+  publish it machine-readably on every page instead of this one. Publishing an address is not an
+  SEO signal, so there is no upside to weigh against the spam.
+
+The hero is the stacked lockup at 225px, rendered through `components/TrackingLogo.tsx` so its
+eyes follow the pointer — see note 7.
 
 **`/projects`, `/experience` and `/contributions` merged into `/work` on 2026-10-26.** One
 reverse-chronological spine replaced three pages that each had a different organizing idea
@@ -321,7 +348,28 @@ thinktanktom/
 
 ### `/` — Home
 
-**Hero section** (full-viewport height, centered):
+**What is actually there, since 2026-10-26:**
+```
+[stacked lockup — 225px tall, eyes track the cursor]
+
+   ten paragraphs of bio, verbatim, with three annotations
+   three footnotes, #ref-N ↔ #note-N round trip
+
+   ┌ CURRENTLY ────────────────────────────────────┐
+   │ ● availability · three lines of work          │
+   │ [Hire me on Upwork ↗]                         │
+   │ ── nerd-snipe line, plain mailto ─────────────│
+   └───────────────────────────────────────────────┘
+```
+No headline, no hero CTAs, no "Latest writing", no "Find me" row, no pixel-grid, and no
+`min-h-screen` hero — the page opens on the lockup and goes straight into prose. The reasons for
+each are in Site Structure above. The header drops its wordmark on this route only; see Navigation.
+
+**The original brief's hero is kept below, struck through, because its details keep getting
+re-proposed** — the yellow is gone with `funky`, and the greeting was removed as redundant beside
+a lockup that already says the name.
+
+~~**Hero section** (full-viewport height, centered):~~
 ```
 [Logo image — 96px]
 
@@ -332,19 +380,16 @@ that are worth thinking about.
 
 [Read my writing →]          [Hire me on Upwork ↗]
 ```
-- "ThinkTankTom" should be in `--accent` yellow
-- The two CTAs: primary button (solid `--accent` bg, black text) and ghost button (border `--accent`, `--accent` text)
-- Tiny pixel-grid background texture behind the hero (CSS radial-gradient dot pattern, very subtle)
-
-**"Latest writing" section** below the fold:
-- Show the 3 most recent posts as cards
-- Each card: post title, date, 1-line excerpt, tag chips
-- A "View all writing →" link at the bottom
-
-**"Find me" section** (minimal link list): GitHub, LinkedIn, Upwork — the real
-URLs are in the "External Links" table near the end of this file, not here, so
-there is one copy to keep correct.
-- Each link: icon + label, opens in new tab, hover turns `--accent`
+- ~~"ThinkTankTom" should be in `--accent` yellow~~
+- ~~The two CTAs: primary button and ghost button~~ — the Upwork CTA survives as the button inside
+  the Currently box; "Read my writing" is a nav item
+- ~~Tiny pixel-grid background texture behind the hero~~ — `.pixel-grid` is still in `globals.css`
+  and is now **unreferenced by any component**; left there deliberately rather than deleted, since
+  it is two rules and the next hero may want it. **Do not take `--grid-dot` with it** — that token
+  is still solved for and gated by the randomizer (`lib/palette/validate.ts`, a contrast *window*
+  rather than a floor), and deleting it would fail the calibration tests
+- ~~**"Latest writing" section** below the fold~~ — removed from the page entirely on 2026-10-26
+- ~~**"Find me" section**~~ — never built; the footer carries GitHub, LinkedIn and Upwork
 
 ---
 
@@ -383,12 +428,12 @@ tags: ["tag1", "tag2"]
 
 ---
 
-### `/about` — About Page
+### ~~`/about` — About Page~~ — **ROUTE DELETED 2026-10-26**
 
-- Short first-person bio (2–3 paragraphs max)
-- Profile section: logo image left, text right (stacked on mobile)
-- Links to GitHub, LinkedIn, Upwork (same style as home)
-- A small "Currently" section: what I'm working on / interested in
+Kept struck through because the brief above still implies it. Its content is now `/` — see Site
+Structure. The original spec said "2–3 paragraphs max"; the real bio is ten and stayed ten, verbatim,
+when it moved. The "logo image left, text right" profile layout was never built either: the lockup
+is centred above the prose.
 
 ---
 
@@ -396,8 +441,27 @@ tags: ["tag1", "tag2"]
 
 **Desktop nav** (sticky, top bar):
 ```
-[TTT wordmark — 32px high]   Writing  Work  About   [◐🎲]
+[TTT wordmark — 32px high]   Writing  Work   [◐🎲]        ← every route except /
+                             Writing  Work   [◐🎲]        ← on /
 ```
+
+**The wordmark is dropped on `/` only**, because that page renders the stacked lockup as its hero
+and repeating it 100px above is noise. The "only" is the whole decision: the header lives in the
+root layout, so dropping it everywhere would leave `/writing`, `/work`, every post and every
+project doc page with no mark **and no way home** — `navLinks` has no Home item, the wordmark is
+it. `Nav.tsx` already holds `usePathname()`, so the gate is one `pathname !== '/'`.
+
+Two things that gating broke, both fixed in the same commit and worth knowing before touching it:
+
+- **`justify-between` puts a *single* flex item at the START.** With the wordmark gone, the
+  desktop link cluster (and below `lg`, the hamburger) is the nav's only item, and the first build
+  shipped both hard against the left edge. Both now carry `ml-auto`, which is a no-op when the
+  wordmark is present. The mobile overlay's close button needed the same treatment.
+- **`scripts/e2e-palette.mjs` §1 selected `nav .logo-mask` and runs on `/`.** It is the
+  2026-10-17 switch-stutter regression guard, so it had to be repointed at the hero mark
+  (`main .logo-mask` — the nav and the footer's 24px icon are both outside `<main>`) rather than
+  deleted. It now also asserts **both halves of the gating**: no nav mark on `/`, and one that
+  links home on an inner page.
 
 **Mobile nav**: hamburger → full-screen overlay with large links and the theme control last. (The brief said a Hire me pill went here too; it does not — the only live "Hire me" is the hero CTA in `src/app/page.tsx`.)
 theme control last.
@@ -539,11 +603,11 @@ against a built export:
 
 | command | what it proves |
 |---|---|
-| `node scripts/e2e-palette.mjs` | 51 checks: the switcher has exactly 2 buttons, the palette is actually painted, a reload restores it pre-paint, switching back to dark-mono *removes* the inline properties, the mark's ink follows `--accent`, a stale cache recovers from the seed with React state in step, that there is exactly **one** logo mark and no `<img>` in the nav, that its **mask has already been fetched while dark-mono is live** (read from the CDP request log, because Resource Timing does not report memory-cache hits) and that it carries a `background-color` transition — the two halves of the 2026-10-17 switch-stutter fix, negative-controlled by re-hiding the mark in source and rebuilding, which gives `requested=0 mask assets`, and (§5b) **a stale stored `funky` self-heals to a PAINTED dark-mono** — the migration path every existing reader takes once, asserted on the attribute because the self-heal is invisible in the pixels. Also the dice's two-state action (§7b): entering random **restores** the stored seed *and* repaints the same `--bg`, the press after that rolls, and the button renames itself in all three states. **The empty-store roll has no check of its own on purpose** — section 2's press happens on cleared storage, so `dice applies a random palette` already *is* that assertion; breaking the empty-store path fails it (plus 8 downstream checks), which is what licensed dropping the duplicate. Negative-controlled the same way for the restore itself: with the old always-roll `select()` rebuilt from source, the restore check fails and the roll checks still pass. §9 covers the **themed favicon**: dark-mono serves the brand file, a roll repaints both `rel~="icon"` links as a tinted data URI with exactly one fill, that URI **decodes as a real image**, `apple-touch-icon` is untouched, dark-mono puts the file back, and a reload repaints from the applied accent. **§9b is the one that shipped broken** — the themed icon must survive a CLIENT-SIDE navigation. It is driven by clicking a real nav anchor, because `Page.navigate` is a full document load that re-runs the mount path and therefore *cannot* reproduce the bug; and its expected default is read out of `favicon.ts` rather than hard-coded, so it cannot drift when the default mark changes. §8 (the alpha-composited accent utilities) moved target on 2026-10-26 and gained a check: it used to probe /projects, which the /work merge turned into a signpost, so every border assertion there passed VACUOUSLY on an empty set (`0 boundary borders`, `worst undefined`) -- a green run proving nothing. It now probes **two** pages and merges, because no single page renders the whole family any more: the status pill's classes come from frontmatter `status`, so `border-accent/40` is only on an **active** project (`/projects/BankX`) and the neutral `border-border/40` hairline only on an **archived** one (`/projects/CtrlbitSDWAN`, the only one) -- the old index got every variant free by rendering all seven cards. The ACTIVE page is `/projects/FractalWebhook`, not BankX: BankX held that slot until its engagement closed in Dec 2025 and it became `completed` (2026-10-26). So **changing a project's frontmatter `status` can break this harness**, and it fails on the presence check rather than going quiet. The added check is the anti-vacuity guard: it asserts all three families were actually FOUND, so a frontmatter status change fails loudly instead of quietly emptying the set. /work is deliberately not the target -- its stack chips are neutral, because 22 rows of accent chips would breach the "keep `--accent` disciplined" rule |
+| `node scripts/e2e-palette.mjs` | 53 checks: the switcher has exactly 2 buttons, the palette is actually painted, a reload restores it pre-paint, switching back to dark-mono *removes* the inline properties, the mark's ink follows `--accent`, a stale cache recovers from the seed with React state in step, that the hero mark is its **three** mounted layers with no `<img>` anywhere, that its **mask has already been fetched while dark-mono is live** (read from the CDP request log, because Resource Timing does not report memory-cache hits) and that it carries a `background-color` transition — the two halves of the 2026-10-17 switch-stutter fix, negative-controlled by re-hiding the mark in source and rebuilding, which gives `requested=0 mask assets`. **§1 was repointed from `nav .logo-mask` to `main .logo-mask` on 2026-10-26**, because `/` no longer has a nav wordmark and this section runs on `/` — left alone it would have failed on a page that is correct, and the tempting fix for a failing guard is deleting it. It now also asserts **both halves of the wordmark gating**: no nav mark on `/`, and exactly one linking home on an inner page (taken at the end, where §9b has already navigated to `/writing`),  and (§5b) **a stale stored `funky` self-heals to a PAINTED dark-mono** — the migration path every existing reader takes once, asserted on the attribute because the self-heal is invisible in the pixels. Also the dice's two-state action (§7b): entering random **restores** the stored seed *and* repaints the same `--bg`, the press after that rolls, and the button renames itself in all three states. **The empty-store roll has no check of its own on purpose** — section 2's press happens on cleared storage, so `dice applies a random palette` already *is* that assertion; breaking the empty-store path fails it (plus 8 downstream checks), which is what licensed dropping the duplicate. Negative-controlled the same way for the restore itself: with the old always-roll `select()` rebuilt from source, the restore check fails and the roll checks still pass. §9 covers the **themed favicon**: dark-mono serves the brand file, a roll repaints both `rel~="icon"` links as a tinted data URI with exactly one fill, that URI **decodes as a real image**, `apple-touch-icon` is untouched, dark-mono puts the file back, and a reload repaints from the applied accent. **§9b is the one that shipped broken** — the themed icon must survive a CLIENT-SIDE navigation. It is driven by clicking a real nav anchor, because `Page.navigate` is a full document load that re-runs the mount path and therefore *cannot* reproduce the bug; and its expected default is read out of `favicon.ts` rather than hard-coded, so it cannot drift when the default mark changes. §8 (the alpha-composited accent utilities) moved target on 2026-10-26 and gained a check: it used to probe /projects, which the /work merge turned into a signpost, so every border assertion there passed VACUOUSLY on an empty set (`0 boundary borders`, `worst undefined`) -- a green run proving nothing. It now probes **two** pages and merges, because no single page renders the whole family any more: the status pill's classes come from frontmatter `status`, so `border-accent/40` is only on an **active** project (`/projects/BankX`) and the neutral `border-border/40` hairline only on an **archived** one (`/projects/CtrlbitSDWAN`, the only one) -- the old index got every variant free by rendering all seven cards. The ACTIVE page is `/projects/FractalWebhook`, not BankX: BankX held that slot until its engagement closed in Dec 2025 and it became `completed` (2026-10-26). So **changing a project's frontmatter `status` can break this harness**, and it fails on the presence check rather than going quiet. The added check is the anti-vacuity guard: it asserts all three families were actually FOUND, so a frontmatter status change fails loudly instead of quietly emptying the set. /work is deliberately not the target -- its stack chips are neutral, because 22 rows of accent chips would breach the "keep `--accent` disciplined" rule |
 | `node scripts/e2e-work.mjs` | 38 checks on `/work`, added with the page on 2026-10-26: the spine holds all 15 engagements and the rail all 8 clusters, exactly 7 carry `data-writeup`, the rail sits **beside** the spine at `lg` while the spine still measures **780px** (the rail's whole arithmetic), each filter shows exactly its own set *and* collapses the grid to one track, the pressed pill **inverts** rather than tints, and below `lg` the rail stacks under the spine with no horizontal overflow at 375px and 390px. **§5 is the load-bearing one: the filter must keep working with JavaScript DISABLED** (`Emulation.setScriptExecutionDisabled` before the navigation, then a real `Input.dispatchMouseEvent` on the label) — a rewrite of the filter into React state would pass every other check here and fail only that one. Two traps it already paid for: `.work-rail li` also matches the PR items inside each cluster's `<details>` (18 rows for 8 clusters), so the probe uses `.work-rail > ol > li`; and the pills carry `transition-colors duration-200`, so a measurement taken straight after the click reads a colour **mid-transition** — it polls until the value holds across three samples, the same discipline `e2e-annotations.mjs` uses for smooth scroll |
 | `node scripts/e2e-palette-mobile.mjs` | the overlay control fits at 375px and 390px, no horizontal overflow, picking a theme does not close the overlay |
-| `node scripts/e2e-logo-eyes.mjs` | 15 checks on the tracking lockup, added with it on 2026-10-27: three mask layers and two of them eyes, no `<img>` and no inline `<svg>`, all three layers **hidden from the accessibility tree** behind the wrapper's one `role="img"`, **all three masks already fetched** before anything moves (the 2026-10-17 switch-stutter lesson applied to a new feature, read from the CDP request log for the same reason), both eyes at `translate(0,0)` at first paint so the static export is the unchanged mark, direction, the elliptical clamp holding from the far corner, the eyes **converging** (proving each aims from its own centre rather than sharing a vector), returning to centre on `pointerleave`, **all three layers repainting** on a random palette rather than just the face, and `prefers-reduced-motion` pinning the eyes. **The trap it paid for on its first run: headless chromium reports `(hover: none)` and `(pointer: coarse)`**, so `TrackingLogo` correctly refused to attach and every motion check passed vacuously — looking exactly like a product bug. It launches chromium with `--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4` (`Emulation.setEmulatedMedia` cannot set these) and §0 asserts the override took, the same discipline as the mobile harness asserting its emulated width. Negative-controlled by rebuilding from source with the reduced-motion guard deleted and `TRAVEL_X` ×10: exactly those two checks fail and no others |
-| `node scripts/e2e-annotations.mjs` | 305 checks: every annotation round-trips to its note and back, both ends land **clear of the fixed nav** rather than under it, the phrase (not the superscript) is the hit target, the phrase survives into the accessible name with an additive `sr-only` cue and **no** `aria-label`, ids are unique and paired, no nested `<a>`. The `:target` highlight lands on the right note and no other, tints to `--surface`, measures ≥4.5:1, clears itself on the back-link, and does **not** reflow the note — a `border-left` in place of the inset shadow shifts the text 3px and fails here. Covers the MDX components on a post *and* the hand-rolled copy on `/about` |
+| `node scripts/e2e-logo-eyes.mjs` | 15 checks on the tracking lockup on `/`, added with it on 2026-10-27 (it targeted `/about` for the one commit before that page became `/`): three mask layers and two of them eyes, no `<img>` and no inline `<svg>`, all three layers **hidden from the accessibility tree** behind the wrapper's one `role="img"`, **all three masks already fetched** before anything moves (the 2026-10-17 switch-stutter lesson applied to a new feature, read from the CDP request log for the same reason), both eyes at `translate(0,0)` at first paint so the static export is the unchanged mark, direction, the elliptical clamp holding from the far corner, the eyes **converging** (proving each aims from its own centre rather than sharing a vector), returning to centre on `pointerleave`, **all three layers repainting** on a random palette rather than just the face, and `prefers-reduced-motion` pinning the eyes. **The trap it paid for on its first run: headless chromium reports `(hover: none)` and `(pointer: coarse)`**, so `TrackingLogo` correctly refused to attach and every motion check passed vacuously — looking exactly like a product bug. It launches chromium with `--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4` (`Emulation.setEmulatedMedia` cannot set these) and §0 asserts the override took, the same discipline as the mobile harness asserting its emulated width. Negative-controlled by rebuilding from source with the reduced-motion guard deleted and `TRAVEL_X` ×10: exactly those two checks fail and no others |
+| `node scripts/e2e-annotations.mjs` | 305 checks: every annotation round-trips to its note and back, both ends land **clear of the fixed nav** rather than under it, the phrase (not the superscript) is the hit target, the phrase survives into the accessible name with an additive `sr-only` cue and **no** `aria-label`, ids are unique and paired, no nested `<a>`. The `:target` highlight lands on the right note and no other, tints to `--surface`, measures ≥4.5:1, clears itself on the back-link, and does **not** reflow the note — a `border-left` in place of the inset shadow shifts the text 3px and fails here. Covers the MDX components on a post *and* the hand-rolled copy on `/` (it lived on `/about` until that page became the landing page on 2026-10-26 — a dead route here would be worse than noise, since the browser renders a 404 body that looks like a working page) |
 
 Build first — they serve `out/`, not a dev server. Chromium comes from nixpkgs
 (`nix run nixpkgs#chromium`); **Playwright's bundled Chromium cannot run on NixOS**. No script
@@ -819,8 +883,8 @@ The styling is settled — **do not redesign it**:
     *replaces* a link's text as its accessible name, and that text is a phrase in the middle of a
     sentence — so labelling it `"Jump to note 1"` **deletes the phrase from the paragraph** for
     anyone using a screen reader, leaving a hole in the prose. The cue is additive instead: a
-    `<span class="sr-only"> (see note N)</span>` after the marker, the same pattern `/about`
-    already uses for `"(opens in new tab)"`. The **back**-link does take an `aria-label`, because
+    `<span class="sr-only"> (see note N)</span>` after the marker, the same pattern the landing
+    page already uses for `"(opens in new tab)"`. The **back**-link does take an `aria-label`, because
     its text is a bare `"1."` which means nothing read aloud and there is no sentence to damage.
     `scripts/e2e-annotations.mjs` asserts both halves; the negative control is in its header.
   - **An `Annotated` phrase must never contain a markdown link.** The whole phrase is the hit
@@ -845,13 +909,13 @@ The styling is settled — **do not redesign it**:
     at all times and highlighting cannot reflow the note. A `border-left` shifts the text 3px, and
     `e2e-annotations.mjs` fails on exactly that.
   - It echoes the `3px solid --accent` left border already used by `h2`, `h3` and `blockquote`, so
-    it is not a new visual idea — and `/about` inherits it for free from the shared class.
+    it is not a new visual idea — and the landing page inherits it for free from the shared class.
   Deep-linking comes free: `/writing/some-post#note-3` arrives with note 3 already highlighted.
-- **Notes block** at the foot of the post, matching the `/about` footnotes exactly: wrapper
+- **Notes block** at the foot of the post, matching the landing page’s footnotes exactly: wrapper
   `pt-6 border-t border-border`, inner `font-mono text-xs leading-relaxed space-y-1`, each note an
-  accent `N.` (now the back-link) followed by muted text. (`/about` hand-rolls the same markup
-  inline, anchor round trip included — if the annotation style changes, change both. It was kept in
-  sync on 2026-10-16.)
+  accent `N.` (now the back-link) followed by muted text. (**`src/app/page.tsx` hand-rolls the same
+  markup inline**, anchor round trip included — if the annotation style changes, change both. It was
+  kept in sync on 2026-10-16, and moved from `/about` to `/` with the page on 2026-10-26.)
 - Keep the note text as written in the draft; don't pad it out. A bare author credit or a one-line
   aside is the intended register.
 
@@ -1061,8 +1125,9 @@ Every developer eventually builds their own website...
    Cost, measured: eyes 249 + 250 bytes raw (243 / 249 gzip), face 27,750 (6,112 gzip), against
    the single 28,085 (6,232 gzip) they sit beside — **+164 bytes raw and two extra requests** on
    the page that uses it. No geometry enters the JavaScript bundle (`grep` for the eye path data
-   finds it in 0 build chunks); `/about`'s page JS went 137 B → 1.25 kB and **First Load JS shared
-   by all is unchanged at 87.4 kB**.
+   finds it in 0 build chunks); the page JS of the route that uses it went 137 B → 1.25 kB and
+   **First Load JS shared by all is unchanged at 87.4 kB**. (Measured on `/about`; that page
+   became `/` the next day and the numbers moved with it.)
 
    The three `*_dark-mono.svg` files were **restored to `public/` on 2026-10-16** from
    `8522281^` — the commit that had untracked them when the dark theme was removed. Restored from
@@ -1209,7 +1274,9 @@ Every developer eventually builds their own website...
 
 **Already wired — this is the record, not a to-do.** The brief's `YOUR_USERNAME`
 placeholders were replaced long before first deploy. Single source of truth is
-`components/Footer.tsx`; the hero CTA and `/about` use the same Upwork URL.
+`components/Footer.tsx`; the Currently box on `/` uses the same Upwork URL. The site also
+publishes one email address, `thomas@thinktanktom.com`, as a plain `mailto:` in that box and
+**nowhere else** — deliberately not in the `Person` JSON-LD. See Site Structure for why.
 
 | Label    | URL |
 |----------|-----|
@@ -1224,7 +1291,7 @@ into `/freelancers/thinktanktom`, which does not resolve.
 
 ## Definition of Done
 
-- [ ] Home, `/writing`, `/writing/[slug]`, `/about` all render correctly
+- [ ] Home (the bio page), `/writing`, `/writing/[slug]`, `/work` all render correctly
 - [ ] At least one MDX post renders with syntax highlighting
 - [ ] Nav is sticky and mobile hamburger menu works
 - [ ] All three external links (GitHub, LinkedIn, Upwork) are present and open in new tab

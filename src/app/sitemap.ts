@@ -30,8 +30,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
   return [
     { url: 'https://thinktanktom.com', lastModified: new Date() },
     { url: 'https://thinktanktom.com/writing', lastModified: new Date() },
-    { url: 'https://thinktanktom.com/about', lastModified: new Date() },
-    /* /projects, /experience and /contributions merged into /work on
+    /* /about merged into / on 2026-10-26 and its route was DELETED, so that
+       URL now 404s. Same class of deliberate URL-breaking change as the three
+       below, and Tom's call: the landing page IS the former /about, so a
+       second entry would be duplicate content even if the route still existed.
+       Do not re-add it without asking.
+
+       /projects, /experience and /contributions merged into /work on
        2026-10-26 and their routes were DELETED, so those three URLs now 404.
        That was a deliberate URL-breaking change, Tom's call, made after
        weighing a signpost page against it -- do not re-add the old entries

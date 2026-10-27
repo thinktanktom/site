@@ -189,31 +189,51 @@ const SNAP = `(() => {
     computedAccent: cs.getPropertyValue('--accent').trim(),
     colorScheme: h.style.getPropertyValue('color-scheme').trim(),
     bodyBg: getComputedStyle(document.body).backgroundColor,
-    /* ONE mark per role in every theme, since 2026-10-17. The dual
-       <img>/masked-span path is gone, so there is nothing to hide and nothing
-       to reveal -- a second element in the nav, or an <img>, means it has crept
-       back, which is how the blank-frame bug worked. */
-    markCount: document.querySelectorAll('nav .logo-mask').length,
-    markVisible: vis('nav .logo-mask'), navImgCount: document.querySelectorAll('nav img').length,
-    maskInk: (() => { const m = document.querySelector('nav .logo-mask');
+    /* Every mark is a masked span mounted in every theme, since 2026-10-17 --
+       the dual <img>/masked-span path is gone, so there is nothing to hide and
+       nothing to reveal. An <img> anywhere means it has crept back, which is
+       how the blank-frame bug worked.
+
+       REPOINTED 2026-10-26 FROM nav .logo-mask TO THE HERO (no backticks in
+       here -- this comment lives inside a template literal). This section
+       runs on /, and / no longer has a nav wordmark: the landing page renders
+       the stacked lockup as its hero, so Nav drops the wordmark on that one
+       route. Left alone, these five checks would have failed on a page that is
+       correct -- and the tempting fix for a failing guard is deleting it, which
+       would have taken the switch-stutter regression guard with it.
+
+       main .logo-mask is the hero: the nav is outside <main> and so is the
+       footer's 24px icon, so this selects the lockup's layers and nothing else.
+       There are THREE of them (face + two eyes) since the tracking lockup
+       landed -- scripts/e2e-logo-eyes.mjs owns the eye behaviour; this section
+       only cares that the mark is mounted, painted and already fetched. */
+    markCount: document.querySelectorAll('main .logo-mask').length,
+    markVisible: vis('main .logo-mask'),
+    navImgCount: document.querySelectorAll('nav img').length,
+    imgCount: document.querySelectorAll('img').length,
+    /* The landing page is the ONLY route without a nav mark. Asserted here so
+       that gating is a tested property rather than a side effect nobody is
+       watching; section 1b checks the other half on /writing. */
+    navMarkCount: document.querySelectorAll('nav .logo-mask').length,
+    maskInk: (() => { const m = document.querySelector('main .logo-mask');
       return m ? getComputedStyle(m).backgroundColor : null })(),
-    maskImage: (() => { const m = document.querySelector('nav .logo-mask');
+    maskImage: (() => { const m = document.querySelector('main .logo-mask');
       if (!m) return null; const cs = getComputedStyle(m);
       return cs.maskImage || cs.webkitMaskImage || '' })(),
     /* The mask URL this role is stencilled by, resolved absolute so it can be
        matched against the CDP request log (which is what actually answers
        "has it been fetched yet" -- see the note on the request log above).
        No backticks in here: this comment lives inside a template literal. */
-    maskUrl: (() => { const m = document.querySelector('nav .logo-mask'); if (!m) return null;
+    maskUrl: (() => { const m = document.querySelector('main .logo-mask'); if (!m) return null;
       const v = m.style.getPropertyValue('mask-image') || m.style.getPropertyValue('-webkit-mask-image');
       const u = (v.match(/url\\(["']?([^"')]+)["']?\\)/) || [])[1];
       return u ? new URL(u, location.href).href : null })(),
     /* The other half of the fix: the ink eases rather than snapping a frame
        ahead of the html/body background transition. */
-    markTransition: (() => { const m = document.querySelector('nav .logo-mask'); if (!m) return null;
+    markTransition: (() => { const m = document.querySelector('main .logo-mask'); if (!m) return null;
       const cs = getComputedStyle(m); const i = cs.transitionProperty.split(/,\\s*/).indexOf('background-color');
       return i < 0 ? null : cs.transitionDuration.split(/,\\s*/)[i] })(),
-    inlineSvgInHtml: !!document.querySelector('nav .logo-mask svg'),
+    inlineSvgInHtml: !!document.querySelector('main .logo-mask svg'),
     navOverflow: nav ? nav.scrollWidth - nav.clientWidth : null,
     pressed: (() => { const g = document.querySelector('[role="group"][aria-label="Colour theme"]');
       return g ? [...g.querySelectorAll('button')].map((b) => b.getAttribute('aria-pressed')) : null })(),
@@ -247,12 +267,18 @@ await evalJs(`localStorage.clear()`)
 await goto(ORIGIN + `/`)
 let s = await evalJs(SNAP)
 check('clean load renders dark-mono', s.theme === 'dark-mono' && !s.inlineBg, `theme=${s.theme} inlineBg="${s.inlineBg}"`)
-/* One masked mark, mounted and painted in the default theme too -- not a
-   hidden second copy. dark-mono's accent is pure white and so is the mask
-   asset's own ink, which is the single condition this design depends on. */
-check('one mark, mounted and white in dark-mono',
-  s.markCount === 1 && s.markVisible && s.navImgCount === 0 && s.maskInk === 'rgb(255, 255, 255)',
-  `count=${s.markCount} visible=${s.markVisible} navImgs=${s.navImgCount} ink=${s.maskInk}`)
+/* The hero mark, mounted and painted in the default theme too -- not a hidden
+   second copy. dark-mono's accent is pure white and so is the mask asset's own
+   ink, which is the single condition this design depends on. Three layers
+   because the lockup tracks the pointer; all three must be painted, since a
+   layer that missed .logo-mask would render the mark two-tone on a roll. */
+check('the hero mark is three mounted layers, white in dark-mono',
+  s.markCount === 3 && s.markVisible && s.imgCount === 0 && s.maskInk === 'rgb(255, 255, 255)',
+  `layers=${s.markCount} visible=${s.markVisible} imgs=${s.imgCount} ink=${s.maskInk}`)
+/* The landing page drops the header wordmark because its hero already carries
+   it. Tested rather than assumed -- see the note in components/Nav.tsx. */
+check('/ has no nav wordmark; the hero is the only mark',
+  s.navMarkCount === 0, `nav marks=${s.navMarkCount}`)
 /* THE BUG, asserted directly: the mask asset has been requested while dark-mono
    is live and nothing has been switched yet. It used to be requested only when
    the dice revealed the span out of display:none -- a display:none element never
@@ -293,11 +319,11 @@ check('dice applies a random palette', s.theme === 'random' && /^\d+ \d+ \d+$/.t
 check('polarity published', s.polarity === 'dark' || s.polarity === 'light', `polarity=${s.polarity}`)
 check('color-scheme matches polarity', s.colorScheme === s.polarity, `${s.colorScheme} vs ${s.polarity}`)
 check('page actually repaints', s.bodyBg === `rgb(${s.inlineBg.replace(/ /g, ', ')})`, `body=${s.bodyBg} token=${s.inlineBg}`)
-/* Still exactly one mark and still no <img>: the random theme reuses the very
-   element dark-mono renders, which is why the switch cannot blank it. */
-check('random reuses the same single mark',
-  s.markCount === 1 && s.markVisible && s.navImgCount === 0,
-  `count=${s.markCount} visible=${s.markVisible} navImgs=${s.navImgCount}`)
+/* Still the same three layers and still no <img>: the random theme reuses the
+   very elements dark-mono renders, which is why the switch cannot blank them. */
+check('random reuses the same mark elements',
+  s.markCount === 3 && s.markVisible && s.imgCount === 0,
+  `layers=${s.markCount} visible=${s.markVisible} imgs=${s.imgCount}`)
 check('masked mark is painted with --accent', s.maskInk === `rgb(${s.inlineAccent.replace(/ /g, ', ')})`,
   `background=${s.maskInk} accent=${s.inlineAccent}`)
 check('masked mark actually carries a mask image', !!s.maskImage && s.maskImage !== 'none',
@@ -348,7 +374,7 @@ const stale = await evalJs(SNAP)
 check('a stale stored "funky" self-heals to a painted dark-mono',
   stale.theme === 'dark-mono' && !stale.inlineBg &&
     stale.computedBg === '0 0 0' && stale.computedAccent === '255 255 255' &&
-    stale.markCount === 1 && stale.markVisible && stale.maskInk === 'rgb(255, 255, 255)' &&
+    stale.markCount === 3 && stale.markVisible && stale.maskInk === 'rgb(255, 255, 255)' &&
     JSON.stringify(stale.pressed) === JSON.stringify(['true', 'false']),
   `theme=${stale.theme} bg=${stale.computedBg} accent=${stale.computedAccent} pressed=${JSON.stringify(stale.pressed)}`)
 
@@ -765,6 +791,21 @@ check('the themed icon SURVIVES a client-side navigation',
 check('and it still matches the palette actually applied after the nav',
   navIcons.accentHex === beforeNav.accentHex,
   `accent before=${beforeNav.accentHex} after=${navIcons.accentHex}`)
+
+/* The OTHER half of the wordmark gating, taken here because §9b has already
+   navigated to /writing -- no extra navigation, nothing earlier disturbed.
+   Dropping the wordmark on / is a design choice; dropping it everywhere would
+   leave every inner page with no mark and no route home, since navLinks has no
+   Home item. Asserting both halves is what keeps "only on /" a property rather
+   than an accident. */
+const inner = JSON.parse(await evalJs(`JSON.stringify((()=>{
+  const m=document.querySelector("nav .logo-mask");
+  return { count: document.querySelectorAll("nav .logo-mask").length,
+           ink: m?getComputedStyle(m).backgroundColor:null,
+           homeHref: m?(m.closest("a")||{}).getAttribute?.("href"):null }})())`))
+check("an inner page KEEPS its nav wordmark, linking home",
+  inner.count === 1 && !!inner.ink && inner.homeHref === "/",
+  `count=${inner.count} ink=${inner.ink} href=${inner.homeHref}`)
 
 ws.close(); kill(); server.close()
 console.log('PASS:'); pass.forEach((p) => console.log('  ✓ ' + p))

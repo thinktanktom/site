@@ -1,7 +1,12 @@
 #!/usr/bin/env node
 /**
- * The tracking lockup on /about: three mask layers, and eyes that follow the
- * pointer without ever leaving their sockets.
+ * The tracking lockup on the landing page: three mask layers, and eyes that
+ * follow the pointer without ever leaving their sockets.
+ *
+ * It targeted /about until that page BECAME / on 2026-10-26. A dead route here
+ * would not be quiet -- goto() throws rather than letting the browser render a
+ * 404 body that looks like a broken component, which is the trap
+ * scripts/audit-screenshots.sh documents.
  *
  *   npm run build && node scripts/e2e-logo-eyes.mjs
  *
@@ -145,7 +150,7 @@ const movePointer = async (x, y) => {
 const results = {}
 
 /* ---------- 0. the environment is one the feature runs in ---------------- */
-await goto(ORIGIN + '/about')
+await goto(ORIGIN + '/')
 results.media = JSON.parse(await ev(`JSON.stringify({
   hover: matchMedia('(hover: hover)').matches,
   reduce: matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -199,7 +204,7 @@ await ev(`localStorage.clear()`)
 
 /* ---------- 7. reduced motion pins the eyes ----------------------------- */
 await send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]})
-await goto(ORIGIN + '/about')
+await goto(ORIGIN + '/')
 await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:1270,y:450,button:'none',pointerType:'mouse'})
 await new Promise(r => setTimeout(r, 800))
 results.reduced = JSON.parse(await ev(READ))
