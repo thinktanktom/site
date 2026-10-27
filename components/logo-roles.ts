@@ -51,3 +51,11 @@ export function logoBox(aspect: number, size: LogoSize): { width: number; height
     ? { width: size.width as number, height: Math.round((size.width as number) / aspect) }
     : { width: Math.round(size.height * aspect), height: size.height }
 }
+
+/** the role's canvas as `[width, height]`, so nothing has to type the numbers
+    out a second time beside a derived aspect ratio */
+export function canvasOf(viewBox: string): [number, number] {
+  const [, , w, h] = viewBox.trim().split(/[\s,]+/).map(Number)
+  if (!w || !h) throw new Error(`unusable viewBox: "${viewBox}"`)
+  return [w, h]
+}

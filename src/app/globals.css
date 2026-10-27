@@ -86,7 +86,7 @@ html {
 /* ---- Annotation anchors -------------------------------------------------
    The #ref-N <-> #note-N round trip behind the Annotated / Note components in
    components/MDXContent.tsx, and the hand-rolled copy of the same markup in
-   the /about footnotes. Pure HTML anchors: no JavaScript, no history API, no
+   the landing page footnotes (which lived on /about until 2026-10-26). Pure HTML anchors: no JavaScript, no history API, no
    scroll listener, so they work in the static export and with JS off.
 
    These are real classes rather than the equivalent Tailwind utility strings
@@ -198,7 +198,7 @@ a {
    one reverse-chronological page.
 
    The filter is four radios, visually hidden, that sit BEFORE both the pill row
-   and the list inside one fieldset. Everything below selects off them with the
+   and the list inside one plain div. Everything below selects off them with the
    general sibling combinator, so the page needs no JavaScript at all and works
    with JS off -- the same property the .annot round trip above has.
 
@@ -217,10 +217,6 @@ a {
    `data-kind` and `data-writeup` are written by components/WorkEntryRow.tsx.
    Renaming either attribute silently breaks the filter: the pills keep
    responding and nothing is ever hidden. */
-.work-filter {
-  border: 0;
-}
-
 /* The two columns. Below lg they stack -- spine, then the upstream block --
    and the layout is a plain block, so nothing here applies.
 

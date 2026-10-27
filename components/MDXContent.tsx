@@ -149,7 +149,11 @@ const components = {
   Annotated: ({ n, children }: { n: number; children?: React.ReactNode }) => (
     <a id={`ref-${n}`} href={`#note-${n}`} className="annot">
       <span className="annot-phrase">{children}</span>
-      {superscripts[n] ?? n}
+      {/* OR, not nullish-coalescing: superscripts[0] is the empty string,
+          which is not nullish, so ?? would ship an annotation with NO marker -- and the
+          marker is the thing CLAUDE.md names as what tells an annotated phrase
+          apart from a link. n >= 10 falls back to plain digits either way. */}
+      {superscripts[n] || n}
       <span className="sr-only"> (see note {n})</span>
     </a>
   ),

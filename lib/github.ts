@@ -59,36 +59,57 @@ export async function getOpenSourcePRs(): Promise<PullRequest[]> {
   }
   if (token) headers.Authorization = `Bearer ${token}`
 
-  let res: Response
+  let data: { items?: GitHubSearchIssueItem[] }
   try {
-    res = await fetch(
+    const res = await fetch(
       'https://api.github.com/search/issues?q=type:pr+author:thinktanktom+is:public+-user:thinktanktom&sort=created&order=desc&per_page=50',
       // A rejected connection was already handled below, but nothing bounded a
       // connection that is accepted and then never answered — that would hang
       // the build indefinitely rather than degrading to an empty list. The
       // typical call measures ~0.9s, so 8s is slack rather than a tight budget.
-      // AbortSignal.timeout throws a TimeoutError, which the same catch takes.
       { headers, signal: AbortSignal.timeout(8000) }
     )
+
+    if (!res.ok) {
+      console.warn(`[work] GitHub returned ${res.status}; publishing an empty list`)
+      return []
+    }
+
+    /* READING THE BODY IS INSIDE THE TRY, and that is the whole point of this
+       shape. It used to sit after the catch, which left three reachable ways to
+       FAIL the build rather than degrade:
+
+         - a 200 whose body is truncated, so JSON.parse throws;
+         - a 200 carrying an HTML interstitial or captcha, which is how
+           rate limiting on a shared runner IP commonly presents;
+         - and the very case the 8s timeout was added for — a connection that
+           is accepted, answers headers, then never finishes the body. fetch()
+           RESOLVES there, so the old catch had already been passed, and the
+           AbortSignal fired out of res.json() instead.
+
+       The comment that used to sit on the signal asserted the opposite ("which
+       the same catch takes"). True for the connection phase, false for the body
+       read. CLAUDE.md and MEMORY.md both state degrade-to-empty as a contract,
+       and the CI path (shared Actions runner IPs) is where it matters. */
+    data = (await res.json()) as { items?: GitHubSearchIssueItem[] }
   } catch {
-    // The build must not fail because GitHub is unreachable or too slow.
-    console.warn('[work] GitHub unreachable or timed out; publishing an empty list')
+    // The build must not fail because GitHub is unreachable, too slow, or
+    // answering with something that is not the JSON it promised.
+    console.warn('[work] GitHub unreachable, timed out or unreadable; publishing an empty list')
     return []
   }
 
-  if (!res.ok) {
-    console.warn(`[work] GitHub returned ${res.status}; publishing an empty list`)
-    return []
-  }
-
-  const data = (await res.json()) as { items?: GitHubSearchIssueItem[] }
-
-  return (data.items ?? []).map((item) => {
+  return (data.items ?? []).flatMap((item) => {
     const repoMatch = item.repository_url?.match(/repos\/(.+)$/)
     const repoFullName = repoMatch ? repoMatch[1] : ''
-    const repoHtmlUrl = repoFullName
-      ? `https://github.com/${repoFullName}`
-      : (item.repository_url ?? '')
+    /* An item we cannot name a repo for is DROPPED rather than emitted with an
+       empty name. lib/work.ts clusters by full_name, so an empty one collapses
+       every such PR into a single unnamed row with href="" (which re-navigates
+       to /work) and a wrong "Upstream · N repos" count. `repository_url` is
+       optional in the wire type, so this is reachable from a malformed page of
+       results rather than only from a total failure. */
+    if (!repoFullName) return []
+    const repoHtmlUrl = `https://github.com/${repoFullName}`
 
     return {
       number: item.number,

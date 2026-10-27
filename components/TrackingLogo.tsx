@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react'
 import {
   LOGO_FULL_VIEWBOX,
   aspectOf,
+  canvasOf,
   logoBox,
   type LogoSize,
 } from '@components/logo-roles'
@@ -41,7 +42,12 @@ import {
  */
 
 const ASPECT = aspectOf(LOGO_FULL_VIEWBOX)
-const CANVAS_HEIGHT = 1080
+/* Derived from the same constant as ASPECT rather than typed out. logo-roles.ts
+   exists so the layout maths and the artwork cannot disagree about the canvas;
+   a hard-coded 1080 beside a derived aspect reintroduced exactly that gap --
+   changing LOGO_FULL_VIEWBOX would have updated one and not the other, and the
+   asset-vs-constant test would still have passed. */
+const [CANVAS_WIDTH, CANVAS_HEIGHT] = canvasOf(LOGO_FULL_VIEWBOX)
 
 const FACE_SRC = '/ttt_stacked-tagline_face_light-primary.svg'
 
@@ -133,16 +139,31 @@ export default function TrackingLogoFull({
       const box = wrap.getBoundingClientRect()
       /* Re-read every frame rather than caching: the lockup is responsive and
          the page scrolls, and a stale rect aims the eyes at where the mark used
-         to be. getBoundingClientRect on one element per frame is cheap. */
-      const scale = box.height / CANVAS_HEIGHT
+         to be. getBoundingClientRect on one element per frame is cheap.
+
+         Re-reading is necessary but NOT sufficient — the loop stops when the
+         eyes settle, so scroll and resize must kick it awake again. See the
+         listeners below; without them this comment described an intent the
+         loop's own termination defeated. */
+
+      /* Match what `mask-size: contain` actually does, rather than assuming the
+         box keeps the canvas aspect. The wrapper has a fixed inline width and
+         height but is a flex item, so below ~448px of viewport its WIDTH shrinks
+         while its height does not: `contain` then fits by width and letterboxes
+         vertically. Deriving scale from height alone made the eye origins up to
+         ~21px wrong at 420px, so the eyes looked past the pointer rather than
+         at it. The offsets re-centre the artwork inside whichever axis is slack. */
+      const scale = Math.min(box.width / CANVAS_WIDTH, box.height / CANVAS_HEIGHT)
+      const offsetX = (box.width - CANVAS_WIDTH * scale) / 2
+      const offsetY = (box.height - CANVAS_HEIGHT * scale) / 2
       let moving = false
 
       EYES.forEach((eye, i) => {
         let tx = 0
         let ty = 0
         if (pointer) {
-          const dx = pointer.x - (box.left + eye.cx * scale)
-          const dy = pointer.y - (box.top + eye.cy * scale)
+          const dx = pointer.x - (box.left + offsetX + eye.cx * scale)
+          const dy = pointer.y - (box.top + offsetY + eye.cy * scale)
           const d = Math.hypot(dx, dy)
           if (d > 0.001) {
             const reach = d / (d + REACH)
@@ -174,6 +195,16 @@ export default function TrackingLogoFull({
     /* The eyes follow the cursor anywhere on the page, not only over the mark:
        being looked at from across the page is the entire effect. */
     window.addEventListener('pointermove', onMove, { passive: true })
+    /* SCROLL AND RESIZE MUST WAKE THE LOOP. It stops as soon as the eyes settle,
+       so without these the per-frame getBoundingClientRect above never runs
+       again and the eyes stay aimed at where the mark used to be. Measured
+       before the fix: scrolling 600px with the pointer still left a 1.4px error
+       and resizing 1280 -> 760 left 2.0px, against a 5.8px total travel -- 24%
+       and 35% of full deflection, held until the next pointer move. kick() is
+       idempotent and the loop still self-terminates, so an idle page is
+       unaffected. */
+    window.addEventListener('scroll', kick, { passive: true })
+    window.addEventListener('resize', kick)
     /* Pointer gone (another window, or off the document) -- return to centre
        rather than freezing mid-glance. */
     const onLeave = () => {
@@ -184,6 +215,8 @@ export default function TrackingLogoFull({
 
     return () => {
       window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('scroll', kick)
+      window.removeEventListener('resize', kick)
       document.removeEventListener('pointerleave', onLeave)
       if (frame !== null) cancelAnimationFrame(frame)
     }

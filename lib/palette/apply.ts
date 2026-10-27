@@ -17,7 +17,7 @@ export const VERSION_KEY = 'ttt-palette-v'
 /**
  * Bump this whenever a change to the engine would make a cached palette differ
  * from what the same seed now produces. The pre-paint script refuses a cache
- * written by a different version and falls through to funky, which is corrected
+ * written by a different version and falls through to dark-mono, which is corrected
  * from the seed after hydration — one frame of funky, once, after such a deploy.
  * Trusting a stale cache instead would be worse: it would pin readers to a
  * palette the engine no longer generates.

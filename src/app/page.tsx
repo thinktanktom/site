@@ -122,9 +122,17 @@ export default function HomePage() {
         </div>
 
         {/* Currently — rewritten 2026-10-26 from a list of what Tom is working
-            on into the place someone hires him from. The three lines are drawn
-            from lib/experience.ts rather than written fresh, so this box cannot
-            drift from what /work says.
+            on into the place someone hires him from.
+
+            The three lines were WRITTEN BY HAND from lib/experience.ts. Nothing
+            imports it here, so they can and will drift from /work. An earlier
+            version of this comment claimed the opposite ("so this box cannot
+            drift from what /work says"), which was a false safety claim — the
+            kind CLAUDE.md's own "verify its facts" rule exists to catch. Keeping
+            the copy hand-written is still the right trade, because the box is
+            prose rather than a rendering of the data; the obligation to update
+            it when the engagements change is real, and is written down here
+            rather than wished away.
 
             The address is a plain mailto, chosen knowingly: it will be
             harvested, and that is survivable because thomas@ came with the

@@ -29,9 +29,13 @@
  *     this replaced.
  *  3. THE EYES ACTUALLY MOVE, and in the right direction. A pointer dispatched
  *     to the far right must push both eyes right; to the far left, left.
- *  4. THE CLAMP HOLDS. Deflection must stay inside the elliptical envelope
- *     (28 x 13 canvas units) with a tolerance, from a pointer at the extreme
- *     corner of the viewport. An unclamped implementation sails past this.
+ *  4. THE RESPONSE CURVE, from both ends. Deflection stays inside the travel
+ *     the component is built for AND actually reaches most of it when the
+ *     pointer is far, AND collapses to almost nothing when the pointer is on
+ *     the mark. The upper bound ALONE was unfalsifiable -- there is no clamp
+ *     branch, so |tx| <= TRAVEL_X is an identity of reach = d/(d+REACH), and
+ *     the envelope is unreachable from anywhere on the page. The lower bounds
+ *     are what make this check able to fail.
  *  5. THE EYES RETURN TO CENTRE when the pointer leaves the document.
  *  6. THE INK STILL FOLLOWS THE PALETTE. Three layers now, so the dice has to
  *     repaint all three, not just the face -- an eye layer that misses
@@ -185,6 +189,15 @@ results.atRest = JSON.parse(await ev(READ))
 results.right = await movePointer(1270, 450)
 results.left = await movePointer(10, 450)
 results.corner = await movePointer(1279, 899)
+/* The response is d/(d+REACH): deflection GROWS with distance and approaches
+   zero as the pointer reaches the mark. These two points pin that curve --
+   see the assertions. "level" is level with the mark's centre, so the vector is
+   almost purely horizontal and x peaks there rather than at a corner. */
+const markBox = JSON.parse(await ev(`JSON.stringify((()=>{
+  const w=document.querySelector('[role=img][aria-label=thinktanktom].relative').getBoundingClientRect()
+  return { cx: Math.round(w.left + w.width/2), cy: Math.round(w.top + w.height/2) }})())`))
+results.farLevel = await movePointer(1279, markBox.cy)
+results.onMark = await movePointer(markBox.cx + 2, markBox.cy)
 
 /* ---------- 5. pointer leaves the document ------------------------------ */
 await ev(`document.dispatchEvent(new PointerEvent('pointerleave',{bubbles:false}))`)
@@ -252,9 +265,28 @@ check('a pointer to the left pushes both eyes left',
    fraction and sub-pixel rounding. */
 const U = 225 / 1080
 const MAXX = 28 * U + 0.5, MAXY = 13 * U + 0.5
-check('deflection stays inside the elliptical clamp from the far corner',
-  results.corner.every((p) => Math.abs(p.x) <= MAXX && Math.abs(p.y) <= MAXY),
-  `corner=${JSON.stringify(results.corner)} max=${MAXX.toFixed(2)}x${MAXY.toFixed(2)}px`)
+/* TWO-SIDED, AND THAT IS THE POINT.
+   The upper bound alone was UNFALSIFIABLE and this harness used to claim it as
+   "the clamp holds". There is no clamp branch in the component: with
+   reach = d/(d+REACH) always < 1 and |dx/d| <= 1, |tx| <= TRAVEL_X is an
+   algebraic identity. The envelope is unreachable from anywhere on the page
+   (measured peak 3.99px against a 6.33px limit), so the check could only fail
+   if TRAVEL_X itself more than doubled -- which is why the x10 negative control
+   appeared to validate it and actually proved very little.
+   What is worth protecting is the RESPONSE CURVE, so assert both ends of it:
+   far gives most of the travel, on-the-mark gives almost none. Deleting the
+   saturation factor -- a real behaviour change that makes the eyes slam to full
+   deflection at any distance -- fails the lower half immediately. */
+check('deflection never exceeds the travel the component is built for',
+  [...results.corner, ...results.farLevel, ...results.onMark]
+    .every((p) => Math.abs(p.x) <= MAXX && Math.abs(p.y) <= MAXY),
+  `corner=${JSON.stringify(results.corner)} farLevel=${JSON.stringify(results.farLevel)} max=${MAXX.toFixed(2)}x${MAXY.toFixed(2)}px`)
+check('a far pointer level with the mark reaches most of the travel',
+  results.farLevel.every((p) => Math.abs(p.x) >= MAXX * 0.5),
+  `farLevel=${JSON.stringify(results.farLevel)} floor=${(MAXX * 0.5).toFixed(2)}px`)
+check('a pointer ON the mark barely deflects -- the response saturates with distance',
+  results.onMark.every((p) => Math.abs(p.x) <= MAXX * 0.2 && Math.abs(p.y) <= MAXY * 0.5),
+  `onMark=${JSON.stringify(results.onMark)} ceiling=${(MAXX * 0.2).toFixed(2)}px`)
 check('the eyes converge -- each aims from its own centre',
   Math.abs(results.corner[0].x - results.corner[1].x) > 0.01 ||
   Math.abs(results.corner[0].y - results.corner[1].y) > 0.01,

@@ -1,5 +1,12 @@
-// Server-only: imports fs. Never import this from a 'use client' module — the
-// DocSidebar client component receives its nav as a prop from the layout instead.
+// Server-only: imports fs. Never import this from a 'use client' module.
+//
+// DocSidebar instead holds its OWN registry of the four navs (NAVS) and
+// receives only `project`, `label` and `navId` from the layout — see the
+// measurements in that file for why importing them beats passing them. The
+// consequence: TWO places list every doc tree, and `NAVS[project] ?? []` means
+// a tree added to DOC_PROJECTS but not to NAVS ships an empty sidebar with no
+// build error. (This comment claimed the nav arrived as a prop until
+// 2026-10-27. It never did.)
 //
 // One implementation for every project doc tree. This replaced four
 // near-identical lib/*-docs.ts files that differed only in an import path and a
@@ -15,8 +22,6 @@ import { sidebarNav as basedAgentsNav } from '@lib/based-agents-sidebar'
 import { sidebarNav as fractalWebhookNav } from '@lib/fractal-webhook-sidebar'
 import { sidebarNav as rufloOrchestrationNav } from '@lib/ruflo-orchestration-sidebar'
 
-export type { SidebarLeaf, SidebarGroup, SidebarEntry } from '@lib/doc-sidebar-types'
-export { isSidebarGroup }
 
 export interface DocProject {
   /** Breadcrumb and sidebar display name. */

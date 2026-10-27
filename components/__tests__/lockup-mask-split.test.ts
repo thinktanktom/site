@@ -29,8 +29,14 @@ const LAYERS = {
   eyeright: 'public/ttt_stacked-tagline_eyeright_light-primary.svg',
 }
 
+/* Array.from, not a spread: tsconfig.json declares no `target`, so tsc
+   defaults to ES5 without downlevelIteration and spreading a matchAll iterator
+   fails TS2802. `next build` does not catch it (it filters diagnostics from
+   __tests__) and vitest strips types without checking, so the only runner that
+   sees it is `npx tsc --noEmit` -- which this file broke when it landed.
+   components/TrackingLogo.tsx:123 documents the same constraint. */
 const pathsIn = (svg: string) =>
-  [...svg.matchAll(/<path\b[^>]*><\/path>|<path\b[^>]*\/>/g)].map((m) => m[0])
+  Array.from(svg.matchAll(/<path\b[^>]*><\/path>|<path\b[^>]*\/>/g), (m) => m[0])
 
 describe('the stacked lockup mask split', () => {
   const source = read(SRC)
@@ -76,12 +82,38 @@ describe('the stacked lockup mask split', () => {
     expect(pathsIn(read(LAYERS.face))).toHaveLength(38)
   })
 
-  it('the eye centres TrackingLogo clamps around match the artwork', () => {
-    /* TrackingLogo holds its own copy of these (it is a client module and must
-       not import a script that reads `fs`). The numbers came from getBBox() in
-       a browser, so this checks the cheap half -- that each centre lies inside
-       the bounding box of the path it is supposed to be the centre of -- which
-       is enough to catch a swapped pair or a stale number after a re-export. */
+  it('TrackingLogo and the split script agree on the eye centres', () => {
+    /* THIS IS THE CHECK TWO COMMENTS ALREADY CLAIMED EXISTED. TrackingLogo
+       holds its own copy of the centres (it is a client module and must not
+       import a script that reads `fs`), and both it and the script said "the
+       vitest guard asserts the two agree" -- while the only assertion here read
+       the SCRIPT's copy twice. A re-export that updated one and not the other
+       passed `npm test`, and e2e-logo-eyes missed it too: its direction and
+       asymmetry checks both survive a shifted origin.
+
+       Parsed out of the source rather than imported, because importing a .tsx
+       client module into a node-environment test pulls in React. The same
+       pattern lib/palette/__tests__/prepaint.test.ts uses to keep the inline
+       pre-paint script and apply.ts in step -- and like that one, the parse
+       THROWS on a miss rather than silently matching nothing. */
+    const src = read('components/TrackingLogo.tsx')
+    const block = /const EYES = \[([\s\S]*?)\]/.exec(src)
+    expect(block, 'could not find the EYES literal in TrackingLogo.tsx').not.toBeNull()
+    const parsed = Array.from(
+      block![1].matchAll(/cx:\s*([\d.]+),\s*cy:\s*([\d.]+)/g),
+      (m) => ({ cx: Number(m[1]), cy: Number(m[2]) }),
+    )
+    expect(parsed, 'expected two eye centres in TrackingLogo.tsx').toHaveLength(2)
+    /* EYE_CENTRES is keyed left/right; TrackingLogo's array is in the same
+       order the layers are rendered, left first. */
+    expect(parsed).toEqual([EYE_CENTRES.left, EYE_CENTRES.right])
+  })
+
+  it('the eye centres match the artwork', () => {
+    /* The numbers came from getBBox() in a browser, so this checks the cheap
+       half -- that each centre lies inside the bounding box of the path it is
+       supposed to be the centre of -- which is enough to catch a swapped pair
+       or a stale number after a re-export. */
     const extent = (d: string) => {
       const start = /^M(-?[\d.]+),(-?[\d.]+)/.exec(d.trim())
       expect(start, 'path does not start with an absolute moveto').not.toBeNull()
