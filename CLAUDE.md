@@ -124,7 +124,15 @@ because both hand-picked accents are near-maximum luminance on a near-black grou
 
 ### Motion Principles
 
-- Page load: staggered fade-up on hero elements (150ms delays between items)
+- ~~Page load: staggered fade-up on hero elements (150ms delays between items)~~ — **`@keyframes
+  fadeUp` and `.animate-fade-up` were DELETED on 2026-10-27**, along with the
+  `prefers-reduced-motion` override that existed only to pin their end state. They were orphaned
+  when the hero left `/` on 2026-10-26 and nothing referenced them: not a component, not
+  `content/`, not `scripts/`. **This is the one place the `.pixel-grid` precedent was NOT
+  followed, and that was Tom's call rather than an oversight** — `.pixel-grid` is two rules that a
+  future hero could use as-is, while the fade-up was three blocks whose staggering lived in inline
+  `animationDelay` styles on markup that no longer exists. Re-adding it means re-deciding the
+  choreography anyway, so there was nothing to preserve.
 - Nav links: underline draw animation on hover (CSS `::after` pseudo-element, width 0 → 100%)
 - Post cards: subtle `translateY(-4px)` + border-colour transition on hover
 - Keep all transitions `200ms–350ms ease`; nothing jarring
@@ -385,7 +393,7 @@ that are worth thinking about.
 - ~~"ThinkTankTom" should be in `--accent` yellow~~
 - ~~The two CTAs: primary button and ghost button~~ — the Upwork CTA survives as the button inside
   the Currently box; "Read my writing" is a nav item
-- ~~Tiny pixel-grid background texture behind the hero~~ — `.pixel-grid` is still in `globals.css`
+- ~~Tiny pixel-grid background texture behind the hero~~ — `.pixel-grid` is **still** in `globals.css` (unlike `.animate-fade-up`, which was deleted 2026-10-27 — see Motion Principles for why the two were treated differently)
   and is now **unreferenced by any component**; left there deliberately rather than deleted, since
   it is two rules and the next hero may want it. **Do not take `--grid-dot` with it** — that token
   is still solved for and gated by the randomizer (`lib/palette/validate.ts`, a contrast *window*
