@@ -428,6 +428,7 @@ thinktanktom/
    │ SMART CONTRACTS    [Hardhat][Foundry][OpenZeppelin]…  │  47 neutral chips
    │ …                  13rem label gutter, measured       │  one h2, no divider
    └───────────────────────────────────────────────────────┘
+       the whole page is max-w-article (780px), not chrome
 ```
 That is the whole page. No headline, no hero CTAs, no CTA button at all, no "Latest writing", no
 "Find me" row, no pixel-grid, no `min-h-screen` hero — **and since 2026-10-29 no footnotes and no
@@ -436,8 +437,22 @@ and ends on the panel. The reasons for each are in Site Structure above, includi
 content is hand-kept in `page.tsx` rather than read out of `lib/`. The header drops its wordmark on this route only; see
 Navigation.
 
+**The page container is `max-w-article` (780px) — changed from `max-w-chrome` on 2026-10-29, and
+`/` was the last page that needed it.** It had been the only prose on the site not set to the
+site's own reading measure: `src/app/writing/page.tsx` and `writing/[slug]/page.tsx` both wrap
+their bodies in `max-w-article`, and the Layout rule above reserves 1100px for page *chrome*, not
+body copy. Measured on identical text, 1100px against 780px: **9 lines becomes 13**, the average
+line falls from **109 characters to 76** (the worst paragraph 127 → 85), and the panel drops
+**112px** further down the page. 76 sits inside the ~55–75 a reader scans comfortably; 109 does not.
+
+**The panel narrows with the prose, deliberately.** Left at chrome width it would be wider than the
+text above it, and unlike `/work` — a 780px spine beside a 272px rail, where the extra 320px is
+*occupied* — there is nothing here to fill the remainder. At 780px the label gutter still clears
+(13rem/208px, no label wrapped) and the chips take the remaining 506px, which puts the longest
+category on 2 rows.
+
 Until 2026-10-26 this was `/about`; between then and 2026-10-29 it carried ten paragraphs with
-three annotations, three footnotes and the Currently box.
+three annotations, three footnotes and the Currently box, all at `max-w-chrome`.
 
 **The original brief's hero is kept below, struck through, because its details keep getting
 re-proposed** — the yellow is gone with `funky`, and the greeting was removed as redundant beside

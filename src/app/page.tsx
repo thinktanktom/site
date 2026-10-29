@@ -118,7 +118,23 @@ const chip = 'font-mono text-xs px-2 py-0.5 border border-border text-muted roun
 export default function HomePage() {
   return (
     <main className="pt-32 pb-24 px-6">
-      <div className="max-w-chrome mx-auto">
+      {/* max-w-article (780px), NOT max-w-chrome. This page ran at 1100px until
+          2026-10-29, which made it the only prose on the site that did not
+          match its own reading measure: src/app/writing/page.tsx and
+          writing/[slug]/page.tsx both wrap their bodies in max-w-article, and
+          CLAUDE.md reserves 1100px for page chrome rather than body copy.
+
+          Measured on the same text, 1100px against 780px: 9 lines becomes 13,
+          and the average line falls from 109 characters to 76 (the worst
+          paragraph from 127 to 85) -- 76 sits inside the ~55-75 a reader scans
+          comfortably, 109 does not. It also drops the panel 112px further down
+          the page, which is the other half of why this changed.
+
+          The panel narrows with it deliberately --
+          leaving it at chrome width would make it wider than the prose above
+          it, and unlike /work (a 780px spine beside a 272px rail) there is
+          nothing here to occupy the remainder. */}
+      <div className="max-w-article mx-auto">
         {/* The page's only heading. See the note above -- it is not optional. */}
         <h1 className="sr-only">
           Thomas Cyriac — software engineer and independent researcher
@@ -133,8 +149,9 @@ export default function HomePage() {
         {/* Bio */}
         <div className="font-sans text-base text-text leading-[1.75] space-y-5">
           <p>
-            I&rsquo;m Thomas, a software engineer and independent researcher based in Coimbatore,
-            India, with six years of experience across Web3, AI and networking. From 2021 to 2026
+            I&rsquo;m Thomas, a software engineer and independent researcher based out of
+            Coimbatore, India, with six years of experience across web3, machine learning and
+            networking. From 2021 to 2026
             I was the lead smart contract engineer on{' '}
             <Link href="/projects/BankX/introduction" className={link}>BankX</Link>, a stablecoin
             protocol deployed across eight blockchains and audited by{' '}
@@ -148,9 +165,9 @@ export default function HomePage() {
             routers.
           </p>
           <p>
-            Most of my work happens directly with the people who need it and I deeply enjoy being
-            close to where the problem gets defined. If you have something to build, or an idea to
-            pressure-test, email me at{' '}
+            Most of my work happens directly with the people who need it and I deeply enjoy
+            simplifying complicated ideas into well-defined systems. If you have something
+            you&rsquo;d like to build, or an idea you want to pressure-test, email me at{' '}
             <a href="mailto:thomas@thinktanktom.com" className={link}>thomas@thinktanktom.com</a>
             {' '}or find me on{' '}
             <a href="https://www.upwork.com/freelancers/~018a1dbf1094588c7e" target="_blank" rel="noopener noreferrer" className={link}>
@@ -160,7 +177,7 @@ export default function HomePage() {
           </p>
           <p>
             Outside work, I play amateur football, surf and teach yoga as a certified instructor.
-            I read widely across fiction, history and research, and write{' '}
+            I read widely across fiction, history and research oriented literature, and write{' '}
             <Link href="/writing" className={link}>essays</Link> that untangle technology and
             mathematics for people who find them overwhelming.
           </p>
