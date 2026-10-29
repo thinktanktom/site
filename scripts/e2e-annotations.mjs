@@ -27,9 +27,11 @@
  * deletes the phrase from the paragraph for screen-reader users. The cue must
  * be an additive sr-only span. Both halves of that are asserted.
  *
- * Covers /writing/god-in-a-bottle (8 annotations, the MDX component path) and
- * / (3, the hand-rolled copy CLAUDE.md requires to stay in sync -- it lived
- * on /about until that page became the landing page on 2026-10-26).
+ * Covers /writing/god-in-a-bottle (8 annotations, the MDX component path).
+ * It also covered / (3 annotations, a hand-rolled copy of the same markup that
+ * CLAUDE.md required to stay in sync) until 2026-10-29, when that page's copy
+ * was rewritten into prose with plain hyperlinks and no annotations. That
+ * second implementation no longer exists, so there is nothing there to check.
  *
  * One trap when negative-controlling this harness: do NOT mutate out/*.html to
  * fake a regression. React hydrates from the RSC flight payload inlined beside
@@ -108,9 +110,13 @@ const settle = async () => {
   return last
 }
 
+// Only the post now. The landing page carried a hand-rolled copy of this same
+// markup -- 3 annotations -- until its copy was rewritten on 2026-10-29 into
+// prose with plain hyperlinks and no annotations at all. There is no second
+// implementation of the round trip left to keep in sync. Re-add a row here if a
+// hand-rolled annotation ever reappears outside MDX.
 const PAGES = [
   { url: '/writing/god-in-a-bottle', count: 8, label: 'post (MDX components)' },
-  { url: '/',                        count: 3, label: 'landing page (hand-rolled)' },
 ]
 
 const out = []
@@ -363,5 +369,5 @@ console.log(JSON.stringify(out.map(r => r.fatal ? r : ({
 // plus 4 whole-page checks (count, ref/note parity, duplicate ids, accent)
 const checks = out.reduce((a, r) => a + (r.fatal ? 0 : r.shape.refCount * 27 + 4), 0)
 if (crs.length) console.log('worst note-on-highlight contrast: ' + Math.min(...crs).toFixed(2) + ':1 (WCAG AA floor 4.5)')
-console.log(f.length ? '\nFAIL:\n  ' + f.join('\n  ') : '\nPASS ' + checks + ' checks: annotation round trip clears the nav on both pages')
+console.log(f.length ? '\nFAIL:\n  ' + f.join('\n  ') : '\nPASS ' + checks + ' checks: annotation round trip clears the nav')
 process.exit(f.length ? 1 : 0)

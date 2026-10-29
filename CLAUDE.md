@@ -164,26 +164,84 @@ reason: the landing page *is* the former about page, so keeping the old URL aliv
 either a duplicate of the whole bio or a signpost, and a static export on GitHub Pages has no
 redirect mechanism. **Do not re-create the route or re-add it to `sitemap.ts` without asking.**
 
-Four things about the merged `/` are decisions, not leftovers:
+**The copy was REPLACED on 2026-10-29**: the ten-paragraph bio became three, and the two blocks
+under it — the footnotes and the Currently box — were **deleted**. Both deletions were Tom's call.
+The page is now the lockup and three paragraphs, nothing else.
+
+Four things about it are decisions, not leftovers:
 
 - **No headline.** "Hi, I'm Thomas Cyriac." was removed as redundant beside a lockup that already
   says the name. That leaves no *visible* heading, which is why the `sr-only` `h1` is load-bearing
   rather than decorative — the mark is a `role="img"` span, not a heading, so without it the page
   has none at all.
-- **No hero CTAs.** "Read my writing" is a nav item and "Hire me on Upwork" is the button inside
-  the Currently box.
+- **No hero CTAs, and since 2026-10-29 no CTA button anywhere on the page.** "Read my writing" is
+  a nav item; hiring is now the plain Upwork link in the second paragraph, where the Currently
+  box's button used to be the only one.
 - **No "Latest writing" section.** It left the page entirely rather than moving down it; the header
   already carries a Writing link. `src/app/page.tsx` no longer imports `getAllPosts` or `PostCard`.
-- **The Currently box was rewritten**, from a list of what Tom is working on into the place someone
-  hires him from: a `--success` status dot, the Upwork button, three lines of work **written by hand from** `lib/experience.ts`, and a plain `mailto:`.
-  **They are prose, not a rendering of the data — `page.tsx` imports nothing — so they CAN drift
-  from `/work` and must be updated deliberately when the engagements change.** This line and the
-  comment in `page.tsx` both claimed the opposite until 2026-10-27; it was a false safety claim.
-  The address will be harvested and that is accepted knowingly — `thomas@` came with the domain and
-  can be retired in one line, which is the measure that actually survives a leak; obfuscation only
-  buys a delay. **It must never be added to the `Person` JSON-LD in `layout.tsx`**, which would
-  publish it machine-readably on every page instead of this one. Publishing an address is not an
-  SEO signal, so there is no upside to weigh against the spam.
+- **No annotations and no footnotes, as of 2026-10-29.** The new copy carries six plain hyperlinks
+  instead — four internal (`next/link`, root-relative: the BankX and RufloOrchestration doc trees,
+  `/projects/CtrlbitSDWAN`, `/writing`) and two external (CoinFabrik, Upwork), all on the one prose
+  link style lifted verbatim from `MDXContent`'s `a` override. **This page used to be the
+  hand-rolled second implementation of the `#ref-N` ↔ `#note-N` round trip**, which CLAUDE.md
+  required to stay in sync with the components. That duplication is gone, and with it the
+  landing-page row in `scripts/e2e-annotations.mjs` — which now covers the post alone, 220 checks
+  rather than 305. **The annotation feature itself is untouched**: the components and the `.annot*`
+  classes are unchanged and still used on posts.
+
+**The Currently box was replaced the same day by the Stack panel**, which reuses its shell
+verbatim — same `border border-border rounded-sm bg-surface/30`, same accent mono section label —
+and nothing else. It holds **7 categories / 47 chips** and that is all it holds.
+
+A **Domains** section — 8 titled one-sentence summaries, two-up at `md` — shipped beside the stack
+for part of 2026-10-29 and was **removed the same day at Tom's call** as unnecessary. **Do not
+reinstate it from history; ask.** The panel therefore carries one `h2` rather than two and has no
+internal divider. Five things about what remains:
+
+- **The content lives in `src/app/page.tsx`, as `STACK` and `DOMAINS` consts, deliberately not in
+  `lib/`.** Everything under `lib/` that feeds a page is *shared* — `lib/experience.ts` and
+  `lib/github.ts` both feed `/work`, and `lib/work.ts` exists to relate them. This is page copy with
+  one consumer, and moving it would invite the next reader to assume `/work` renders it too and to
+  "fix" a drift that is not a drift. **It is hand-maintained, it is NOT derived from
+  `lib/experience.ts`, and it will drift unless edited.** That is the trade. (The deleted Currently
+  box made the same choice for the same reason; the only thing that went wrong there was a *comment*
+  claiming the box could not drift.)
+- **The chips are NEUTRAL** — `font-mono text-xs px-2 py-0.5 border border-border text-muted
+  rounded-sm`, lifted verbatim from the `Stack` component in `components/WorkEntryRow.tsx`. That is
+  the "keep `--accent` disciplined" rule: `/work` renders its chips neutral because 22 rows of
+  accent chips would breach it, and **47 chips here is the same problem**. Accent on this panel is
+  spent only on the two `h2` section labels. **Do not reach for `border-accent/30`** — that alpha is
+  documented for chips carrying an icon *and* a label, and these carry neither.
+- **It is a `<dl>`**, because it is label-to-value pairs rather than a list: a category to its
+  tools. Each `dt`/`dd` pair is wrapped in a `<div>`, which HTML allows inside `<dl>` and which is
+  what lets the pair be a grid row. The `h2` gives the page its only heading below the `sr-only`
+  `h1`.
+- **The 13rem label gutter is measured, not picked.** `sm:grid-cols-[13rem_1fr]`. The longest label,
+  "Backend & Infrastructure", needs **191px** in Space Mono 12px uppercase at `tracking-wider`; at
+  the first attempt's 11rem/176px it wrapped to two lines at **every** width — stable, so it read as
+  a mistake rather than as reflow. 208px puts all seven on one line with 17px spare. **Measure a
+  renamed category with a `Range` over the text node**: the `dt` element box is stretched to the grid
+  row height and tells you nothing about wrapping. The label drops above its chips below `sm`, where
+  any gutter wide enough for these is most of a 375px viewport.
+- **`bg-surface/30` adds no new alpha hazard, and the reason is interpolation rather than luck.**
+  A 30% composite of `--surface` over `--bg` lands *between* the two in luminance, and
+  `lib/palette/validate.ts` gates `muted`/`bg` and `muted`/`surface` **both** at 4.5 — so muted text
+  on this ground is AA by construction in random too. Measured in dark-mono: chips and category
+  labels both **5.92:1**, the `h2` 20.44:1. The chip border sits at 1.42:1, which is the
+  `border-border/40` case — a neutral decorative hairline, deliberately not held to 3:1.
+
+Two consequences of the old box going, both still live:
+
+- **`--success` is now unreferenced**, the availability dot having been its only consumer — exactly
+  the position `.pixel-grid` is in, and the Stack panel did not bring it back. **Keep the
+  token.** `lib/palette/validate.ts` still gates `success`/`bg` at 4.5 and `lib/palette/generate.ts`
+  still pins its hue to 152°, so deleting it fails the calibration tests.
+- **The email address survives**, as the `mailto:` in the bio's second paragraph. It will be
+  harvested and that is accepted knowingly — `thomas@` came with the domain and can be retired in
+  one line, which is the measure that actually survives a leak; obfuscation only buys a delay.
+  **It must never be added to the `Person` JSON-LD in `layout.tsx`**, which would publish it
+  machine-readably on every page instead of this one. Publishing an address is not an SEO signal,
+  so there is no upside to weigh against the spam.
 
 The hero is the stacked lockup at 225px, rendered through `components/TrackingLogo.tsx` so its
 eyes follow the pointer — see note 7.
@@ -358,22 +416,28 @@ thinktanktom/
 
 ### `/` — Home
 
-**What is actually there, since 2026-10-26:**
+**What is actually there, since 2026-10-29:**
 ```
 [stacked lockup — 225px tall, eyes track the cursor]
 
-   ten paragraphs of bio, verbatim, with three annotations
-   three footnotes, #ref-N ↔ #note-N round trip
+   three paragraphs of bio, verbatim, with six plain hyperlinks
+   (BankX · CoinFabrik↗ · RufloOrchestration · CtrlbitSDWAN · mailto · Upwork↗)
 
-   ┌ CURRENTLY ────────────────────────────────────┐
-   │ ● availability · three lines of work          │
-   │ [Hire me on Upwork ↗]                         │
-   │ ── nerd-snipe line, plain mailto ─────────────│
-   └───────────────────────────────────────────────┘
+   ┌ STACK ────────────────────────────────────────────────┐
+   │ LANGUAGES          [Solidity][Rust][TypeScript]…      │  7 categories
+   │ SMART CONTRACTS    [Hardhat][Foundry][OpenZeppelin]…  │  47 neutral chips
+   │ …                  13rem label gutter, measured       │  one h2, no divider
+   └───────────────────────────────────────────────────────┘
 ```
-No headline, no hero CTAs, no "Latest writing", no "Find me" row, no pixel-grid, and no
-`min-h-screen` hero — the page opens on the lockup and goes straight into prose. The reasons for
-each are in Site Structure above. The header drops its wordmark on this route only; see Navigation.
+That is the whole page. No headline, no hero CTAs, no CTA button at all, no "Latest writing", no
+"Find me" row, no pixel-grid, no `min-h-screen` hero — **and since 2026-10-29 no footnotes and no
+availability dot, and no Domains section.** The page opens on the lockup, goes straight into prose,
+and ends on the panel. The reasons for each are in Site Structure above, including why the panel's
+content is hand-kept in `page.tsx` rather than read out of `lib/`. The header drops its wordmark on this route only; see
+Navigation.
+
+Until 2026-10-26 this was `/about`; between then and 2026-10-29 it carried ten paragraphs with
+three annotations, three footnotes and the Currently box.
 
 **The original brief's hero is kept below, struck through, because its details keep getting
 re-proposed** — the yellow is gone with `funky`, and the greeting was removed as redundant beside
@@ -391,8 +455,9 @@ that are worth thinking about.
 [Read my writing →]          [Hire me on Upwork ↗]
 ```
 - ~~"ThinkTankTom" should be in `--accent` yellow~~
-- ~~The two CTAs: primary button and ghost button~~ — the Upwork CTA survives as the button inside
-  the Currently box; "Read my writing" is a nav item
+- ~~The two CTAs: primary button and ghost button~~ — neither survives as a button. "Read my
+  writing" is a nav item, and the Upwork CTA was the button inside the Currently box until that
+  box was deleted on 2026-10-29; it is now a plain hyperlink in the bio's second paragraph
 - ~~Tiny pixel-grid background texture behind the hero~~ — `.pixel-grid` is **still** in `globals.css` (unlike `.animate-fade-up`, which was deleted 2026-10-27 — see Motion Principles for why the two were treated differently)
   and is now **unreferenced by any component**; left there deliberately rather than deleted, since
   it is two rules and the next hero may want it. **Do not take `--grid-dot` with it** — that token
@@ -617,7 +682,7 @@ against a built export:
 | `node scripts/e2e-work.mjs` | 38 checks on `/work`, added with the page on 2026-10-26: the spine holds all 15 engagements and the rail all 8 clusters, exactly 7 carry `data-writeup`, the rail sits **beside** the spine at `lg` while the spine still measures **780px** (the rail's whole arithmetic), each filter shows exactly its own set *and* collapses the grid to one track, the pressed pill **inverts** rather than tints, and below `lg` the rail stacks under the spine with no horizontal overflow at 375px and 390px. **§5 is the load-bearing one: the filter must keep working with JavaScript DISABLED** (`Emulation.setScriptExecutionDisabled` before the navigation, then a real `Input.dispatchMouseEvent` on the label) — a rewrite of the filter into React state would pass every other check here and fail only that one. Two traps it already paid for: `.work-rail li` also matches the PR items inside each cluster's `<details>` (18 rows for 8 clusters), so the probe uses `.work-rail > ol > li`; and the pills carry `transition-colors duration-200`, so a measurement taken straight after the click reads a colour **mid-transition** — it polls until the value holds across three samples, the same discipline `e2e-annotations.mjs` uses for smooth scroll |
 | `node scripts/e2e-palette-mobile.mjs` | the overlay control fits at 375px and 390px, no horizontal overflow, picking a theme does not close the overlay |
 | `node scripts/e2e-logo-eyes.mjs` | 15 checks on the tracking lockup on `/`, added with it on 2026-10-27 (it targeted `/about` for the one commit before that page became `/`): three mask layers and two of them eyes, no `<img>` and no inline `<svg>`, all three layers **hidden from the accessibility tree** behind the wrapper's one `role="img"`, **all three masks already fetched** before anything moves (the 2026-10-17 switch-stutter lesson applied to a new feature, read from the CDP request log for the same reason), both eyes at `translate(0,0)` at first paint so the static export is the unchanged mark, direction, the response curve from BOTH ends — bounded, reaching most of the travel when the pointer is far and level, and collapsing to almost nothing when it is on the mark. **The upper bound alone was unfalsifiable and was claimed here as "the clamp holds" until 2026-10-27**: there is no clamp branch in the component, so `|tx| <= TRAVEL_X` is an identity of `reach = d/(d+REACH)`, and the envelope is unreachable from anywhere on the page (measured peak 3.99px against a 6.33px limit). Only a >2x inflation of `TRAVEL_X` could breach it, which is why the x10 negative control appeared to validate it and proved very little. The lower bounds are what make the check able to fail, the eyes **converging** (proving each aims from its own centre rather than sharing a vector), returning to centre on `pointerleave`, **all three layers repainting** on a random palette rather than just the face, and `prefers-reduced-motion` pinning the eyes. **The trap it paid for on its first run: headless chromium reports `(hover: none)` and `(pointer: coarse)`**, so `TrackingLogo` correctly refused to attach and every motion check passed vacuously — looking exactly like a product bug. It launches chromium with `--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4` (`Emulation.setEmulatedMedia` cannot set these) and §0 asserts the override took, the same discipline as the mobile harness asserting its emulated width. Negative-controlled by rebuilding from source with the reduced-motion guard deleted and `TRAVEL_X` ×10: exactly those two checks fail and no others |
-| `node scripts/e2e-annotations.mjs` | 305 checks: every annotation round-trips to its note and back, both ends land **clear of the fixed nav** rather than under it, the phrase (not the superscript) is the hit target, the phrase survives into the accessible name with an additive `sr-only` cue and **no** `aria-label`, ids are unique and paired, no nested `<a>`. The `:target` highlight lands on the right note and no other, tints to `--surface`, measures ≥4.5:1, clears itself on the back-link, and does **not** reflow the note — a `border-left` in place of the inset shadow shifts the text 3px and fails here. Covers the MDX components on a post *and* the hand-rolled copy on `/` (it lived on `/about` until that page became the landing page on 2026-10-26 — a dead route here would be worse than noise, since the browser renders a 404 body that looks like a working page) |
+| `node scripts/e2e-annotations.mjs` | 220 checks (305 until 2026-10-29, when the landing page's copy of this markup was deleted and its row dropped from `PAGES`): every annotation round-trips to its note and back, both ends land **clear of the fixed nav** rather than under it, the phrase (not the superscript) is the hit target, the phrase survives into the accessible name with an additive `sr-only` cue and **no** `aria-label`, ids are unique and paired, no nested `<a>`. The `:target` highlight lands on the right note and no other, tints to `--surface`, measures ≥4.5:1, clears itself on the back-link, and does **not** reflow the note — a `border-left` in place of the inset shadow shifts the text 3px and fails here. Covers the MDX components on a post — **and nothing else, since 2026-10-29.** It also covered the hand-rolled copy on `/` (which lived on `/about` until that page became the landing page on 2026-10-26) until that page's prose was replaced with copy carrying only plain hyperlinks; there is no second implementation of the round trip left to keep in sync. The URL-is-alive discipline still applies to whatever rows it does carry — a dead route here would be worse than noise, since the browser renders a 404 body that looks like a working page |
 
 Build first — they serve `out/`, not a dev server. Chromium comes from nixpkgs
 (`nix run nixpkgs#chromium`); **Playwright's bundled Chromium cannot run on NixOS**. No script
@@ -921,11 +986,14 @@ The styling is settled — **do not redesign it**:
   - It echoes the `3px solid --accent` left border already used by `h2`, `h3` and `blockquote`, so
     it is not a new visual idea — and the landing page inherits it for free from the shared class.
   Deep-linking comes free: `/writing/some-post#note-3` arrives with note 3 already highlighted.
-- **Notes block** at the foot of the post, matching the landing page’s footnotes exactly: wrapper
-  `pt-6 border-t border-border`, inner `font-mono text-xs leading-relaxed space-y-1`, each note an
-  accent `N.` (now the back-link) followed by muted text. (**`src/app/page.tsx` hand-rolls the same
-  markup inline**, anchor round trip included — if the annotation style changes, change both. It was
-  kept in sync on 2026-10-16, and moved from `/about` to `/` with the page on 2026-10-26.)
+- **Notes block** at the foot of the post: wrapper `pt-6 border-t border-border`, inner
+  `font-mono text-xs leading-relaxed space-y-1`, each note an accent `N.` (now the back-link)
+  followed by muted text. **There is only one implementation of this now, and that is a
+  simplification worth knowing about.** `src/app/page.tsx` hand-rolled the same markup inline,
+  anchor round trip included, and this bullet used to require changing both — it was kept in sync
+  on 2026-10-16 and moved from `/about` to `/` with the page on 2026-10-26. The landing page's
+  copy was **deleted on 2026-10-29** when its prose was replaced with copy that has no
+  annotations, so the components here are the whole feature and nothing has to be mirrored.
 - Keep the note text as written in the draft; don't pad it out. A bare author credit or a one-line
   aside is the intended register.
 
@@ -1292,9 +1360,10 @@ Every developer eventually builds their own website...
 
 **Already wired — this is the record, not a to-do.** The brief's `YOUR_USERNAME`
 placeholders were replaced long before first deploy. Single source of truth is
-`components/Footer.tsx`; the Currently box on `/` uses the same Upwork URL. The site also
-publishes one email address, `thomas@thinktanktom.com`, as a plain `mailto:` in that box and
-**nowhere else** — deliberately not in the `Person` JSON-LD. See Site Structure for why.
+`components/Footer.tsx`; the bio on `/` uses the same Upwork URL (it was the Currently box's
+button until that box was deleted on 2026-10-29). The site also publishes one email address,
+`thomas@thinktanktom.com`, as a plain `mailto:` in that same paragraph and **nowhere else** —
+deliberately not in the `Person` JSON-LD. See Site Structure for why.
 
 | Label    | URL |
 |----------|-----|
