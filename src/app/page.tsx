@@ -54,8 +54,15 @@ import TrackingLogoFull from '@components/TrackingLogo'
  * one.
  */
 
+/* Keep this in step with the bio's OPENING SENTENCE -- it is a hand-written
+   paraphrase of it, not a slice of it, so nothing fails when they drift. It
+   already did once: the description was aligned to the bio on 2026-10-29 and
+   then the bio was revised the same day, leaving the live <meta> saying "in
+   Coimbatore" and "Web3, AI and networking" while the page said "based out of
+   Coimbatore" and "web3, machine learning and networking". Caught only by
+   decoding the deployed page. 150 characters, inside the ~160 that gets shown. */
 const description =
-  'Thomas Cyriac — software engineer and independent researcher in Coimbatore, India. Six years across Web3, AI and networking.'
+  'Thomas Cyriac — software engineer and independent researcher based out of Coimbatore, India. Six years across web3, machine learning and networking.'
 
 export const metadata: Metadata = {
   description,
