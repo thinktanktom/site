@@ -595,3 +595,249 @@ html[data-theme='random'] .text-accent\/80 {
   color: rgb(var(--accent));
 }
 
+
+/* ---------------------------------------------------------------------------
+   /activity — the tracked-hours heatmap
+   ---------------------------------------------------------------------------
+   Real classes rather than Tailwind utilities, and this is the strongest case
+   on the site for that rule: the grid is 53x7 = 371 cells, and Next inlines the
+   RSC flight payload beside the markup, so a utility string on a repeated
+   element is emitted several times over per cell. The same measured argument
+   that made .annot a class (536 raw bytes per annotation against 323) applies
+   here multiplied by 371.
+
+   The cell size lives in custom properties so the whole grid scales from one
+   place. 53 columns at 11px plus 52 gaps at 3px is 739px, which fits inside the
+   780px article measure with the weekday gutter -- but only just, so the grid
+   is wrapped in its own overflow-x container for narrow viewports rather than
+   being allowed to widen the page. The page body must never scroll
+   horizontally; the graph may scroll inside itself.
+   --------------------------------------------------------------------------- */
+.hm {
+  --hm-cell: 11px;
+  --hm-gap: 3px;
+}
+
+/* The scroller. Below ~770px of available width the grid overflows HERE and
+   nowhere else. `padding-bottom` reserves room for the scrollbar in engines
+   that overlay it on the content. */
+.hm-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 0.5rem;
+  /*
+   * OPENS SCROLLED TO THE RIGHT EDGE — the recent end — and this is a fix, not
+   * a flourish. The grid is 739px and cannot fit a phone, so below ~770px the
+   * reader sees whichever end the browser starts at. Left-aligned that is
+   * twelve months of empty cells, because the data only begins in November
+   * 2026: the graph reads as broken until you discover it scrolls.
+   *
+   * `direction: rtl` flips the initial scroll position with no JavaScript,
+   * which matters because this page has none at all. The inner wrapper is put
+   * back to ltr immediately so nothing about the layout is actually mirrored —
+   * the columns, the weekday gutter and the absolutely-positioned month labels
+   * all resolve exactly as before.
+   *
+   * NOTE both overflow declarations are load-bearing together. Setting
+   * `overflow-x: visible` here does NOT disable the scroller: per CSS overflow,
+   * one axis not being `visible` computes the other to `auto`, so
+   * `overflow-y: hidden` alone keeps it scrolling. A negative control that
+   * changed only overflow-x passed all 46 checks in scripts/e2e-activity.mjs.
+   * Removing both is what breaks it, and then the page body overruns by 437px
+   * at 375px wide.
+   */
+  direction: rtl;
+}
+
+/*
+ * The inner wrapper needs BOTH of these.
+ *
+ * `direction: ltr` puts the content back the right way round, so nothing is
+ * actually mirrored — only the scroller's resting position moved.
+ *
+ * `width: max-content` is the non-obvious half and the rtl trick does not work
+ * without it. Left at `auto` the wrapper shrinks to the scroller's width and
+ * the 739px grid overflows the WRAPPER instead; an ltr child's right-side
+ * overflow inside an rtl scroller is on the side that scroller does not extend
+ * into, so it is clipped and scrollWidth stays equal to clientWidth. Measured:
+ * the graph silently stopped scrolling at 375px, `maxScroll` 0. Sizing the
+ * wrapper to its content makes the scroller itself the box that overflows,
+ * which works in either direction.
+ */
+.hm-scroll > * {
+  direction: ltr;
+  width: max-content;
+  /*
+   * TWO SEPARATE RTL CONSEQUENCES ARE FIXED HERE, both measured.
+   *
+   * `margin-right: auto` — at any width where the graph FITS there is slack in
+   * the scroller (14.6px at the 780px measure, since the content is 765.4px).
+   * An rtl box puts that slack on the LEFT, which pushed the whole graph flush
+   * right and started it 14.6px inside the page's text column, making it the
+   * one block on the page not aligned to the h1. Sending the slack right
+   * instead restores the alignment, and is a no-op when the graph overflows
+   * because there is no slack to place.
+   *
+   * `padding-right` — in an rtl scroller the right side is the inline START,
+   * which is CLIPPED rather than scrollable. Anything overhanging it is simply
+   * unreachable. Two things overhang: a month label sitting on the final
+   * column (~7.4px past the grid, which happens on 23% of days — whenever the
+   * last column's Sunday falls on the 1st-7th), and the outer 2px of a .hm-pr
+   * ring on a last-column cell. 0.75rem clears both and still leaves the
+   * content (777.4px) inside the 780px measure.
+   */
+  margin-right: auto;
+  padding-right: 0.75rem;
+}
+
+/* The scroller is focusable (see ActivityGraph.tsx) so it can be scrolled by
+   keyboard; it therefore needs a visible focus ring, matching the one the
+   /work filter pills use. */
+.hm-scroll:focus-visible {
+  outline: 2px solid rgb(var(--accent));
+  outline-offset: 2px;
+}
+
+.hm-grid {
+  display: flex;
+  gap: var(--hm-gap);
+  /* Without this the flex columns compress and the cells stop being square at
+     narrow widths instead of overflowing into the scroller above. */
+  width: max-content;
+}
+
+.hm-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hm-gap);
+}
+
+.hm-cell {
+  width: var(--hm-cell);
+  height: var(--hm-cell);
+  border-radius: 2px;
+  /* Tailwind preflight already sets border-box globally; stated because the
+     level-0 border below depends on it not changing the cell's outer size. */
+  box-sizing: border-box;
+}
+
+/*
+ * THE INTENSITY RAMP: fixed alpha steps on --accent over --bg.
+ *
+ * Alphas chosen by measurement over 6,000 generated palettes, not by eye. What
+ * a heatmap needs from its scale is not a contrast FLOOR against the page --
+ * these cells are neither text nor a UI boundary -- but that the five levels
+ * stay distinguishable FROM EACH OTHER, including level 0, on every palette the
+ * generator can produce. Worst adjacent-step contrast ratio across the whole
+ * ramp, per candidate:
+ *
+ *   0.22 / 0.45 / 0.70 / 1.0  ->  1.207   (bottleneck: surface -> level 1)
+ *   0.30 / 0.52 / 0.76 / 1.0  ->  1.359   (bottleneck: surface -> level 1)
+ *   0.35 / 0.57 / 0.78 / 1.0  ->  1.413   <- chosen
+ *   0.40 / 0.60 / 0.80 / 1.0  ->  1.370   (bottleneck: level 3 -> level 4)
+ *
+ * 0.35 wins for a reason that is not simply "the biggest number": it is the only
+ * candidate whose binding constraint has moved OFF the surface/level-1 boundary
+ * (1.462) without yet becoming the top of the ramp, so the five steps are
+ * balanced rather than bottlenecked at one end. Pushing further to 0.40 buys
+ * separation at the bottom and gives it back at the top.
+ *
+ * NO html[data-theme='random'] OVERRIDE, and that is deliberate rather than an
+ * omission. The alpha rules above this section exist because their composites
+ * are held to an absolute floor (3:1 for a boundary, 4.5:1 for small text) that
+ * a generated accent cannot reach at the default alpha. The requirement here is
+ * mutual separation, which the measurement above shows already holds on every
+ * seed -- so there is nothing for an override to fix. Do not add one by analogy.
+ */
+.hm-0 {
+  background-color: rgb(var(--surface));
+  /* The empty cell needs an edge, or a run of untracked days reads as a gap in
+     the grid rather than as zero. --border is gated against --bg at 1.14-2.0,
+     so this hairline is present in every palette and loud in none. */
+  border: 1px solid rgb(var(--border));
+}
+
+.hm-1 {
+  background-color: rgb(var(--accent) / 0.35);
+}
+
+.hm-2 {
+  background-color: rgb(var(--accent) / 0.57);
+}
+
+.hm-3 {
+  background-color: rgb(var(--accent) / 0.78);
+}
+
+.hm-4 {
+  background-color: rgb(var(--accent));
+}
+
+/* A cell after today. GitHub leaves these blank and so does this -- they exist
+   only to keep the last column rectangular, and painting them as level 0 would
+   claim a day went untracked when it has not happened yet. */
+.hm-future {
+  background-color: transparent;
+  border: none;
+}
+
+/*
+ * A day that shipped a pull request: an accent ring, separated from the fill by
+ * a --bg gap.
+ *
+ * Two box-shadow rings rather than an outline, because the ring has to read
+ * against BOTH ends of the ramp. On a level-4 cell the fill is already solid
+ * --accent, so an accent ring touching it would be invisible -- the inner --bg
+ * ring is what separates them. On a level-0 cell the accent ring is what makes
+ * the day visible at all.
+ *
+ * That last case is the COMMON one, not the edge case: timewarrior logging
+ * started 2026-11-02 and every upstream PR predates it, so for now essentially
+ * every PR day carries zero tracked hours. A corner notch in --bg was the first
+ * design and it fails exactly there, vanishing into the near-bg surface of an
+ * untracked day.
+ *
+ * box-shadow does not affect layout, so the 2px of rings sit inside the 3px gap
+ * and leave 1px of clearance between neighbouring rings.
+ */
+.hm-pr {
+  box-shadow:
+    0 0 0 1px rgb(var(--bg)),
+    0 0 0 2px rgb(var(--accent));
+}
+
+/* The weekday gutter. Only alternate rows are labelled (Mon/Wed/Fri, as
+   GitHub does) because 11px cells cannot carry seven stacked 10px labels. */
+.hm-days {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hm-gap);
+  margin-right: 0.5rem;
+}
+
+.hm-day {
+  height: var(--hm-cell);
+  line-height: var(--hm-cell);
+}
+
+/* The month ruler. Each label is absolutely positioned at its column's offset,
+   so a label cannot push the ones after it out of alignment with the grid --
+   which is what happens if the ruler is laid out as flex items with widths. */
+.hm-months {
+  position: relative;
+  height: 1rem;
+}
+
+.hm-month {
+  position: absolute;
+  top: 0;
+  white-space: nowrap;
+}
+
+/* The legend's swatches are the same cells at the same size, so the scale the
+   reader is shown is literally the scale the grid is painted with. */
+.hm-legend {
+  display: flex;
+  align-items: center;
+  gap: var(--hm-gap);
+}

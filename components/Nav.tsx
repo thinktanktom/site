@@ -28,6 +28,7 @@ import ThemeSwitcher from '@components/ThemeSwitcher'
 const navLinks = [
   { href: '/writing', label: 'Writing' },
   { href: '/work', label: 'Work' },
+  { href: '/activity', label: 'Activity' },
 ]
 
 /* The wordmark arrives as an already-rendered node from the server layout

@@ -29,6 +29,16 @@ export default defineConfig({
        `environment: 'node'` with everything else. Keep component tests to that
        shape; anything needing a rendered tree would need a DOM environment and
        is a bigger decision than adding a glob. */
-    include: ['lib/**/__tests__/**/*.test.ts', 'components/**/__tests__/**/*.test.ts'],
+    /* `scripts/**` joined the globs on 2026-11-09, with the first test for
+       scripts/sync-timelog.mjs. An audit found the producer half of /activity
+       had no coverage at all -- including bucketFor, the single function
+       standing between a client-named timewarrior tag and a committed, crawled
+       file -- while its consumer had 21 tests. Note the `.mjs` extension in
+       that glob: the scripts are plain ESM JavaScript, not TypeScript. */
+    include: [
+      'lib/**/__tests__/**/*.test.ts',
+      'components/**/__tests__/**/*.test.ts',
+      'scripts/**/__tests__/**/*.test.mjs',
+    ],
   },
 })

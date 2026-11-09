@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "generatedAt": "2026-11-09T06:08:00.782Z",
+  "tzOffsetMinutes": 330,
+  "openAtSync": true,
+  "intervalCount": 7,
+  "totalSeconds": 17622,
+  "days": {
+    "2026-11-02": {
+      "seconds": 13299,
+      "buckets": {
+        "Upwork · feed work": 12293,
+        "Other": 1006
+      }
+    },
+    "2026-11-04": {
+      "seconds": 219,
+      "buckets": {
+        "Upwork · feed work": 219
+      }
+    },
+    "2026-11-09": {
+      "seconds": 4104,
+      "buckets": {
+        "This site": 4104
+      }
+    }
+  }
+}
