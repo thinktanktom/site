@@ -194,12 +194,19 @@ results.ramp = JSON.parse(await ev(`JSON.stringify((()=>{${LUM_FN}
     return { level:n, declared:cs.backgroundColor, lum:+composite(cs.backgroundColor).toFixed(4) }
   })})())`))
 
-/* ---------- 3. the ring reads on an untracked day ------------------------ */
+/* ---------- 3. the ring is two rings, on whatever cell carries it -------- */
+/* Measured on ANY ringed cell, not specifically an untracked one. It used to
+   probe `hm-pr.hm-0` because every PR predated the log so every ring sat on a
+   level-0 fill — once /activity moved to the broader PR query a ring landed on
+   a day with hours on it, `onEmpty` went null, and the shape check read 0
+   rings against a page that was perfectly correct. The two-ring shape is the
+   invariant; which fill it sits on is situational and is reported separately
+   below. */
 results.ring = JSON.parse(await ev(`JSON.stringify((()=>{
   const cells=[...document.querySelectorAll('.hm-grid .hm-cell')]
   const onEmpty=cells.find(c=>c.classList.contains('hm-pr')&&c.classList.contains('hm-0'))
   const anyRinged=cells.find(c=>c.classList.contains('hm-pr'))
-  const cs=onEmpty?getComputedStyle(onEmpty):null
+  const cs=anyRinged?getComputedStyle(anyRinged):null
   return {
     ringedOnEmptyDay: !!onEmpty,
     ringedTotal: cells.filter(c=>c.classList.contains('hm-pr')).length,
@@ -343,7 +350,7 @@ results.noJs = JSON.parse(await send('Runtime.evaluate', {
       cells: cells.length,
       ringed: document.querySelectorAll('.hm-pr').length,
       titled: [...cells].filter(c=>c.getAttribute('title')).length,
-      shippedSection: !!document.body.textContent.match(/Shipped upstream/),
+      shippedSection: !!document.body.textContent.match(/Recent pull requests/),
       prLinks: document.querySelectorAll('a[href*="/pull/"]').length
     }})())`,
   returnByValue: true,
@@ -406,9 +413,16 @@ ok('level 4 is the solid accent', /^rgb\(/.test(results.ramp[4].declared), resul
 const r = results.ring
 if (r.ringedTotal > 0) {
   ok('PR ring present', r.ringedTotal > 0, r.ringedTotal)
-  ok('PR ring lands on an untracked day', r.ringedOnEmptyDay, r.ringedOnEmptyDay)
   ok('ring is two box-shadow rings', r.shadowRings === 2, r.shadowRings)
   ok('ringed cell titles its PR', /pull request/.test(r.title || ''), r.title)
+  /* The level-0 case is what the inner --bg ring exists for, but whether one
+     is on the page depends on the data, so it is reported rather than
+     required. The two-ring shape above is the actual guard. */
+  if (r.ringedOnEmptyDay) {
+    ok('PR ring also lands on an untracked day', r.ringedOnEmptyDay, true)
+  } else {
+    skip('PR ring on an untracked day', 'every ringed day currently has tracked hours')
+  }
 } else {
   /* Dormant, not broken. The window opens at the first tracked day and every
      upstream PR predates it, so there is no ringed cell to measure. The page

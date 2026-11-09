@@ -27,7 +27,7 @@ import snapshot from '../content/timelog.json'
  * TZ of whichever machine runs the build.
  */
 
-import { getOpenSourcePRs, getPRStatus, type PRStatus } from '@lib/github'
+import { getRecentPRs, getPRStatus, type PRStatus } from '@lib/github'
 
 /* Must match SNAPSHOT_VERSION in scripts/sync-timelog.mjs. A snapshot written
    under different aggregation rules is refused rather than rendered, because
@@ -48,6 +48,18 @@ const SNAPSHOT_VERSION = 1
  */
 export const MAX_WEEKS = 53
 export const DAYS_PER_WEEK = 7
+
+/*
+ * How many PULL REQUESTS the "Recent pull requests" list renders. The query
+ * returns up to 100 and the page is a showcase, not an archive -- 65 rows
+ * would bury the graph above them and the totals beside it.
+ *
+ * Counted in PRs rather than in days: capping days was the first attempt and
+ * it is unpredictable, because PRs cluster (several merged to this site on one
+ * afternoon) -- 15 days rendered 52 rows. Only the list is capped, never the
+ * counts, so "PRs opened" still means what it says.
+ */
+export const RECENT_PRS = 15
 
 /*
  * INTENSITY IS FIXED HOUR BANDS, NOT QUARTILES OF THE DATA. This is a
@@ -108,7 +120,7 @@ export interface ActivityCell {
   preStart: boolean
 }
 
-/** one day that carries at least one PR, for the "Shipped upstream" list */
+/** one day that carries at least one PR, for the "Recent pull requests" list */
 export interface PRDay {
   date: string
   /** tracked time that day; 0 when the day predates the log */
@@ -142,7 +154,7 @@ export interface ActivityGrid {
      * while every upstream PR so far predates it — so a window-scoped count
      * would report 0 opened and 0 closed on a page whose whole second half is
      * about those PRs. The rings stay window-scoped, because a ring has to
-     * land on a cell; these two numbers and the "Shipped upstream" list below
+     * land on a cell; these two numbers and the "Recent pull requests" list below
      * deliberately do not.
      */
     prsOpenedAllTime: number
@@ -150,7 +162,9 @@ export interface ActivityGrid {
         is GitHub's own semantics and the natural pair for "opened". */
     prsClosedAllTime: number
   }
-  /** every PR, newest first, grouped by the day it was opened. Not window-scoped. */
+  /** the most recent PR days, newest first, grouped by the day opened. Not
+      window-scoped, and capped at RECENT_PRS pull requests — see the note
+      there. The last day shown is whole, so this can slightly exceed the cap. */
   prDaysAllTime: PRDay[]
   /** every bucket in the window, largest first */
   buckets: Array<{ label: string; seconds: number }>
@@ -286,12 +300,33 @@ export function buildGrid(
    * from the grid. Everything the page shows about pull requests other than
    * the rings comes from here, because the grid window now starts at the first
    * tracked day and every PR so far predates it — read off the grid, the
-   * counts and the "Shipped upstream" list would all be empty.
+   * counts and the "Recent pull requests" list would all be empty.
    */
-  const prDaysAllTime: PRDay[] = Array.from(prsByDate.entries())
+  const everyPRDay: PRDay[] = Array.from(prsByDate.entries())
     .map(([date, prs]) => ({ date, seconds: data.days[date]?.seconds ?? 0, prs }))
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
-  const allPRs = prDaysAllTime.flatMap((d) => d.prs)
+
+  /* The COUNTS are over everything fetched; only the rendered LIST is capped.
+     Truncating before counting would make "PRs opened" quietly mean "PRs
+     opened among the ones we happened to render", which is not a number
+     anybody would guess from the label. */
+  const allPRs = everyPRDay.flatMap((d) => d.prs)
+
+  /*
+   * Capped on PULL REQUESTS, not on days — capping days was the first attempt
+   * and it is unpredictable: PRs cluster heavily (several merged to this site
+   * on one afternoon), so 15 days rendered 52 rows. Walking the days in order
+   * and stopping once RECENT_PRS have been taken keeps the list a knowable
+   * length whatever the clustering, and never splits a day across the
+   * boundary — the last day shown is whole.
+   */
+  const prDaysAllTime: PRDay[] = []
+  let taken = 0
+  for (const prDay of everyPRDay) {
+    if (taken >= RECENT_PRS) break
+    prDaysAllTime.push(prDay)
+    taken += prDay.prs.length
+  }
 
   for (let w = 0; w < weeks; w += 1) {
     const column: ActivityCell[] = []
@@ -404,7 +439,7 @@ export function buildGrid(
  * someone else is not activity on the merge date.
  */
 export function bucketPRs(
-  prs: Awaited<ReturnType<typeof getOpenSourcePRs>>,
+  prs: Awaited<ReturnType<typeof getRecentPRs>>,
   offsetMinutes: number
 ): PRByDate {
   const byDate: PRByDate = new Map()
@@ -433,7 +468,7 @@ export function bucketPRs(
    so this must stay server-side. */
 export async function getActivityGrid(): Promise<ActivityGrid> {
   const data = snapshot as SnapshotShape
-  const prs = await getOpenSourcePRs()
+  const prs = await getRecentPRs()
   return buildGrid(new Date(), bucketPRs(prs, data.tzOffsetMinutes), data)
 }
 
