@@ -43,15 +43,13 @@ export const metadata: Metadata = {
 export default async function ActivityPage() {
   const grid = await getActivityGrid()
 
-  /* The PR days, newest first. Derived from the grid rather than from the fetch
-     so this list and the rings on the cells cannot disagree — both come from
-     the same bucketing, in the snapshot's timezone. The grid is built
-     column-major but its columns and the days within them are both in order, so
-     flattening is chronological and one reverse puts it newest-first. */
-  const prDays = grid.columns
-    .flat()
-    .filter((cell) => cell.prs.length > 0)
-    .reverse()
+  /* ALL-TIME, not read off the grid. It used to be derived from the cells so
+     the list and the rings could not disagree — but the grid now starts at the
+     first tracked day (2026-11-02) and every upstream PR predates that, so
+     reading the cells would empty this section entirely. Both still come from
+     the same bucketing in the snapshot's timezone, so they remain consistent
+     where they overlap; the list simply is not clipped to the window. */
+  const prDays = grid.prDaysAllTime
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -76,6 +74,12 @@ export default async function ActivityPage() {
         <h1 className="font-mono text-4xl sm:text-5xl lg:text-6xl tracking-tight mb-4 text-text">
           Activity.
         </h1>
+        {/* The ring clause is CONDITIONAL. Since the grid starts at the first
+            tracked day and every upstream PR predates it, no cell currently
+            carries a ring — promising one in the intro would send the reader
+            hunting for a mark that is not on the page. It comes back on its
+            own the moment a PR lands inside the window, which is the same
+            condition that restores the ring's legend entry. */}
         <p className="font-sans text-lg text-muted mb-4 leading-relaxed">
           Every hour I log with{' '}
           <a
@@ -86,18 +90,23 @@ export default async function ActivityPage() {
           >
             timewarrior
           </a>
-          , plus the days I opened a pull request upstream. Darker is a longer
-          day; a ring means something shipped.
+          . Darker is a longer day
+          {grid.totals.prDays > 0 && '; a ring means something shipped'}.
         </p>
+        {/* The "most of this grid is honestly empty" paragraph was removed on
+            2026-11-09 along with the fixed 53-week window it was explaining.
+            The grid now starts at the first tracked day, so there is nothing
+            left to apologise for and the copy would be describing a shape the
+            page no longer has. */}
         <p className="font-sans text-sm text-muted mb-12 leading-relaxed">
-          I started tracking on 2 November 2026, so most of this grid is honestly
-          empty — it fills in from the right. The engagements behind the hours are
-          on <Link
+          The engagements behind the hours are on{' '}
+          <Link
             href="/work"
             className="text-accent underline underline-offset-4 hover:text-accent-dim transition-colors duration-200"
           >
             work
-          </Link>.
+          </Link>
+          .
         </p>
 
         <ActivityGraph grid={grid} />

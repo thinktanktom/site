@@ -26,7 +26,10 @@ import {
  */
 
 function cellTitle(cell: ActivityCell): string | undefined {
-  if (cell.future) return undefined
+  /* Neither end of the range gets a tooltip: a day after today and a day
+     before tracking began have nothing to report, and an empty tooltip reads
+     as a broken one. */
+  if (cell.future || cell.preStart) return undefined
 
   const date = formatCellDate(cell.date)
   /* "nothing tracked", not formatDuration's em-dash, when there is nothing to
@@ -57,7 +60,7 @@ function cellTitle(cell: ActivityCell): string | undefined {
 const WEEKDAY_LABELS = ['', 'Mon', '', 'Wed', '', 'Fri', ''] as const
 
 export default function ActivityGraph({ grid }: { grid: ActivityGrid }) {
-  const { columns, monthLabels, totals, buckets, meta } = grid
+  const { columns, monthLabels, totals, meta } = grid
 
   /*
    * Drop a month label that would collide with the next one.
@@ -85,13 +88,22 @@ export default function ActivityGraph({ grid }: { grid: ActivityGrid }) {
     return !next || next.column - m.column >= 3
   })
 
+  /* "since <first tracked day>", not "the last 12 months": the grid now starts
+     where the log does rather than a fixed year back, so the old wording would
+     have described a window that no longer exists. */
   const summary =
-    `Tracked work over the last 12 months: ${formatDuration(totals.seconds)} across ` +
-    `${totals.activeDays} ${totals.activeDays === 1 ? 'day' : 'days'}` +
+    `Tracked work since ${formatCellDate(grid.firstDate)}: ` +
+    `${formatDuration(totals.seconds)} across ${totals.activeDays} ` +
+    `${totals.activeDays === 1 ? 'day' : 'days'}` +
     (totals.prs > 0
       ? `, and ${totals.prs} upstream pull ${totals.prs === 1 ? 'request' : 'requests'} opened on ` +
         `${totals.prDays} ${totals.prDays === 1 ? 'day' : 'days'}.`
       : '.')
+
+  /* The ring key is dropped when nothing in the window carries a ring —
+     currently the case, since every upstream PR predates the log. A legend
+     entry for a mark that appears nowhere on the grid is just a puzzle. */
+  const anyRings = totals.prDays > 0
 
   return (
     <div className="hm">
@@ -145,8 +157,9 @@ export default function ActivityGraph({ grid }: { grid: ActivityGrid }) {
                     <div
                       key={cell.date}
                       className={
-                        `hm-cell ${cell.future ? 'hm-future' : `hm-${cell.intensity}`}` +
-                        (cell.prs.length > 0 ? ' hm-pr' : '')
+                        `hm-cell ${
+                          cell.future || cell.preStart ? 'hm-future' : `hm-${cell.intensity}`
+                        }` + (cell.prs.length > 0 ? ' hm-pr' : '')
                       }
                       title={cellTitle(cell)}
                     />
@@ -176,10 +189,12 @@ export default function ActivityGraph({ grid }: { grid: ActivityGrid }) {
           <span>More</span>
         </div>
 
-        <div className="hm-legend">
-          <span className="hm-cell hm-0 hm-pr" aria-hidden="true" />
-          <span className="ml-1">Shipped a PR</span>
-        </div>
+        {anyRings && (
+          <div className="hm-legend">
+            <span className="hm-cell hm-0 hm-pr" aria-hidden="true" />
+            <span className="ml-1">Shipped a PR</span>
+          </div>
+        )}
       </div>
 
       {/*
@@ -204,12 +219,16 @@ export default function ActivityGraph({ grid }: { grid: ActivityGrid }) {
       <dl className="mt-10 grid grid-cols-2 gap-x-8 gap-y-6 sm:grid-cols-4">
         {[
           { label: 'Tracked', value: formatDuration(totals.seconds) },
-          {
-            label: 'Active days',
-            value: String(totals.activeDays),
-          },
-          { label: 'Longest streak', value: `${totals.streak}d` },
-          { label: 'PRs opened', value: String(totals.prs) },
+          /* Rolling 7 days ending today, not the calendar week — "this week"
+             would reset every Monday and read as a drop rather than a
+             boundary. */
+          { label: 'Last 7 days', value: formatDuration(totals.last7Seconds) },
+          /* Both PR figures are ALL-TIME, deliberately out of step with the
+             two beside them. The grid window now starts at the first tracked
+             day and every upstream PR predates it, so window-scoped counts
+             would both read 0 on a page that lists ten of them below. */
+          { label: 'PRs opened', value: String(totals.prsOpenedAllTime) },
+          { label: 'PRs closed', value: String(totals.prsClosedAllTime) },
         ].map(({ label, value }) => (
           <div key={label}>
             <dt className="font-mono text-[10px] uppercase tracking-widest text-muted">{label}</dt>
@@ -225,56 +244,6 @@ export default function ActivityGraph({ grid }: { grid: ActivityGrid }) {
         ))}
       </dl>
 
-      {buckets.length > 0 && (
-        <div className="mt-10 pt-8 border-t border-border">
-          <h2 className="font-mono text-xs uppercase tracking-widest text-accent mb-5">
-            Where the time went
-          </h2>
-          {/* A <dl> for the same reason the Stack panel on / is one: these are
-              label-to-value pairs, not a list. The bar is a div sized by
-              percentage rather than a <meter>, which cannot be restyled
-              consistently across engines and brings its own colour. */}
-          <dl className="flex flex-col gap-4">
-            {buckets.map(({ label, seconds }) => {
-              const share = totals.seconds > 0 ? (seconds / totals.seconds) * 100 : 0
-              /* The bar lives INSIDE the <dd>, not as a third child of the row
-                 wrapper. A <div> inside a <dl> may contain only dt/dd (plus
-                 script-supporting elements), so a sibling bar made the list
-                 non-conforming — and it is the dt/dd content model that AT
-                 derives term/definition pairing from. The totals <dl> above
-                 and the Stack panel's on / are both already correct; this is
-                 the one that had drifted. */
-              return (
-                <div
-                  key={label}
-                  className="relative grid grid-cols-[1fr_auto] gap-x-4 items-baseline pb-2"
-                >
-                  <dt className="font-sans text-sm text-text">{label}</dt>
-                  <dd className="font-mono text-xs text-muted">
-                    {formatDuration(seconds)}
-                    <span className="sr-only">
-                      , {share.toFixed(0)} percent of tracked time
-                    </span>
-                    {/* Absolutely positioned against the row rather than laid
-                        out as a third grid item, which is what keeps the bar
-                        inside the <dd> where it belongs. display:contents
-                        would also have worked visually, but it has a history
-                        of dropping the element from the accessibility tree —
-                        on a <dd> that would undo the very pairing this is
-                        fixing. */}
-                    <div
-                      className="absolute inset-x-0 bottom-0 h-1 rounded-sm bg-surface overflow-hidden"
-                      aria-hidden="true"
-                    >
-                      <div className="h-full bg-accent" style={{ width: `${share}%` }} />
-                    </div>
-                  </dd>
-                </div>
-              )
-            })}
-          </dl>
-        </div>
-      )}
 
       {/* The as-of line. A heatmap with no date on it silently claims to be
           live, and this one is a committed snapshot that is exactly as current
@@ -285,7 +254,6 @@ export default function ActivityGraph({ grid }: { grid: ActivityGrid }) {
         <time dateTime={meta.generatedAt}>
           {formatCellDate(localDayOf(meta.generatedAt, meta.tzOffsetMinutes))}
         </time>
-        {meta.openAtSync && ' · a session was still running, so the last day is partial'}
       </p>
     </div>
   )

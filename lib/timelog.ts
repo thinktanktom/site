@@ -34,7 +34,19 @@ import { getOpenSourcePRs, getPRStatus, type PRStatus } from '@lib/github'
    the failure it would otherwise cause is a quietly wrong graph. */
 const SNAPSHOT_VERSION = 1
 
-export const WEEKS = 53
+/*
+ * THE GRID STARTS AT THE FIRST TRACKED DAY, not a fixed year back (changed
+ * 2026-11-09). It used to be a fixed 53x7 like GitHub's, which meant 369 of
+ * 371 cells were empty and the page had to carry a paragraph explaining why.
+ * Growing from the first logged day instead means the graph is dense from day
+ * one and widens on its own, and the explanation could go.
+ *
+ * MAX_WEEKS is the cap it grows into: once there is more than a year of data
+ * the window slides, and the grid is exactly the GitHub-shaped 53 columns it
+ * started as. So this is strictly a head-trim of the old window, not a
+ * different idea.
+ */
+export const MAX_WEEKS = 53
 export const DAYS_PER_WEEK = 7
 
 /*
@@ -91,10 +103,22 @@ export interface ActivityCell {
   prs: Array<{ number: number; title: string; url: string; repo: string; status: PRStatus }>
   /** a cell after today: present to keep the grid rectangular, rendered as a hole */
   future: boolean
+  /** a cell before the first tracked day, in the opening column. Also a hole:
+      the grid must not claim a day went untracked before tracking began. */
+  preStart: boolean
+}
+
+/** one day that carries at least one PR, for the "Shipped upstream" list */
+export interface PRDay {
+  date: string
+  /** tracked time that day; 0 when the day predates the log */
+  seconds: number
+  prs: ActivityCell['prs']
 }
 
 export interface ActivityGrid {
-  /** WEEKS columns of DAYS_PER_WEEK cells, Sunday first, oldest column first */
+  /** week columns of DAYS_PER_WEEK cells, Sunday first, oldest column first.
+      The count grows from the first tracked week up to MAX_WEEKS. */
   columns: ActivityCell[][]
   /** { column index, label } for the columns where the month changes */
   monthLabels: Array<{ column: number; label: string }>
@@ -105,11 +129,29 @@ export interface ActivityGrid {
     seconds: number
     /** days with any tracked time, in the window */
     activeDays: number
+    /** rolling 7 days ending today */
+    last7Seconds: number
+    /** window-scoped: days carrying a ring, and rings on them */
     prDays: number
     prs: number
     /** the longest run of consecutive tracked days in the window */
     streak: number
+    /*
+     * PR COUNTS ARE ALL-TIME, NOT WINDOW-SCOPED, and that is forced rather
+     * than sloppy. The grid now starts at the first tracked day (2026-11-02),
+     * while every upstream PR so far predates it — so a window-scoped count
+     * would report 0 opened and 0 closed on a page whose whole second half is
+     * about those PRs. The rings stay window-scoped, because a ring has to
+     * land on a cell; these two numbers and the "Shipped upstream" list below
+     * deliberately do not.
+     */
+    prsOpenedAllTime: number
+    /** all-time, and "closed" means NOT OPEN — merged PRs are closed too, which
+        is GitHub's own semantics and the natural pair for "opened". */
+    prsClosedAllTime: number
   }
+  /** every PR, newest first, grouped by the day it was opened. Not window-scoped. */
+  prDaysAllTime: PRDay[]
   /** every bucket in the window, largest first */
   buckets: Array<{ label: string; seconds: number }>
   meta: {
@@ -197,11 +239,31 @@ export function buildGrid(
 
   const today = todayInSnapshotZone(now, data.tzOffsetMinutes)
 
-  /* The last column is the week containing today, so the grid ends on the
-     current partial week exactly as GitHub's does. Walk back to this week's
-     Sunday, then back 52 more weeks to reach column 0. */
+  /*
+   * The last column is the week containing today, so the grid ends on the
+   * current partial week exactly as GitHub's does.
+   *
+   * The FIRST column is the week containing the earliest tracked day — not a
+   * fixed 52 weeks back — capped at MAX_WEEKS so the grid stops growing after
+   * a year and starts sliding instead. An empty snapshot falls back to the
+   * current week, which keeps the grid a valid rectangle rather than zero
+   * columns wide.
+   */
+  const dayKeys = Object.keys(data.days).sort()
   const thisSunday = addDays(today, -today.getUTCDay())
-  const start = addDays(thisSunday, -(WEEKS - 1) * DAYS_PER_WEEK)
+  const earliestTracked = dayKeys.length > 0 ? fromKey(dayKeys[0]) : today
+  /* Days before this are holes, not zeroes: the grid should not claim a day
+     went untracked when tracking had not begun. Clamped to the window so a
+     snapshot older than MAX_WEEKS does not mark the whole first column. */
+  const firstTracked = earliestTracked
+
+  const earliestSunday = addDays(earliestTracked, -earliestTracked.getUTCDay())
+  const cappedStart = addDays(thisSunday, -(MAX_WEEKS - 1) * DAYS_PER_WEEK)
+  const start = earliestSunday > cappedStart ? earliestSunday : cappedStart
+
+  /* Inclusive count of week columns between start and this week. */
+  const weeks =
+    Math.round((thisSunday.getTime() - start.getTime()) / (7 * 86_400_000)) + 1
 
   const columns: ActivityCell[][] = []
   const monthLabels: Array<{ column: number; label: string }> = []
@@ -215,28 +277,51 @@ export function buildGrid(
   let streak = 0
   let run = 0
 
-  for (let w = 0; w < WEEKS; w += 1) {
+  /* Rolling 7-day total, ending today. Collected in the same pass. */
+  const weekAgo = addDays(today, -6)
+  let last7Seconds = 0
+
+  /*
+   * The all-time PR view, built straight from the bucketed map rather than
+   * from the grid. Everything the page shows about pull requests other than
+   * the rings comes from here, because the grid window now starts at the first
+   * tracked day and every PR so far predates it — read off the grid, the
+   * counts and the "Shipped upstream" list would all be empty.
+   */
+  const prDaysAllTime: PRDay[] = Array.from(prsByDate.entries())
+    .map(([date, prs]) => ({ date, seconds: data.days[date]?.seconds ?? 0, prs }))
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+  const allPRs = prDaysAllTime.flatMap((d) => d.prs)
+
+  for (let w = 0; w < weeks; w += 1) {
     const column: ActivityCell[] = []
 
     for (let d = 0; d < DAYS_PER_WEEK; d += 1) {
       const date = addDays(start, w * DAYS_PER_WEEK + d)
       const key = dateKey(date)
+      /* `outside` covers BOTH ends: days after today, and days in the first
+         column that precede the earliest tracked day. Both are holes rather
+         than zeroes — the grid must not claim a day went untracked before
+         tracking existed, any more than it claims one for tomorrow. */
       const future = date > today
+      const preStart = date < firstTracked
+      const outside = future || preStart
 
       const day = data.days[key]
-      const seconds = future ? 0 : (day?.seconds ?? 0)
+      const seconds = outside ? 0 : (day?.seconds ?? 0)
       /* `future ? {} :` — a future cell must be blank in EVERY field, not just
          in `seconds`. It used to keep its buckets while reporting zero hours,
          which is an inconsistent cell that happened to render correctly only
          because cellTitle() bails out on future cells before reading them. */
-      const buckets = Object.entries(future ? {} : (day?.buckets ?? {})).map(([label, s]) => ({
+      const buckets = Object.entries(outside ? {} : (day?.buckets ?? {})).map(([label, s]) => ({
         label,
         seconds: s,
       }))
-      const prs = future ? [] : (prsByDate.get(key) ?? [])
+      const prs = outside ? [] : (prsByDate.get(key) ?? [])
 
-      if (!future) {
+      if (!outside) {
         windowSeconds += seconds
+        if (date >= weekAgo) last7Seconds += seconds
         if (seconds > 0) {
           activeDays += 1
           run += 1
@@ -265,6 +350,7 @@ export function buildGrid(
         buckets,
         prs,
         future,
+        preStart,
       })
     }
 
@@ -288,10 +374,14 @@ export function buildGrid(
     totals: {
       seconds: windowSeconds,
       activeDays,
+      last7Seconds,
       prDays,
       prs: prCount,
       streak,
+      prsOpenedAllTime: allPRs.length,
+      prsClosedAllTime: allPRs.filter((p) => p.status !== 'open').length,
     },
+    prDaysAllTime,
     /* Array.from, not a spread: tsconfig.json sets no `target`, so spreading a
        Map iterator needs downlevelIteration. Array.from needs neither. */
     buckets: Array.from(windowBuckets.entries())
