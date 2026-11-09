@@ -8,7 +8,11 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "timelog": "node scripts/sync-timelog.mjs",
+    "timelog:check": "node scripts/sync-timelog.mjs --check",
+    "hooks:install": "node scripts/install-hooks.mjs",
+    "prepare": "node scripts/install-hooks.mjs"
   },
   "dependencies": {
     "gray-matter": "^4.0.3",

@@ -1,0 +1,21 @@
+# content/timelog.json is GENERATED, never hand-edited: scripts/sync-timelog.mjs
+# rewrites it from the local timewarrior database and .githooks/pre-commit stages
+# it on every commit where the figures moved.
+#
+# That makes it a conflict magnet. Two branches that each commit while a session
+# is running both touch the same day's `seconds`, so an ordinary `git rebase` or
+# `git merge` stops on a textual conflict in a file nobody typed — and because
+# the hook deliberately goes inert mid-replay, you are left resolving it by hand.
+#
+# `merge=ours` resolves it the only way that makes sense for a derived file:
+# keep one side, and let the next commit regenerate it from the real source of
+# truth, which is the database rather than either branch. Nothing is lost —
+# whatever the merge keeps is replaced by live data on the next sync.
+#
+# The driver is a built-in no-op that still has to be declared:
+#   git config merge.ours.driver true
+# scripts/install-hooks.mjs sets that alongside core.hooksPath, so a fresh
+# clone gets it from `npm install` without anyone having to know this file
+# exists. Without the driver declared, git silently falls back to a normal
+# merge and the conflicts come back.
+content/timelog.json merge=ours

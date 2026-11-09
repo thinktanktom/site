@@ -1,0 +1,87 @@
+#!/bin/sh
+#
+# Re-sync the timewarrior snapshot and stage it, so /activity is current in
+# every commit without anyone having to remember `npm run timelog`.
+#
+# Installed by pointing git at this directory rather than by copying into
+# .git/hooks, so the hook is tracked, reviewable and survives a fresh clone:
+#
+#     git config core.hooksPath .githooks        (scripts/install-hooks.mjs)
+#     git config --unset core.hooksPath          (to undo)
+#
+# THIS HOOK NEVER BLOCKS A COMMIT. Every path below ends in `exit 0`, including
+# the failure paths. It is a convenience, not a gate — if timewarrior is absent,
+# the database is unreadable, or node throws, the right outcome is a commit with
+# a slightly stale graph, not a commit you cannot make. Gating belongs in
+# `no-mistakes`, which runs the tests and the harnesses.
+#
+# Three things it deliberately refuses to do:
+#
+#  1. IT SKIPS DURING REBASE, MERGE, CHERRY-PICK AND REVERT. Those replay old
+#     commits, and re-syncing there would splice today's hours into a commit
+#     from last week — rewriting history's content, silently, with data that did
+#     not exist when it was written.
+#
+#     Worth being precise about WHEN this guard earns its keep, because the
+#     obvious test does not exercise it: git does NOT run pre-commit during an
+#     uninterrupted `git rebase` or `git cherry-pick` at all. The hook fires
+#     when one of them STOPS ON A CONFLICT and you finish it with a manual
+#     `git commit` — and on a conflicted `git merge`, which is the same shape.
+#     Verified both ways: with the guard, a conflicted merge commit leaves the
+#     snapshot alone; with it deleted, that commit rewrites it.
+#  2. IT SKIPS A PATHSPEC COMMIT (`git commit -- <paths>`, `--only`). An
+#     explicit pathspec is an explicit scope; quietly adding a file the author
+#     did not name is the kind of surprise that makes people delete hooks. Git
+#     signals these by pointing GIT_INDEX_FILE at a temporary `next-index-*`
+#     instead of the real index.
+#
+#     THE COVERAGE IS NARROWER THAN "PARTIAL COMMIT" AND CANNOT BE WIDENED
+#     THIS WAY. Measured on git 2.51.2: `--include` and `-p` both leave
+#     GIT_INDEX_FILE pointing at the REAL index (`.git/index.lock`), because
+#     in those modes git genuinely commits the real index — so no index-based
+#     signal can distinguish them from a plain `git commit`, and git passes
+#     the hook no pathspec to inspect. A `git commit -p` therefore still picks
+#     up the snapshot. `--amend` also proceeds, which is right on a tip commit
+#     and wrong on an old one; `git cherry-pick -n` leaves no marker file at
+#     all (unlike `revert -n` and `merge --no-commit`, which both do), so it
+#     is the one replay mode guard 1 cannot see either.
+#     In all of these the cost is a refreshed snapshot riding along, never a
+#     failed commit.
+#  3. IT DOES NOT REWRITE THE FILE WHEN NOTHING CHANGED. `--if-changed` leaves
+#     the snapshot untouched unless a day's figures actually moved, so ordinary
+#     commits do not each carry a one-line `generatedAt` diff.
+#
+
+# A repo-root-relative path is only correct from the root; git runs hooks there
+# for a normal commit, but not from a worktree subdir in every git version.
+root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+cd "$root" || exit 0
+
+git_dir=$(git rev-parse --git-dir 2>/dev/null) || exit 0
+
+# 1. mid-replay states
+if [ -d "$git_dir/rebase-merge" ] ||
+   [ -d "$git_dir/rebase-apply" ] ||
+   [ -f "$git_dir/MERGE_HEAD" ] ||
+   [ -f "$git_dir/CHERRY_PICK_HEAD" ] ||
+   [ -f "$git_dir/REVERT_HEAD" ] ||
+   [ -f "$git_dir/BISECT_LOG" ]; then
+  exit 0
+fi
+
+# 2. partial commit — git swaps in a temporary index named next-index-<pid>
+case "${GIT_INDEX_FILE:-}" in
+  *next-index*) exit 0 ;;
+esac
+
+# 3. no node, nothing to do (the script itself skips when timew is missing)
+command -v node >/dev/null 2>&1 || exit 0
+
+node scripts/sync-timelog.mjs --if-changed
+# 0 = it wrote a new snapshot; 3 = nothing to do; anything else = it failed.
+# Only stage on 0, and never let a non-zero status reach git as a veto.
+if [ $? -eq 0 ]; then
+  git add -- content/timelog.json || true
+fi
+
+exit 0

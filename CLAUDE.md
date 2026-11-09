@@ -156,6 +156,7 @@ because both hand-picked accents are near-maximum luminance on a near-black grou
 /work               → EVERYTHING built and shipped, one dated spine (2026-10-26)
 /projects/[slug]    → Project writeup (overview)
 /projects/[slug]/…  → Project doc trees (registry-driven; see note 11)
+/activity           → Tracked-hours heatmap + PR days (2026-11-03)
 ```
 
 **`/about` merged into `/` on 2026-10-26, and the route was DELETED — `/about` now 404s.**
@@ -348,6 +349,172 @@ sorts it into. Its order used to be "deliberate (BankX and the AI orchestration 
 strict chronology", and two orderings disagreeing was just a trap. The reason the old order stopped
 making sense is the data change below.
 
+### `/activity` — the tracked-hours heatmap (2026-11-03)
+
+A GitHub-shaped 53×7 grid of hours logged with **timewarrior**, with the days that opened an
+upstream PR ringed. `max-w-article`, like `/`. An **async server component** for the same reason
+`/work` is — `getActivityGrid()` pulls in `lib/github.ts` — and with **no client component
+anywhere**: the only interactivity is the native `title` tooltip, so it works with JS off.
+
+**The data is a COMMITTED SNAPSHOT, and that is forced rather than chosen.** The timewarrior
+database lives at `~/.local/share/timewarrior` on Tom's machine; the Actions runner that builds
+this site has no copy and no route to one, so a build-time read would work locally and publish an
+empty graph from CI. `scripts/sync-timelog.mjs` aggregates it to `content/timelog.json` instead
+(`npm run timelog`, or `npm run timelog:check` to see whether it is stale). **The accepted trade is
+that the graph is exactly as current as the last sync** — it does not update itself, which is why
+the page renders its own "snapshot taken" line rather than letting a heatmap imply it is live. The
+sitemap uses `generatedAt` rather than `new Date()` for the same honesty.
+
+**A tracked pre-commit hook keeps it current** (`.githooks/pre-commit`, 2026-11-09), so the graph
+does not depend on remembering `npm run timelog`. It is installed by `core.hooksPath` rather than
+copied into `.git/hooks` — the hook is then a tracked, reviewable file that survives a reclone —
+and `scripts/install-hooks.mjs` sets that, run both by `npm run hooks:install` and automatically by
+the `prepare` script on `npm install` (the husky pattern, without the dependency). Undo with
+`git config --unset core.hooksPath`.
+
+**The hook can never block a commit.** Every path ends `exit 0`, the failures included. It is a
+convenience; `no-mistakes` is the gate. Four refusals, each deliberate:
+
+- **It skips mid-replay** — rebase, merge, cherry-pick, revert, bisect — because re-syncing there
+  splices today's hours into a commit from last week. **Be precise about when this earns its keep:
+  git does NOT run `pre-commit` during an uninterrupted rebase or cherry-pick at all.** It fires
+  when one *stops on a conflict* and you finish with a manual `git commit`, and on a conflicted
+  merge. The first negative control missed this — a clean `rebase -i` left the snapshot alone with
+  the guard *deleted*, proving nothing. The conflicted-merge path is the one that reproduces it.
+- **It skips a PATHSPEC commit** (`git commit -- <paths>`, `--only`), detected by git pointing
+  `GIT_INDEX_FILE` at a temporary `next-index-*`. An explicit pathspec is an explicit scope, and
+  silently adding an unnamed file is how hooks get deleted. **Say "pathspec", not "partial": the
+  coverage is narrower and cannot be widened this way.** Measured on git 2.51.2, `--include` and
+  `-p` both leave `GIT_INDEX_FILE` on the *real* index, because in those modes git really does
+  commit the real index — no index-based signal can tell them from a plain commit, and the hook is
+  passed no pathspec. So `git commit -p` still picks the snapshot up. `--amend` proceeds too (right
+  on a tip commit, wrong on an old one), and `git cherry-pick -n` writes no marker at all, unlike
+  `revert -n` and `merge --no-commit` which both do — so it is the one replay mode the first guard
+  cannot see. In every one of these the cost is a refreshed snapshot riding along, never a failed
+  commit.
+- **It does not rewrite the file when nothing changed.** That is what `--if-changed` is for: without
+  it every commit in the repo would carry a one-line `generatedAt` diff. **Accepted consequence: a
+  commit made while the timer is running does carry a snapshot change**, because the hours really
+  did move.
+- **A missing, unconfigured OR broken `timew` is a skip**, as is a missing `node`, so the hook is
+  inert on any other machine and in CI. The soft path catches **every** failure, not just `ENOENT`,
+  and that distinction was a real defect: a machine with timewarrior installed but never set up
+  does not fail with `ENOENT` — `timew export` prompts, gets EOF from the hook's `/dev/null` stdin
+  and exits **255** — so an `ENOENT`-only guard printed a 25-line node stack trace into the output
+  of every commit, forever.
+- **A corrupt `content/timelog.json` self-heals.** The comparison in `--if-changed` treats a file it
+  cannot parse exactly like a file that is not there. Before that, a half-written or conflict-marked
+  snapshot threw out of the hook on every commit and was never rewritten — the one state most in
+  need of repair was the only one the script refused to repair.
+
+**`content/timelog.json` carries `merge=ours` in `.gitattributes`, and that is not optional
+tidiness.** It is generated, and with a session running it changes on essentially every commit, so
+two branches reliably collide on the same day's `seconds` — producing a textual rebase conflict in
+a file nobody typed, which you then resolve by hand because the hook is (correctly) inert
+mid-replay. `merge=ours` keeps one side and lets the next sync regenerate from the database, which
+is the only real source of truth. **The driver has to be declared or git silently ignores the
+attribute**; `scripts/install-hooks.mjs` sets `merge.ours.driver true` alongside `core.hooksPath`,
+before the early-return that skips an already-installed repo.
+
+Three things about the installer that are invisible when they bite: it **no-ops when `CI` is set**
+(any non-empty value — `CI= npm install` is the way to force it), it **changes nothing if
+`core.hooksPath` already points elsewhere**, and `core.hooksPath` **replaces `.git/hooks` wholesale**
+rather than adding to it, so anything later dropped in there is silently ignored — it now warns if
+that directory holds a non-sample hook. **Security, inherent rather than a defect:** a tracked hook
+plus `prepare` means checking out an untrusted branch and committing (or running `npm install`)
+executes that branch's code as you. The same exposure husky has; `--no-verify` and
+`git config --unset core.hooksPath` are the escapes.
+
+**`--check` ignores the days a running session touches, and that is not laziness.** An open
+interval is clamped to the sync time, so its day's total grows every second the timer runs — which
+meant the check answered "STALE" unconditionally whenever you were actually tracking, i.e. exactly
+when you would ask it. A check that always says yes is not a check. It now compares only
+**finished** days and reports the running session as its own third state, distinct from both
+up-to-date and stale. `generatedAt`, `intervalCount` and `totalSeconds` are neutralised for the
+same reason (the last because it sums over the open days too). Genuine staleness on a finished day
+still exits 1 — negative-controlled by hand-editing a committed day's `seconds`.
+
+Six things about it are decisions, not leftovers:
+
+- **The tag allowlist is deny-by-default and must stay that way.** `PUBLIC_TAGS` in the sync script
+  names the only tags that reach the page; everything else aggregates into `Other`. Tags are typed
+  in a terminal mid-session and several of Tom's repos are client work, so a tag like `acme-audit`
+  would be a client disclosure that a crawler makes permanent. Unlisted tags still contribute their
+  **hours**, so the totals stay honest — they are just never named. **Forgetting to update the list
+  is the safe direction; inverting it to deny-list is not.**
+- **Intensity is FIXED HOUR BANDS (2/4/6h), not quartiles of the data.** This departs from GitHub
+  deliberately. Quartiles work on hundreds of contribution days and are actively misleading here in
+  both directions: with two logged days a ten-minute session lands in the top quartile and paints
+  the darkest cell on the page, and later a heavy month would **re-scale every historic cell** so
+  the same eight-hour day renders lighter than it used to. Fixed bands mean a dark cell always means
+  a long day and nothing is retroactively redrawn. The cost — an all-light year stays all-light — is
+  simply true.
+- **The ramp's alphas are measured, not picked:** `0.35 / 0.57 / 0.78 / 1.0` on `--accent`, with
+  level 0 at `--surface` plus a `--border` hairline. Chosen over three alternatives by worst-case
+  adjacent-step contrast across **6,000 generated palettes** (0.22→1.207, 0.30→1.359, **0.35→1.413**,
+  0.40→1.370). 0.35 wins not for the biggest number but because it is the only candidate whose
+  binding constraint has moved **off** the surface→level-1 boundary without becoming the top of the
+  ramp — the five steps are balanced rather than bottlenecked at one end.
+- **There is deliberately NO `html[data-theme='random']` override for these alphas.** The rules at
+  the bottom of `globals.css` exist because their composites are held to an absolute floor (3:1 for
+  a boundary, 4.5:1 for small text) a generated accent cannot reach. What a heatmap scale needs is
+  **mutual separation**, which the measurement above shows already holds on every seed. **Do not add
+  one by analogy** to the table above.
+- **The PR marker is a two-ring `box-shadow`, not a corner notch**, and the reason is a case that is
+  currently the *common* one: logging began 2026-11-02 and every upstream PR predates it, so nearly
+  every ringed cell sits on a **level-0 fill**. A `--bg` notch — the first design — is invisible
+  exactly there. The inner `--bg` ring is what keeps the outer accent ring visible against a
+  **level-4** fill, where the cell is already solid accent.
+- **`.hm-scroll` opens scrolled to the RIGHT (recent) edge, via `direction: rtl`.** The grid is
+  739px and cannot fit a phone, and the data only starts in Nov 2026 — left-aligned, a mobile
+  reader opens on twelve months of empty cells and the graph reads as broken. `rtl` moves the
+  resting scroll position with no JavaScript, which this page has none of. **Both inner rules are
+  required**: `direction: ltr` puts the content back (nothing is actually mirrored), and
+  **`width: max-content` is the half that is easy to miss** — left at `auto` the wrapper shrinks to
+  the scroller and the grid overflows the *wrapper* instead, which an rtl scroller clips rather
+  than scrolls. That shipped briefly and silently killed the scrolling (`maxScroll` 0 at 375px);
+  `e2e-activity.mjs` now asserts both the resting position and the ltr inner direction.
+
+**The two halves are joined on a calendar date, and the timezone is the subtle part.**
+`content/timelog.json` carries **local** date keys, resolved once in the zone the work happened in
+(UTC+5:30), with intervals crossing local midnight **split** across days. `lib/github.ts` gives UTC
+instants, so `bucketPRs` buckets them using the snapshot's own recorded `tzOffsetMinutes` — **not
+the build machine's**. A CI runner is UTC, and at UTC+5:30 the UTC and local calendar days diverge
+once the **UTC** clock passes 18:30 — which is **local 00:00–05:30**, the small hours. Work in that
+window would be bucketed a day *early* by the PR half while the hours half placed it correctly, so
+the ring would sit one cell left of the session it belongs with.
+
+**That threshold used to be written here as "after 18:30 local, which is most of it", and it was
+wrong three ways** — 18:30 is a *UTC* bound, the affected window is post-midnight rather than
+evening, and the drift runs to the *preceding* day. The same error was mirrored in `lib/timelog.ts`
+and `scripts/sync-timelog.mjs`, and `localDateKey`'s comment had it inverted outright ("east of
+Greenwich" describing west-of-Greenwich behaviour). All four are corrected. The **code was always
+right**; only the explanations were wrong — which is exactly the failure mode this file's own
+history warns about, so verify a timezone claim here against `node` before trusting it.
+
+**`SNAPSHOT_VERSION` is a two-sided contract and it does NOT catch what its comment suggests.**
+`scripts/sync-timelog.mjs` owns the producer side, `lib/timelog.ts` throws at build if the committed
+file disagrees with its own copy. That catches "bumped both, forgot to re-sync" and "bumped the
+script only, re-synced". It does **not** catch the two likelier mistakes — bumping the script and
+forgetting to re-sync, or changing `PUBLIC_TAGS` and bumping nothing — because in both the file and
+the lib still read `1`. Nothing asserts the two constants agree except
+`scripts/__tests__/sync-timelog.test.mjs`. **CI runs `npm run build` only** — not `npm test`, not
+`npm run timelog:check` — so freshness is enforced nowhere automatic except the best-effort hook.
+
+**Two bands currently have no cells, which makes a harness fallback load-bearing.** The snapshot is
+young, so levels 3 and 4 appear **only** as legend swatches; `scripts/e2e-activity.mjs` reads
+`.hm-grid .hm-N || .hm-legend .hm-N` and today it is the right-hand side that answers. Simplify that
+selector and the check null-derefs rather than failing honestly.
+
+**The accessibility model is a choice.** The grid is one `role="img"` with a summarising
+`aria-label` and the cells are hidden from the tree — the same shape `TrackingLogo` uses. A
+371-cell table is what GitHub ships and is criticised for exactly this: a screen reader walks 371
+cells, most of them "no activity", to learn what a sentence conveys. So the data is published
+**twice** — as pixels, and as real prose, a totals `<dl>`, a bucket breakdown and the PR links in
+the "Shipped upstream" list below.
+
+**The nav took a fourth link for this**, and it fits with room to spare — see Navigation.
+
 ### The 2026-10-26 work-history reconciliation
 
 `lib/experience.ts` was reconciled against the private work-experience record (draft 9). Three
@@ -374,13 +541,16 @@ the verification table. BankX going `completed` moved the harness's border-probe
 ```
 thinktanktom/
 ├── CLAUDE.md
+├── .githooks/
+│   └── pre-commit              ← re-syncs + stages content/timelog.json
 ├── public/
 │   ├── ttt_*_light-primary.svg ← the masks every logo role is stencilled by
 │   ├── ttt_*_dark-mono.svg     ← brand exports; the icon is also the static favicon
 │   └── ttt_logo.png            ← OG/Twitter card, 1200x630, opaque dark-mono
 ├── content/
-│   └── posts/
-│       └── example-post.mdx    ← seed with one placeholder post
+│   ├── posts/
+│   │   └── example-post.mdx    ← seed with one placeholder post
+│   └── timelog.json            ← COMMITTED snapshot; kept current by .githooks/pre-commit
 ├── src/
 │   └── app/
 │       ├── layout.tsx           ← root layout, fonts, metadata
@@ -402,9 +572,11 @@ thinktanktom/
 │   ├── ThemeSwitcher.tsx        ← 2-way theme control (client)
 │   ├── ThemedLogo.tsx           ← one CSS-masked mark per role (server)
 │   ├── TrackingLogo.tsx         ← the stacked lockup, eyes following the pointer (client)
-│   └── logo-roles.ts            ← the three reference canvases, shared by both of the above
+│   ├── logo-roles.ts            ← the three reference canvases, shared by both of the above
+│   └── ActivityGraph.tsx        ← the /activity heatmap, 371 CSS-painted cells (server)
 ├── lib/
 │   ├── posts.ts                 ← MDX reading + frontmatter utils
+│   ├── timelog.ts               ← the /activity grid: snapshot + PRs on one date axis
 │   └── palette/                 ← the seeded palette engine (no React, no DOM)
 ├── tailwind.config.ts
 └── next.config.mjs
@@ -531,8 +703,8 @@ is centred above the prose.
 
 **Desktop nav** (sticky, top bar):
 ```
-[TTT wordmark — 32px high]   Writing  Work   [◐🎲]        ← every route except /
-                             Writing  Work   [◐🎲]        ← on /
+[TTT wordmark — 32px high]   Writing  Work  Activity  [◐🎲]   ← every route except /
+                             Writing  Work  Activity  [◐🎲]   ← on /
 ```
 
 **The wordmark is dropped on `/` only**, because that page renders the stacked lockup as its hero
@@ -581,6 +753,15 @@ content to yield. Verify with `node scripts/e2e-palette-mobile.mjs` after a buil
   It was not lowered because fitting is not reading well — at 768px the links crowd the wordmark,
   and the full-screen overlay is the better tablet experience. Lowering it is a deliberate design
   change, not a cleanup. Below `lg` the overlay carries both the navigation and the theme control.
+  **A FOURTH link (`/activity`) was added 2026-11-03 and the row still fits easily**: measured at
+  `lg`, wordmark + cluster = **549px of content in 1052px** of usable inner width, **503px clear**.
+  Note that is an `lg` figure and the ~185px above is an `md` one — they are not comparable, and the
+  `md` number has not been re-measured with four links. `scripts/e2e-activity.mjs` §6 asserts the
+  fit on every run, so re-read it there rather than trusting these numbers.
+  **The naive way to measure this is wrong and was caught by a negative control:** `nav.scrollWidth
+  <= nav.clientWidth` reads `1100 <= 1100` whether or not the row overflows, because the nav is
+  capped at `max-w-chrome` and the spill is clipped by `overflow-x: hidden` further up. The harness
+  sums the wordmark and the cluster against the padded inner width instead.
 - Gaps are measured, not guessed — **but measure them, do not trust this file.** The Hire me pill has
   since moved out of the desktop row, so the earlier `gap-4`/26px figures no longer describe it. See
   the comment in `Nav.tsx` for the current numbers, and re-measure in a real browser **with scrollbars
@@ -663,7 +844,7 @@ rule written this way.)
 
 ## Verifying this site
 
-`npm test` (vitest, ~3.5s, **142 tests**) covers the palette engine, `lib/work.ts` and the lockup
+`npm test` (vitest, ~4s, **184 tests**) covers the palette engine, `lib/work.ts`, `lib/timelog.ts`, `scripts/sync-timelog.mjs` and the lockup
 mask split.
 
 `components/__tests__/lockup-mask-split.test.ts` was added 2026-10-27 with the tracking lockup, and
@@ -688,13 +869,45 @@ because that module wraps its readers in React's `cache()`, which throws outside
 *import* time. `vitest.config.ts` carries the `@lib`/`@components`/`@` aliases for the same reason —
 Vite does not read `tsconfig.json` paths.
 
-Four things vitest cannot cover, because they need a real browser, live in `scripts/` and run
+`lib/__tests__/timelog.test.ts` (22 tests) was added 2026-11-03 with `/activity`, for the same
+reason: `lib/timelog.ts` is date arithmetic across **two** timezone conventions plus a windowing
+pass, a banding function and a streak counter, and **every one of its failure modes renders
+perfectly**. A cell off by one day, a streak counted across a gap, or a PR bucketed in UTC instead
+of the snapshot's zone all produce a graph that looks completely normal. `buildGrid` takes its
+clock, its PR map and its snapshot as **optional arguments** defaulting to the real ones — the same
+injection shape `buildEntries()` uses — which is what lets the tests pass a fixed clock and
+synthetic days without mocking a module. The fixtures use **UTC+5:30**, the offset that actually
+ships, rather than a convenient zero. Two cases are there specifically because they would otherwise
+be silent: a streak spanning a **week boundary** (the grid is walked column-major, so this is where
+a non-chronological traversal would show up) and a future day present in the snapshot, which must
+neither paint nor count. One test builds a grid from the **real** `content/timelog.json`, so a
+hand-edited or half-written snapshot fails here rather than only on the page.
+
+`scripts/__tests__/sync-timelog.test.mjs` (20 tests) was added 2026-11-09 after an audit found the
+PRODUCER half of /activity had no coverage at all while its consumer had 22. `bucketFor` is the
+site's only privacy control -- the single function between a client-named timewarrior tag and a
+committed, crawled file -- and the test asserts its **codomain is closed**: no input can yield a
+string that is not a label we chose. `__proto__`, `constructor`, `toString` and `hasOwnProperty` are
+in that fixture deliberately, because `Object.hasOwn` is what makes them safe and a truthiness check
+would leak them. Negative-controlled: replacing `Object.hasOwn(PUBLIC_TAGS, tag)` with
+`PUBLIC_TAGS[tag]` fails exactly that test. It also pins the two-sided `SNAPSHOT_VERSION` contract,
+which nothing else checks.
+
+Two things that made this possible and should not be undone: `vitest.config.ts` gained a
+`scripts/**/__tests__/**/*.test.mjs` glob (note `.mjs` -- the scripts are plain ESM, not TypeScript),
+and `sync-timelog.mjs` gained a main-module guard so importing it does not run the CLI.
+
+Note `lib/timelog.ts` uses `Array.from(map.entries())` rather than a spread: `tsconfig.json` sets
+no `target`, so spreading a Map iterator needs `downlevelIteration`. Do not "tidy" it back.
+
+Six things vitest cannot cover, because they need a real browser, live in `scripts/` and run
 against a built export:
 
 | command | what it proves |
 |---|---|
 | `node scripts/e2e-palette.mjs` | 53 checks: the switcher has exactly 2 buttons, the palette is actually painted, a reload restores it pre-paint, switching back to dark-mono *removes* the inline properties, the mark's ink follows `--accent`, a stale cache recovers from the seed with React state in step, that the hero mark is its **three** mounted layers with no `<img>` anywhere, that its **mask has already been fetched while dark-mono is live** (read from the CDP request log, because Resource Timing does not report memory-cache hits) and that it carries a `background-color` transition — the two halves of the 2026-10-17 switch-stutter fix, negative-controlled by re-hiding the mark in source and rebuilding, which gives `requested=0 mask assets`. **§1 was repointed from `nav .logo-mask` to `main .logo-mask` on 2026-10-26**, because `/` no longer has a nav wordmark and this section runs on `/` — left alone it would have failed on a page that is correct, and the tempting fix for a failing guard is deleting it. It now also asserts **both halves of the wordmark gating**: no nav mark on `/`, and exactly one linking home on an inner page (taken at the end, where §9b has already navigated to `/writing`),  and (§5b) **a stale stored `funky` self-heals to a PAINTED dark-mono** — the migration path every existing reader takes once, asserted on the attribute because the self-heal is invisible in the pixels. Also the dice's two-state action (§7b): entering random **restores** the stored seed *and* repaints the same `--bg`, the press after that rolls, and the button renames itself in all three states. **The empty-store roll has no check of its own on purpose** — section 2's press happens on cleared storage, so `dice applies a random palette` already *is* that assertion; breaking the empty-store path fails it (plus 8 downstream checks), which is what licensed dropping the duplicate. Negative-controlled the same way for the restore itself: with the old always-roll `select()` rebuilt from source, the restore check fails and the roll checks still pass. §9 covers the **themed favicon**: dark-mono serves the brand file, a roll repaints both `rel~="icon"` links as a tinted data URI with exactly one fill, that URI **decodes as a real image**, `apple-touch-icon` is untouched, dark-mono puts the file back, and a reload repaints from the applied accent. **§9b is the one that shipped broken** — the themed icon must survive a CLIENT-SIDE navigation. It is driven by clicking a real nav anchor, because `Page.navigate` is a full document load that re-runs the mount path and therefore *cannot* reproduce the bug; and its expected default is read out of `favicon.ts` rather than hard-coded, so it cannot drift when the default mark changes. §8 (the alpha-composited accent utilities) moved target on 2026-10-26 and gained a check: it used to probe /projects, which the /work merge turned into a signpost, so every border assertion there passed VACUOUSLY on an empty set (`0 boundary borders`, `worst undefined`) -- a green run proving nothing. It now probes **two** pages and merges, because no single page renders the whole family any more: the status pill's classes come from frontmatter `status`, so `border-accent/40` is only on an **active** project (`/projects/BankX`) and the neutral `border-border/40` hairline only on an **archived** one (`/projects/CtrlbitSDWAN`, the only one) -- the old index got every variant free by rendering all seven cards. The ACTIVE page is `/projects/FractalWebhook`, not BankX: BankX held that slot until its engagement closed in Dec 2025 and it became `completed` (2026-10-26). So **changing a project's frontmatter `status` can break this harness**, and it fails on the presence check rather than going quiet. The added check is the anti-vacuity guard: it asserts all three families were actually FOUND, so a frontmatter status change fails loudly instead of quietly emptying the set. /work is deliberately not the target -- its stack chips are neutral, because 22 rows of accent chips would breach the "keep `--accent` disciplined" rule |
 | `node scripts/e2e-work.mjs` | 38 checks on `/work`, added with the page on 2026-10-26: the spine holds all 15 engagements and the rail all 8 clusters, exactly 7 carry `data-writeup`, the rail sits **beside** the spine at `lg` while the spine still measures **780px** (the rail's whole arithmetic), each filter shows exactly its own set *and* collapses the grid to one track, the pressed pill **inverts** rather than tints, and below `lg` the rail stacks under the spine with no horizontal overflow at 375px and 390px. **§5 is the load-bearing one: the filter must keep working with JavaScript DISABLED** (`Emulation.setScriptExecutionDisabled` before the navigation, then a real `Input.dispatchMouseEvent` on the label) — a rewrite of the filter into React state would pass every other check here and fail only that one. Two traps it already paid for: `.work-rail li` also matches the PR items inside each cluster's `<details>` (18 rows for 8 clusters), so the probe uses `.work-rail > ol > li`; and the pills carry `transition-colors duration-200`, so a measurement taken straight after the click reads a colour **mid-transition** — it polls until the value holds across three samples, the same discipline `e2e-annotations.mjs` uses for smooth scroll |
+| `node scripts/e2e-activity.mjs` | 50 checks on `/activity`, added with the page on 2026-11-03. `lib/__tests__/timelog.test.ts` already covers the arithmetic, so this is only what a browser can answer: the grid is **53 columns of 7** with no `<img>` and no inline `<svg>`, the **five ramp levels composite to strictly increasing luminance** (the browser reports a declared `rgba(…, 0.35)` verbatim, so the harness does the blend against the page ground itself), the PR ring is **two** box-shadow rings and lands on a **level-0** cell, the grid fits **780px** at desktop, the **nav's four links fit at `lg`**, every past cell carries a `title` while every future cell carries none, a dice roll **repaints the ramp and keeps all five levels distinct**, no **body** overflow at 375px/390px while the scroller **opens at the recent (right) edge**, and all 371 cells plus the real PR anchors render with **JavaScript disabled**. **Two negative controls, and the second is the instructive one.** Collapsing a ramp step fails exactly the three ramp checks. But setting `overflow-x: visible` on `.hm-scroll` **failed to fail** — per CSS overflow, one axis not being `visible` computes the other to `auto`, so the surviving `overflow-y: hidden` silently kept it scrolling and all 46 passed. Only removing **both** declarations reproduces it, and then `document.body` overruns by **437px** at 375 while `document.documentElement` reports **zero** — so a check on the documentElement alone would have passed vacuously, which is why both are measured. `scrollerScrolls` also still passes when broken and is kept as the **precondition**, not a guard |
 | `node scripts/e2e-palette-mobile.mjs` | the overlay control fits at 375px and 390px, no horizontal overflow, picking a theme does not close the overlay |
 | `node scripts/e2e-logo-eyes.mjs` | 15 checks on the tracking lockup on `/`, added with it on 2026-10-27 (it targeted `/about` for the one commit before that page became `/`): three mask layers and two of them eyes, no `<img>` and no inline `<svg>`, all three layers **hidden from the accessibility tree** behind the wrapper's one `role="img"`, **all three masks already fetched** before anything moves (the 2026-10-17 switch-stutter lesson applied to a new feature, read from the CDP request log for the same reason), both eyes at `translate(0,0)` at first paint so the static export is the unchanged mark, direction, the response curve from BOTH ends — bounded, reaching most of the travel when the pointer is far and level, and collapsing to almost nothing when it is on the mark. **The upper bound alone was unfalsifiable and was claimed here as "the clamp holds" until 2026-10-27**: there is no clamp branch in the component, so `|tx| <= TRAVEL_X` is an identity of `reach = d/(d+REACH)`, and the envelope is unreachable from anywhere on the page (measured peak 3.99px against a 6.33px limit). Only a >2x inflation of `TRAVEL_X` could breach it, which is why the x10 negative control appeared to validate it and proved very little. The lower bounds are what make the check able to fail, the eyes **converging** (proving each aims from its own centre rather than sharing a vector), returning to centre on `pointerleave`, **all three layers repainting** on a random palette rather than just the face, and `prefers-reduced-motion` pinning the eyes. **The trap it paid for on its first run: headless chromium reports `(hover: none)` and `(pointer: coarse)`**, so `TrackingLogo` correctly refused to attach and every motion check passed vacuously — looking exactly like a product bug. It launches chromium with `--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4` (`Emulation.setEmulatedMedia` cannot set these) and §0 asserts the override took, the same discipline as the mobile harness asserting its emulated width. Negative-controlled by rebuilding from source with the reduced-motion guard deleted and `TRAVEL_X` ×10: exactly those two checks fail and no others |
 | `node scripts/e2e-annotations.mjs` | 220 checks (305 until 2026-10-29, when the landing page's copy of this markup was deleted and its row dropped from `PAGES`): every annotation round-trips to its note and back, both ends land **clear of the fixed nav** rather than under it, the phrase (not the superscript) is the hit target, the phrase survives into the accessible name with an additive `sr-only` cue and **no** `aria-label`, ids are unique and paired, no nested `<a>`. The `:target` highlight lands on the right note and no other, tints to `--surface`, measures ≥4.5:1, clears itself on the back-link, and does **not** reflow the note — a `border-left` in place of the inset shadow shifts the text 3px and fails here. Covers the MDX components on a post — **and nothing else, since 2026-10-29.** It also covered the hand-rolled copy on `/` (which lived on `/about` until that page became the landing page on 2026-10-26) until that page's prose was replaced with copy carrying only plain hyperlinks; there is no second implementation of the round trip left to keep in sync. The URL-is-alive discipline still applies to whatever rows it does carry — a dead route here would be worse than noise, since the browser renders a 404 body that looks like a working page |
@@ -816,6 +1029,14 @@ Two traps here, both already paid for:
 - **`border-border/40` is deliberately left alone** at ~1.11:1. It is a neutral decorative hairline
   that measures the same in dark-mono itself (1.11:1 — it was 1.09:1 in funky), and holding `random`
   to a bar the brand theme does not meet would be incoherent.
+- **The `/activity` heatmap ramp (`.hm-1`…`.hm-4`, alphas 0.35/0.57/0.78/1.0) is deliberately NOT in
+  this table and has no `random` override.** Every rule above exists because its composite is held to
+  an absolute floor — 3:1 for a UI boundary, 4.5:1 for small text — that a generated accent cannot
+  reach at the default alpha. A heatmap scale is neither text nor a boundary; what it needs is that
+  its five levels stay distinguishable **from each other**, which was measured across 6,000 seeds
+  before the alphas were chosen (worst adjacent step 1.413:1). There is nothing for an override to
+  fix, and `scripts/e2e-activity.mjs` asserts the ordering holds in a real random palette.
+  **Do not add one by analogy to the rows above.**
 
 `accent/surface` is gated at **4.5**, not 4.2, and `ACCENT_STAGES` solves for it — because the accent
 is rendered as small text directly on `--surface` (inline code, and the chips and doc-nav items the

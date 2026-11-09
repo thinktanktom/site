@@ -2,6 +2,7 @@ import type { MetadataRoute } from 'next'
 import { getAllPosts } from '@lib/posts'
 import { getAllProjects } from '@lib/projects'
 import { getAllDocParams } from '@lib/project-docs'
+import timelog from '../../content/timelog.json'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const posts = getAllPosts()
@@ -44,6 +45,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
        on GitHub Pages has no redirect mechanism, so there is nothing else to
        list. */
     { url: 'https://thinktanktom.com/work', lastModified: new Date() },
+    /* /activity renders a COMMITTED SNAPSHOT (content/timelog.json), not live
+       data -- see scripts/sync-timelog.mjs. lastModified is the snapshot's own
+       timestamp rather than new Date(), so a rebuild that did not re-sync does
+       not tell a crawler the page changed when its content did not. */
+    { url: 'https://thinktanktom.com/activity', lastModified: new Date(timelog.generatedAt) },
     ...postUrls,
     ...projectUrls,
     ...docUrls,
