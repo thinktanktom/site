@@ -53,6 +53,39 @@ interface GitHubSearchIssueItem {
  * the unauthenticated path is fine for a single request.
  */
 export async function getOpenSourcePRs(): Promise<PullRequest[]> {
+  /*
+   * UPSTREAM ONLY — `-user:thinktanktom` is what makes this "contributions to
+   * other people's projects", which is the whole organising idea of /work's
+   * rail ("Upstream · N repos"). /activity needs a broader set and uses
+   * searchPRs() directly; do not merge the two queries.
+   */
+  return searchPRs('type:pr+author:thinktanktom+is:public+-user:thinktanktom', 50)
+}
+
+/*
+ * Every PUBLIC pull request, newest first, across every repository including
+ * Tom's own. Feeds /activity, which showcases recent PR activity rather than
+ * upstream contribution specifically.
+ *
+ * `is:public` IS THE WHOLE PRIVACY MODEL HERE, and it is evaluated at build
+ * time on purpose. PRs in private repositories are simply never returned, so
+ * nothing about them — not a title, not a repo name, not a count, not a date —
+ * can reach the page. The corollary is the useful half: when a repository is
+ * made public later, its pull requests start appearing on the next build with
+ * no code change and no manual list to update.
+ *
+ * Deliberately NOT a token-authenticated search over private repos. That would
+ * need a PAT with `repo` scope in CI secrets (the Actions token is scoped to
+ * this repository alone and cannot see the others), which is broad read access
+ * to every private repo in exchange for a row that says nothing.
+ */
+export async function getRecentPRs(): Promise<PullRequest[]> {
+  /* 100 is the API maximum. Beyond that this would need pagination; the count
+     is 65 today, and the page renders only the most recent handful anyway. */
+  return searchPRs('type:pr+author:thinktanktom+is:public', 100)
+}
+
+async function searchPRs(query: string, perPage: number): Promise<PullRequest[]> {
   const token = process.env.GITHUB_TOKEN
   const headers: Record<string, string> = {
     Accept: 'application/vnd.github.v3+json',
@@ -62,7 +95,7 @@ export async function getOpenSourcePRs(): Promise<PullRequest[]> {
   let data: { items?: GitHubSearchIssueItem[] }
   try {
     const res = await fetch(
-      'https://api.github.com/search/issues?q=type:pr+author:thinktanktom+is:public+-user:thinktanktom&sort=created&order=desc&per_page=50',
+      `https://api.github.com/search/issues?q=${query}&sort=created&order=desc&per_page=${perPage}`,
       // A rejected connection was already handled below, but nothing bounded a
       // connection that is accepted and then never answered — that would hang
       // the build indefinitely rather than degrading to an empty list. The
@@ -71,7 +104,7 @@ export async function getOpenSourcePRs(): Promise<PullRequest[]> {
     )
 
     if (!res.ok) {
-      console.warn(`[work] GitHub returned ${res.status}; publishing an empty list`)
+      console.warn(`[github] search returned ${res.status}; publishing an empty list`)
       return []
     }
 
@@ -95,7 +128,7 @@ export async function getOpenSourcePRs(): Promise<PullRequest[]> {
   } catch {
     // The build must not fail because GitHub is unreachable, too slow, or
     // answering with something that is not the JSON it promised.
-    console.warn('[work] GitHub unreachable, timed out or unreadable; publishing an empty list')
+    console.warn('[github] unreachable, timed out or unreadable; publishing an empty list')
     return []
   }
 

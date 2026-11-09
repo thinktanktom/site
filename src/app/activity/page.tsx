@@ -113,9 +113,17 @@ export default async function ActivityPage() {
 
         {prDays.length > 0 && (
           <section className="mt-16 pt-8 border-t border-border">
-            <h2 className="font-mono text-xs uppercase tracking-widest text-accent mb-6">
-              Shipped upstream
+            <h2 className="font-mono text-xs uppercase tracking-widest text-accent mb-2">
+              Recent pull requests
             </h2>
+            {/* Says "public" out loud. The query is `is:public`, so work in
+                private repositories is absent rather than redacted -- without
+                this line a reader would reasonably read the list as everything
+                Tom has shipped. It also quietly explains why a repo going
+                public later makes older PRs appear. */}
+            <p className="font-sans text-sm text-muted mb-6">
+              From public repositories, newest first.
+            </p>
             {/* The real links. The grid's rings are aria-hidden decoration over
                 this list, which is the half a screen reader and a crawler both
                 actually get to use. */}

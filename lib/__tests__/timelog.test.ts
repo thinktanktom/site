@@ -6,6 +6,7 @@ import {
   formatDuration,
   formatCellDate,
   MAX_WEEKS,
+  RECENT_PRS,
   DAYS_PER_WEEK,
 } from '@lib/timelog'
 import type { PullRequest } from '@lib/github'
@@ -290,7 +291,7 @@ describe('all-time PR counts', () => {
     }) as PullRequest
 
   /*
-   * The counts and the "Shipped upstream" list are deliberately NOT scoped to
+   * The counts and the "Recent pull requests" list are deliberately NOT scoped to
    * the grid window. Since 2026-11-09 the grid starts at the first tracked day,
    * and every upstream PR so far predates that — window-scoped, both numbers
    * would read 0 on a page that lists ten PRs underneath them.
@@ -321,6 +322,34 @@ describe('all-time PR counts', () => {
     expect(grid.totals.prs).toBe(0)
     expect(grid.totals.prDays).toBe(0)
     expect(grid.columns.flat().every((c) => c.prs.length === 0)).toBe(true)
+  })
+
+  /*
+   * The list is capped on PULL REQUESTS, not on days. Capping days was the
+   * first attempt and it is unpredictable: PRs cluster heavily (several merged
+   * to this site in one afternoon), so a 15-day cap rendered 52 rows. The last
+   * day is never split, so the total can sit just over the cap.
+   */
+  it('caps the rendered list on PRs, keeping the final day whole', () => {
+    const many = []
+    /* 10 days, 4 PRs each = 40 PRs. A day-based cap would render all 10 days. */
+    for (let d = 0; d < 10; d += 1) {
+      for (let n = 0; n < 4; n += 1) {
+        many.push(pr(d * 10 + n, `2026-10-${String(10 + d).padStart(2, '0')}T06:00:00Z`, 'open'))
+      }
+    }
+    const g = buildGrid(NOW, bucketPRs(many, TZ), snap({ '2026-11-02': day(3600) }))
+
+    const rendered = g.prDaysAllTime.reduce((n, d) => n + d.prs.length, 0)
+    expect(rendered).toBeGreaterThanOrEqual(RECENT_PRS)
+    /* ...but not unboundedly: at most one whole extra day beyond the cap. */
+    expect(rendered).toBeLessThan(RECENT_PRS + 4)
+    /* every rendered day is intact — none is truncated mid-day */
+    for (const d of g.prDaysAllTime) expect(d.prs).toHaveLength(4)
+
+    /* The COUNTS are not capped. Truncating before counting would make
+       "PRs opened" silently mean "PRs we happened to render". */
+    expect(g.totals.prsOpenedAllTime).toBe(40)
   })
 
   it('lists the PR days newest first, grouped by day', () => {
@@ -383,7 +412,7 @@ describe('bucketPRs', () => {
 
     /* The window opens at the first tracked day's week (Sun 2026-11-01), so
        only the first PR can carry a ring. The second is outside the grid
-       entirely — which is why the counts and the "Shipped upstream" list are
+       entirely — which is why the counts and the "Recent pull requests" list are
        all-time rather than read off these cells. */
     expect(grid.totals.prs).toBe(1)
     expect(grid.totals.prDays).toBe(1)
