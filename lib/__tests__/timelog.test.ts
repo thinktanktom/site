@@ -5,7 +5,7 @@ import {
   intensityFor,
   formatDuration,
   formatCellDate,
-  WEEKS,
+  MAX_WEEKS,
   DAYS_PER_WEEK,
 } from '@lib/timelog'
 import type { PullRequest } from '@lib/github'
@@ -77,25 +77,61 @@ describe('intensityFor', () => {
 })
 
 describe('buildGrid geometry', () => {
-  const grid = buildGrid(NOW, new Map(), snap({}))
+  /* A snapshot starting Mon 2026-11-02, two days before NOW (Tue 2026-11-03).
+     The window is therefore ONE column: the week of Sun 2026-11-01. */
+  const grid = buildGrid(NOW, new Map(), snap({ '2026-11-02': day(3600) }))
 
-  it('is a full rectangle', () => {
-    expect(grid.columns).toHaveLength(WEEKS)
+  it('is a full rectangle, whatever its width', () => {
+    expect(grid.columns.length).toBeGreaterThan(0)
     for (const column of grid.columns) expect(column).toHaveLength(DAYS_PER_WEEK)
+  })
+
+  /* The headline change of 2026-11-09: the grid begins at the first tracked
+     week, not a fixed 52 weeks back. With two days of data that is one column,
+     not 53 — which is what let the "most of this grid is empty" paragraph go. */
+  it('starts at the week of the first tracked day, not a year back', () => {
+    expect(grid.firstDate).toBe('2026-11-01')
+    expect(grid.columns).toHaveLength(1)
+  })
+
+  it('grows a column per week as the log lengthens', () => {
+    const older = buildGrid(NOW, new Map(), snap({ '2026-10-12': day(3600) }))
+    expect(older.firstDate).toBe('2026-10-11')
+    expect(older.columns).toHaveLength(4)
+  })
+
+  /* ...and stops growing at MAX_WEEKS, after which the window slides and the
+     grid is the GitHub-shaped 53 columns it was originally. */
+  it('caps at MAX_WEEKS once the log is older than that', () => {
+    const ancient = buildGrid(NOW, new Map(), snap({ '2020-01-01': day(3600) }))
+    expect(ancient.columns).toHaveLength(MAX_WEEKS)
   })
 
   it('starts on a Sunday and ends on the week containing today', () => {
     expect(new Date(`${grid.firstDate}T00:00:00Z`).getUTCDay()).toBe(0)
     /* 2026-11-03 is a Tuesday, so today sits at index 2 of the last column and
        the four cells after it are future. */
-    const last = grid.columns[WEEKS - 1]
+    const last = grid.columns[grid.columns.length - 1]
     expect(last[2].date).toBe('2026-11-03')
     expect(last.map((c) => c.future)).toEqual([false, false, false, true, true, true, true])
   })
 
-  it('covers exactly 53 weeks of consecutive days with no gap or repeat', () => {
-    const dates = grid.columns.flat().map((c) => c.date)
-    expect(new Set(dates).size).toBe(WEEKS * DAYS_PER_WEEK)
+  /* Days in the opening column that precede the first tracked day are holes,
+     not zeroes — the grid must not claim a day went untracked before tracking
+     existed. Sun 2026-11-01 sits before the Mon 2026-11-02 start. */
+  it('marks days before the first tracked day as preStart holes', () => {
+    const first = grid.columns[0]
+    expect(first[0].date).toBe('2026-11-01')
+    expect(first[0].preStart).toBe(true)
+    expect(first[0].seconds).toBe(0)
+    expect(first[1].date).toBe('2026-11-02')
+    expect(first[1].preStart).toBe(false)
+  })
+
+  it('covers consecutive days with no gap or repeat', () => {
+    const wide = buildGrid(NOW, new Map(), snap({ '2026-08-01': day(3600) }))
+    const dates = wide.columns.flat().map((c) => c.date)
+    expect(new Set(dates).size).toBe(wide.columns.length * DAYS_PER_WEEK)
     for (let i = 1; i < dates.length; i += 1) {
       const prev = new Date(`${dates[i - 1]}T00:00:00Z`).getTime()
       const here = new Date(`${dates[i]}T00:00:00Z`).getTime()
@@ -112,12 +148,20 @@ describe('buildGrid geometry', () => {
   })
 
   it('labels a month exactly once and in reading order', () => {
-    const labels = grid.monthLabels
+    const labels = buildGrid(NOW, new Map(), snap({ '2020-01-01': day(3600) })).monthLabels
     expect(labels.length).toBeGreaterThanOrEqual(12)
     for (let i = 1; i < labels.length; i += 1) {
       expect(labels[i].column).toBeGreaterThan(labels[i - 1].column)
       expect(labels[i].label).not.toBe(labels[i - 1].label)
     }
+  })
+
+  /* An empty snapshot must still be a valid rectangle rather than zero columns
+     wide — reachable on a fresh clone before the first sync. */
+  it('renders one column for an empty snapshot', () => {
+    const empty = buildGrid(NOW, new Map(), snap({}))
+    expect(empty.columns).toHaveLength(1)
+    expect(empty.columns[0]).toHaveLength(DAYS_PER_WEEK)
   })
 })
 
@@ -212,6 +256,84 @@ describe('buildGrid totals', () => {
   it('refuses a snapshot written under different aggregation rules', () => {
     expect(() => buildGrid(NOW, new Map(), snap({}, { version: 2 }))).toThrow(/version 2/)
   })
+
+  /* Rolling 7 days ending today, not the calendar week — a calendar week
+     resets every Monday and would read as a drop rather than a boundary. */
+  it('totals the last 7 days inclusive of today, excluding the 8th', () => {
+    const grid = buildGrid(
+      NOW,
+      new Map(),
+      snap({
+        '2026-11-03': day(3600), // today
+        '2026-10-29': day(3600), // 5 days ago — in
+        '2026-10-28': day(3600), // 6 days ago — in (the boundary)
+        '2026-10-27': day(3600), // 7 days ago — OUT
+        '2026-10-20': day(3600), // well out
+      })
+    )
+    expect(grid.totals.last7Seconds).toBe(3 * 3600)
+    /* ...while the window total still counts everything rendered. */
+    expect(grid.totals.seconds).toBe(5 * 3600)
+  })
+})
+
+describe('all-time PR counts', () => {
+  const pr = (number: number, created_at: string, state: 'open' | 'closed', merged = false) =>
+    ({
+      number,
+      title: `PR ${number}`,
+      html_url: `https://github.com/acme/repo/pull/${number}`,
+      state,
+      merged_at: merged ? '2026-06-01T00:00:00Z' : null,
+      created_at,
+      repository: { full_name: 'acme/repo', html_url: 'https://github.com/acme/repo' },
+    }) as PullRequest
+
+  /*
+   * The counts and the "Shipped upstream" list are deliberately NOT scoped to
+   * the grid window. Since 2026-11-09 the grid starts at the first tracked day,
+   * and every upstream PR so far predates that — window-scoped, both numbers
+   * would read 0 on a page that lists ten PRs underneath them.
+   */
+  const prs = bucketPRs(
+    [
+      pr(1, '2026-05-13T06:00:00Z', 'closed', true), // merged
+      pr(2, '2026-03-30T06:00:00Z', 'closed', false), // closed unmerged
+      pr(3, '2026-02-01T06:00:00Z', 'open'),
+      pr(4, '2026-02-01T07:00:00Z', 'open'),
+    ],
+    TZ
+  )
+  const grid = buildGrid(NOW, prs, snap({ '2026-11-02': day(3600) }))
+
+  it('counts every PR regardless of the window', () => {
+    expect(grid.columns).toHaveLength(1) // window really is one week
+    expect(grid.totals.prsOpenedAllTime).toBe(4)
+  })
+
+  /* "Closed" means NOT OPEN. A merged PR is closed on GitHub too, and that is
+     the natural pair for "opened". */
+  it('counts merged and closed-unmerged together as closed', () => {
+    expect(grid.totals.prsClosedAllTime).toBe(2)
+  })
+
+  it('still reports zero rings when no PR falls inside the window', () => {
+    expect(grid.totals.prs).toBe(0)
+    expect(grid.totals.prDays).toBe(0)
+    expect(grid.columns.flat().every((c) => c.prs.length === 0)).toBe(true)
+  })
+
+  it('lists the PR days newest first, grouped by day', () => {
+    expect(grid.prDaysAllTime.map((d) => d.date)).toEqual([
+      '2026-05-13',
+      '2026-03-30',
+      '2026-02-01',
+    ])
+    expect(grid.prDaysAllTime[2].prs).toHaveLength(2)
+    /* A PR day that predates the log carries no tracked time, and says so
+       rather than inventing one. */
+    expect(grid.prDaysAllTime[0].seconds).toBe(0)
+  })
 })
 
 describe('bucketPRs', () => {
@@ -252,22 +374,42 @@ describe('bucketPRs', () => {
     expect(bucketPRs([pr(1, 'not-a-date')], TZ).size).toBe(0)
   })
 
-  it('reaches the grid as a ring and as counts', () => {
+  it('reaches the grid as a ring, but only inside the window', () => {
     const grid = buildGrid(
       NOW,
       bucketPRs([pr(1, '2026-11-02T06:00:00Z'), pr(2, '2026-10-20T06:00:00Z')], TZ),
       snap({ '2026-11-02': day(3600) })
     )
-    expect(grid.totals.prs).toBe(2)
-    expect(grid.totals.prDays).toBe(2)
+
+    /* The window opens at the first tracked day's week (Sun 2026-11-01), so
+       only the first PR can carry a ring. The second is outside the grid
+       entirely — which is why the counts and the "Shipped upstream" list are
+       all-time rather than read off these cells. */
+    expect(grid.totals.prs).toBe(1)
+    expect(grid.totals.prDays).toBe(1)
+    expect(grid.columns.flat().find((c) => c.date === '2026-10-20')).toBeUndefined()
+
     const cell = grid.columns.flat().find((c) => c.date === '2026-11-02')
     expect(cell?.prs).toHaveLength(1)
 
-    /* A PR on an untracked day must still be found — currently the COMMON case,
-       since timewarrior logging began after every upstream PR was opened. */
-    const untracked = grid.columns.flat().find((c) => c.date === '2026-10-20')
-    expect(untracked?.seconds).toBe(0)
-    expect(untracked?.prs).toHaveLength(1)
+    /* ...and both still appear in the all-time view. */
+    expect(grid.totals.prsOpenedAllTime).toBe(2)
+    expect(grid.prDaysAllTime.map((d) => d.date)).toEqual(['2026-11-02', '2026-10-20'])
+  })
+
+  /* A ring on a day with no tracked hours was the COMMON case before the
+     window changed, and stays reachable: a PR opened today during a gap in
+     logging. The cell must still paint its ring on a level-0 fill. */
+  it('rings a day inside the window that has no tracked time', () => {
+    const grid = buildGrid(
+      NOW,
+      bucketPRs([pr(1, '2026-11-03T06:00:00Z')], TZ),
+      snap({ '2026-11-02': day(3600) })
+    )
+    const cell = grid.columns.flat().find((c) => c.date === '2026-11-03')
+    expect(cell?.seconds).toBe(0)
+    expect(cell?.intensity).toBe(0)
+    expect(cell?.prs).toHaveLength(1)
   })
 })
 
@@ -300,7 +442,11 @@ describe('the committed snapshot', () => {
      actually renders. */
   it('builds a grid from the file on disk', () => {
     const grid = buildGrid(new Date(realSnapshot.generatedAt))
-    expect(grid.columns).toHaveLength(WEEKS)
+    /* A range rather than a fixed 53: the width now grows with the log. The
+       floor of 1 is the empty-snapshot case; the ceiling is the cap. */
+    expect(grid.columns.length).toBeGreaterThanOrEqual(1)
+    expect(grid.columns.length).toBeLessThanOrEqual(MAX_WEEKS)
+    for (const column of grid.columns) expect(column).toHaveLength(DAYS_PER_WEEK)
     expect(grid.totals.seconds).toBeGreaterThan(0)
     expect(grid.meta.generatedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/)
   })

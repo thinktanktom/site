@@ -351,7 +351,7 @@ making sense is the data change below.
 
 ### `/activity` — the tracked-hours heatmap (2026-11-03)
 
-A GitHub-shaped 53×7 grid of hours logged with **timewarrior**, with the days that opened an
+A GitHub-shaped grid of hours logged with **timewarrior**, with the days that opened an
 upstream PR ringed. `max-w-article`, like `/`. An **async server component** for the same reason
 `/work` is — `getActivityGrid()` pulls in `lib/github.ts` — and with **no client component
 anywhere**: the only interactivity is the native `title` tooltip, so it works with JS off.
@@ -434,6 +434,32 @@ up-to-date and stale. `generatedAt`, `intervalCount` and `totalSeconds` are neut
 same reason (the last because it sums over the open days too). Genuine staleness on a finished day
 still exits 1 — negative-controlled by hand-editing a committed day's `seconds`.
 
+**The window starts at the FIRST TRACKED DAY, not a fixed year back (changed 2026-11-09, Tom's
+call).** It shipped as a fixed 53×7 like GitHub's, which meant 369 of 371 cells were empty and the
+page carried a paragraph apologising for it. Growing from the first logged day means the graph is
+dense from day one and widens on its own; `MAX_WEEKS` (53) is the cap it grows into, after which
+the window slides and the grid is exactly the shape it started as. **A head-trim, not a different
+idea** — and the explanatory paragraph went with it, along with "Where the time went", the
+running-session suffix on the snapshot line, and the Active-days / Longest-streak stats (now Last
+7 days / PRs closed).
+
+Four consequences, all live:
+
+- **The grid is no longer a fixed size.** It is 2 columns today. Nothing may assert `53` or `371`
+  any more; `scripts/e2e-activity.mjs` asserts the *invariant* — a full rectangle of 7-day columns
+  within the cap — for exactly that reason.
+- **Days before the first tracked day are HOLES, not zeroes** (`preStart`, painted as
+  `.hm-future`). The grid must not claim a day went untracked before tracking existed.
+- **The PR counts and the "Shipped upstream" list are ALL-TIME, deliberately out of step with the
+  two stats beside them.** Every upstream PR predates 2026-11-02, so window-scoped counts would
+  read 0 opened and 0 closed on a page that lists ten of them underneath. The *rings* stay
+  window-scoped, because a ring has to land on a cell. **"PRs closed" means NOT OPEN** — a merged
+  PR is closed on GitHub too, which is the natural pair for "opened" (currently 10 opened, 6
+  closed = 3 merged + 3 closed-unmerged).
+- **The ring is therefore dormant**, and three things drop together while it is: the legend entry,
+  the "a ring means something shipped" clause in the intro, and five harness checks — which report
+  **SKIP**, never a pass. All of them return on their own with the first in-window PR.
+
 Six things about it are decisions, not leftovers:
 
 - **The tag allowlist is deny-by-default and must stay that way.** `PUBLIC_TAGS` in the sync script
@@ -466,9 +492,11 @@ Six things about it are decisions, not leftovers:
   exactly there. The inner `--bg` ring is what keeps the outer accent ring visible against a
   **level-4** fill, where the cell is already solid accent.
 - **`.hm-scroll` opens scrolled to the RIGHT (recent) edge, via `direction: rtl`.** The grid is
-  739px and cannot fit a phone, and the data only starts in Nov 2026 — left-aligned, a mobile
-  reader opens on twelve months of empty cells and the graph reads as broken. `rtl` moves the
-  resting scroll position with no JavaScript, which this page has none of. **Both inner rules are
+  739px AT THE CAP and cannot fit a phone then — left-aligned, a mobile reader would open on the
+  oldest end and have to scroll to reach the data. `rtl` moves the resting scroll position with no
+  JavaScript, which this page has none of. **Currently dormant**: a 2-column grid fits any
+  viewport, so there is nothing to scroll and the harness SKIPs those two checks per width rather
+  than passing them against a `maxScroll` of 0. **Both inner rules are
   required**: `direction: ltr` puts the content back (nothing is actually mirrored), and
   **`width: max-content` is the half that is easy to miss** — left at `auto` the wrapper shrinks to
   the scroller and the grid overflows the *wrapper* instead, which an rtl scroller clips rather
@@ -508,8 +536,8 @@ selector and the check null-derefs rather than failing honestly.
 
 **The accessibility model is a choice.** The grid is one `role="img"` with a summarising
 `aria-label` and the cells are hidden from the tree — the same shape `TrackingLogo` uses. A
-371-cell table is what GitHub ships and is criticised for exactly this: a screen reader walks 371
-cells, most of them "no activity", to learn what a sentence conveys. So the data is published
+full-year table is what GitHub ships and is criticised for exactly this: a screen reader walks
+hundreds of cells, most of them "no activity", to learn what a sentence conveys. So the data is published
 **twice** — as pixels, and as real prose, a totals `<dl>`, a bucket breakdown and the PR links in
 the "Shipped upstream" list below.
 
@@ -573,7 +601,7 @@ thinktanktom/
 │   ├── ThemedLogo.tsx           ← one CSS-masked mark per role (server)
 │   ├── TrackingLogo.tsx         ← the stacked lockup, eyes following the pointer (client)
 │   ├── logo-roles.ts            ← the three reference canvases, shared by both of the above
-│   └── ActivityGraph.tsx        ← the /activity heatmap, 371 CSS-painted cells (server)
+│   └── ActivityGraph.tsx        ← the /activity heatmap, CSS-painted cells (server)
 ├── lib/
 │   ├── posts.ts                 ← MDX reading + frontmatter utils
 │   ├── timelog.ts               ← the /activity grid: snapshot + PRs on one date axis
@@ -844,7 +872,7 @@ rule written this way.)
 
 ## Verifying this site
 
-`npm test` (vitest, ~4s, **184 tests**) covers the palette engine, `lib/work.ts`, `lib/timelog.ts`, `scripts/sync-timelog.mjs` and the lockup
+`npm test` (vitest, ~4s, **195 tests**) covers the palette engine, `lib/work.ts`, `lib/timelog.ts`, `scripts/sync-timelog.mjs` and the lockup
 mask split.
 
 `components/__tests__/lockup-mask-split.test.ts` was added 2026-10-27 with the tracking lockup, and
@@ -869,7 +897,7 @@ because that module wraps its readers in React's `cache()`, which throws outside
 *import* time. `vitest.config.ts` carries the `@lib`/`@components`/`@` aliases for the same reason —
 Vite does not read `tsconfig.json` paths.
 
-`lib/__tests__/timelog.test.ts` (22 tests) was added 2026-11-03 with `/activity`, for the same
+`lib/__tests__/timelog.test.ts` (33 tests) was added 2026-11-03 with `/activity`, for the same
 reason: `lib/timelog.ts` is date arithmetic across **two** timezone conventions plus a windowing
 pass, a banding function and a streak counter, and **every one of its failure modes renders
 perfectly**. A cell off by one day, a streak counted across a gap, or a PR bucketed in UTC instead
@@ -907,7 +935,7 @@ against a built export:
 |---|---|
 | `node scripts/e2e-palette.mjs` | 53 checks: the switcher has exactly 2 buttons, the palette is actually painted, a reload restores it pre-paint, switching back to dark-mono *removes* the inline properties, the mark's ink follows `--accent`, a stale cache recovers from the seed with React state in step, that the hero mark is its **three** mounted layers with no `<img>` anywhere, that its **mask has already been fetched while dark-mono is live** (read from the CDP request log, because Resource Timing does not report memory-cache hits) and that it carries a `background-color` transition — the two halves of the 2026-10-17 switch-stutter fix, negative-controlled by re-hiding the mark in source and rebuilding, which gives `requested=0 mask assets`. **§1 was repointed from `nav .logo-mask` to `main .logo-mask` on 2026-10-26**, because `/` no longer has a nav wordmark and this section runs on `/` — left alone it would have failed on a page that is correct, and the tempting fix for a failing guard is deleting it. It now also asserts **both halves of the wordmark gating**: no nav mark on `/`, and exactly one linking home on an inner page (taken at the end, where §9b has already navigated to `/writing`),  and (§5b) **a stale stored `funky` self-heals to a PAINTED dark-mono** — the migration path every existing reader takes once, asserted on the attribute because the self-heal is invisible in the pixels. Also the dice's two-state action (§7b): entering random **restores** the stored seed *and* repaints the same `--bg`, the press after that rolls, and the button renames itself in all three states. **The empty-store roll has no check of its own on purpose** — section 2's press happens on cleared storage, so `dice applies a random palette` already *is* that assertion; breaking the empty-store path fails it (plus 8 downstream checks), which is what licensed dropping the duplicate. Negative-controlled the same way for the restore itself: with the old always-roll `select()` rebuilt from source, the restore check fails and the roll checks still pass. §9 covers the **themed favicon**: dark-mono serves the brand file, a roll repaints both `rel~="icon"` links as a tinted data URI with exactly one fill, that URI **decodes as a real image**, `apple-touch-icon` is untouched, dark-mono puts the file back, and a reload repaints from the applied accent. **§9b is the one that shipped broken** — the themed icon must survive a CLIENT-SIDE navigation. It is driven by clicking a real nav anchor, because `Page.navigate` is a full document load that re-runs the mount path and therefore *cannot* reproduce the bug; and its expected default is read out of `favicon.ts` rather than hard-coded, so it cannot drift when the default mark changes. §8 (the alpha-composited accent utilities) moved target on 2026-10-26 and gained a check: it used to probe /projects, which the /work merge turned into a signpost, so every border assertion there passed VACUOUSLY on an empty set (`0 boundary borders`, `worst undefined`) -- a green run proving nothing. It now probes **two** pages and merges, because no single page renders the whole family any more: the status pill's classes come from frontmatter `status`, so `border-accent/40` is only on an **active** project (`/projects/BankX`) and the neutral `border-border/40` hairline only on an **archived** one (`/projects/CtrlbitSDWAN`, the only one) -- the old index got every variant free by rendering all seven cards. The ACTIVE page is `/projects/FractalWebhook`, not BankX: BankX held that slot until its engagement closed in Dec 2025 and it became `completed` (2026-10-26). So **changing a project's frontmatter `status` can break this harness**, and it fails on the presence check rather than going quiet. The added check is the anti-vacuity guard: it asserts all three families were actually FOUND, so a frontmatter status change fails loudly instead of quietly emptying the set. /work is deliberately not the target -- its stack chips are neutral, because 22 rows of accent chips would breach the "keep `--accent` disciplined" rule |
 | `node scripts/e2e-work.mjs` | 38 checks on `/work`, added with the page on 2026-10-26: the spine holds all 15 engagements and the rail all 8 clusters, exactly 7 carry `data-writeup`, the rail sits **beside** the spine at `lg` while the spine still measures **780px** (the rail's whole arithmetic), each filter shows exactly its own set *and* collapses the grid to one track, the pressed pill **inverts** rather than tints, and below `lg` the rail stacks under the spine with no horizontal overflow at 375px and 390px. **§5 is the load-bearing one: the filter must keep working with JavaScript DISABLED** (`Emulation.setScriptExecutionDisabled` before the navigation, then a real `Input.dispatchMouseEvent` on the label) — a rewrite of the filter into React state would pass every other check here and fail only that one. Two traps it already paid for: `.work-rail li` also matches the PR items inside each cluster's `<details>` (18 rows for 8 clusters), so the probe uses `.work-rail > ol > li`; and the pills carry `transition-colors duration-200`, so a measurement taken straight after the click reads a colour **mid-transition** — it polls until the value holds across three samples, the same discipline `e2e-annotations.mjs` uses for smooth scroll |
-| `node scripts/e2e-activity.mjs` | 50 checks on `/activity`, added with the page on 2026-11-03. `lib/__tests__/timelog.test.ts` already covers the arithmetic, so this is only what a browser can answer: the grid is **53 columns of 7** with no `<img>` and no inline `<svg>`, the **five ramp levels composite to strictly increasing luminance** (the browser reports a declared `rgba(…, 0.35)` verbatim, so the harness does the blend against the page ground itself), the PR ring is **two** box-shadow rings and lands on a **level-0** cell, the grid fits **780px** at desktop, the **nav's four links fit at `lg`**, every past cell carries a `title` while every future cell carries none, a dice roll **repaints the ramp and keeps all five levels distinct**, no **body** overflow at 375px/390px while the scroller **opens at the recent (right) edge**, and all 371 cells plus the real PR anchors render with **JavaScript disabled**. **Two negative controls, and the second is the instructive one.** Collapsing a ramp step fails exactly the three ramp checks. But setting `overflow-x: visible` on `.hm-scroll` **failed to fail** — per CSS overflow, one axis not being `visible` computes the other to `auto`, so the surviving `overflow-y: hidden` silently kept it scrolling and all 46 passed. Only removing **both** declarations reproduces it, and then `document.body` overruns by **437px** at 375 while `document.documentElement` reports **zero** — so a check on the documentElement alone would have passed vacuously, which is why both are measured. `scrollerScrolls` also still passes when broken and is kept as the **precondition**, not a guard |
+| `node scripts/e2e-activity.mjs` | **42 checks + 4 skips** on `/activity`, added with the page on 2026-11-03 and reworked on 2026-11-09 when the window changed. `lib/__tests__/timelog.test.ts` covers the arithmetic, so this is only what a browser can answer. **Every structural assertion is on the INVARIANT, never a literal count** — a full rectangle of 7-day columns within the `MAX_WEEKS` cap, cells == columns × 7, at most one month label per column — because the grid grows every week now and a hardcoded `53` would need editing each time. Also: no `<img>` and no inline `<svg>`, the **five ramp levels composite to strictly MONOTONIC luminance**, the grid fits **780px**, the **nav's four links fit at `lg`**, every past cell carries a `title` while every future cell carries none, a dice roll **repaints the ramp and keeps all five levels distinct**, no **body** overflow at 375px/390px, and the whole grid plus the real PR anchors render with **JavaScript disabled**. **Checks with nothing to exercise report SKIP, never a pass** — the four ring checks (no PR falls inside the window) and the two scroll-position checks per width (a 2-column grid fits a phone), with skips excluded from the denominator and printed, so "42/42" can never quietly mean "36 ran". **Three negative controls, and two are instructive.** Collapsing a ramp step fails exactly the three ramp checks. Setting `overflow-x: visible` on `.hm-scroll` **failed to fail** — per CSS overflow, one axis not being `visible` computes the other to `auto`, so the surviving `overflow-y: hidden` silently kept it scrolling; only removing **both** reproduces it, and then `document.body` overruns by **437px** at 375 while `document.documentElement` reports **zero**, which is why both are measured. And the ramp check itself was **wrong until a dice roll caught it**: it asserted *increasing* luminance, true only of dark-polarity palettes, and would have failed at random on light seeds — it now asserts monotonic in either direction |
 | `node scripts/e2e-palette-mobile.mjs` | the overlay control fits at 375px and 390px, no horizontal overflow, picking a theme does not close the overlay |
 | `node scripts/e2e-logo-eyes.mjs` | 15 checks on the tracking lockup on `/`, added with it on 2026-10-27 (it targeted `/about` for the one commit before that page became `/`): three mask layers and two of them eyes, no `<img>` and no inline `<svg>`, all three layers **hidden from the accessibility tree** behind the wrapper's one `role="img"`, **all three masks already fetched** before anything moves (the 2026-10-17 switch-stutter lesson applied to a new feature, read from the CDP request log for the same reason), both eyes at `translate(0,0)` at first paint so the static export is the unchanged mark, direction, the response curve from BOTH ends — bounded, reaching most of the travel when the pointer is far and level, and collapsing to almost nothing when it is on the mark. **The upper bound alone was unfalsifiable and was claimed here as "the clamp holds" until 2026-10-27**: there is no clamp branch in the component, so `|tx| <= TRAVEL_X` is an identity of `reach = d/(d+REACH)`, and the envelope is unreachable from anywhere on the page (measured peak 3.99px against a 6.33px limit). Only a >2x inflation of `TRAVEL_X` could breach it, which is why the x10 negative control appeared to validate it and proved very little. The lower bounds are what make the check able to fail, the eyes **converging** (proving each aims from its own centre rather than sharing a vector), returning to centre on `pointerleave`, **all three layers repainting** on a random palette rather than just the face, and `prefers-reduced-motion` pinning the eyes. **The trap it paid for on its first run: headless chromium reports `(hover: none)` and `(pointer: coarse)`**, so `TrackingLogo` correctly refused to attach and every motion check passed vacuously — looking exactly like a product bug. It launches chromium with `--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4` (`Emulation.setEmulatedMedia` cannot set these) and §0 asserts the override took, the same discipline as the mobile harness asserting its emulated width. Negative-controlled by rebuilding from source with the reduced-motion guard deleted and `TRAVEL_X` ×10: exactly those two checks fail and no others |
 | `node scripts/e2e-annotations.mjs` | 220 checks (305 until 2026-10-29, when the landing page's copy of this markup was deleted and its row dropped from `PAGES`): every annotation round-trips to its note and back, both ends land **clear of the fixed nav** rather than under it, the phrase (not the superscript) is the hit target, the phrase survives into the accessible name with an additive `sr-only` cue and **no** `aria-label`, ids are unique and paired, no nested `<a>`. The `:target` highlight lands on the right note and no other, tints to `--surface`, measures ≥4.5:1, clears itself on the back-link, and does **not** reflow the note — a `border-left` in place of the inset shadow shifts the text 3px and fails here. Covers the MDX components on a post — **and nothing else, since 2026-10-29.** It also covered the hand-rolled copy on `/` (which lived on `/about` until that page became the landing page on 2026-10-26) until that page's prose was replaced with copy carrying only plain hyperlinks; there is no second implementation of the round trip left to keep in sync. The URL-is-alive discipline still applies to whatever rows it does carry — a dead route here would be worse than noise, since the browser renders a 404 body that looks like a working page |

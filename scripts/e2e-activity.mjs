@@ -7,27 +7,33 @@
  * WHAT NEEDS A REAL BROWSER AND CANNOT BE A VITEST. lib/__tests__/timelog.test.ts
  * already covers the grid's arithmetic — the windowing, the banding, the streak,
  * and the timezone the PR half is bucketed in. Everything here is the other
- * half: what the browser does with 371 cells and a five-step alpha ramp.
+ * half: what the browser does with the painted grid and a five-step alpha ramp.
  *
- *  1. THE GRID IS STRUCTURALLY WHOLE. 53 columns of 7, and no <img> or inline
- *     <svg> anywhere in it — the cells are divs painted by CSS, which is what
- *     keeps a year of data at 188 B of page JS.
+ *  1. THE GRID IS STRUCTURALLY WHOLE. A full rectangle of 7-day columns, no
+ *     wider than the MAX_WEEKS cap, and no <img> or inline <svg> anywhere in
+ *     it — the cells are divs painted by CSS, which is what keeps a year of
+ *     data at 188 B of page JS. NOTE the width is no longer a fixed 53: since
+ *     2026-11-09 the window starts at the first tracked day and grows, so
+ *     every assertion here is on the INVARIANT, never on a literal count.
  *  2. THE RAMP PAINTS FIVE DISTINGUISHABLE LEVELS. Composited against the page
  *     ground and compared by luminance, strictly increasing. This is the check
  *     that the measured alphas in globals.css actually reach the screen: a
  *     typo'd or overridden alpha leaves two levels identical, and a heatmap
  *     whose scale has a collapsed step looks completely normal.
- *  3. THE PR RING READS ON AN UNTRACKED DAY. Currently the COMMON case, not the
- *     edge case — timewarrior logging began 2026-11-02 and every upstream PR
- *     predates it, so nearly every ringed cell sits on a level-0 fill. The
- *     first design was a --bg corner notch, which is invisible exactly there.
- *  4. THE PAGE BODY NEVER SCROLLS HORIZONTALLY, at 375px and 390px. The grid is
- *     739px wide and cannot fit; it must overflow inside .hm-scroll and nowhere
- *     else. This is the one that a plain `overflow: visible` regression breaks,
- *     and it breaks the whole page rather than the graph.
- *  5. THE DESKTOP GRID STAYS INSIDE THE ARTICLE MEASURE. 53 columns at the
- *     pitch in globals.css must still fit 780px, or the page silently widens
- *     past the measure / moved to on 2026-10-29.
+ *  3. THE PR RING READS ON AN UNTRACKED DAY, when there is one to read. The
+ *     ring must survive a level-0 fill -- a --bg corner notch was the first
+ *     design and is invisible exactly there. CURRENTLY DORMANT: the window
+ *     opens at the first tracked day and every upstream PR predates it, so no
+ *     cell is ringed. Those four checks report SKIP rather than passing
+ *     vacuously, and a fifth asserts the page drops the ring from its legend
+ *     to match. They come back on their own with the first in-window PR.
+ *  4. THE PAGE BODY NEVER SCROLLS HORIZONTALLY, at 375px and 390px. Checked
+ *     unconditionally, because it is the guard that matters most. The
+ *     scroll-POSITION checks beside it are conditional on the graph actually
+ *     being wider than the viewport, which a two-column grid is not.
+ *  5. THE DESKTOP GRID STAYS INSIDE THE ARTICLE MEASURE. At the cap, 53 columns
+ *     at the pitch in globals.css measure 739px and must still fit 780px, or
+ *     the page silently widens past the measure / moved to on 2026-10-29.
  *  6. THE NAV STILL FITS AT lg WITH FOUR LINKS. /activity is the fourth, and
  *     CLAUDE.md's last measurement found only ~185px of clearance at md with
  *     three. Measured here at lg WITH SCROLLBARS VISIBLE — a past nav
@@ -173,6 +179,9 @@ results.structure = JSON.parse(await ev(`JSON.stringify((()=>{
     future: cells.filter(c=>c.classList.contains('hm-future')).length,
     ringed: cells.filter(c=>c.classList.contains('hm-pr')).length,
     monthLabels: document.querySelectorAll('.hm-month').length,
+    /* the ring's own legend swatch, which the page drops when no grid cell
+       carries a ring */
+    ringLegend: document.querySelectorAll('.hm-legend .hm-pr').length,
     ariaLabel: wrap?wrap.getAttribute('aria-label'):null,
     cellsHidden: grid.getAttribute('aria-hidden')==='true'
   }})())`))
@@ -348,16 +357,41 @@ server.close()
 const checks = []
 const ok = (name, cond, detail) => checks.push({ name, pass: !!cond, detail })
 
+/*
+ * A check that has nothing to exercise is reported as SKIP, never as a pass.
+ *
+ * Two groups became conditional when the grid started at the first tracked day
+ * (2026-11-09): the PR-ring checks, because every upstream PR predates the log
+ * so no cell carries a ring; and the overflow checks, because a two-column grid
+ * fits a phone. Letting those quietly pass is exactly the vacuous-green trap
+ * this harness's header already records for the /projects probe and the
+ * overflow control — a run that proves nothing while looking identical to one
+ * that proves everything. Skips are printed, counted and shown in the summary,
+ * so the day data makes them live again is visible rather than silent.
+ */
+const skip = (name, why) => checks.push({ name, skip: true, detail: why })
+
 const s = results.structure
-ok('53 columns', s.columns === 53, s.columns)
+/* The grid is no longer a fixed 53 columns -- since 2026-11-09 it starts at the
+   first tracked week and grows to a MAX_WEEKS cap. Asserting the INVARIANT
+   (a full rectangle of 7-day columns, within the cap) instead of the literal
+   53, so this does not have to be edited every week as the log lengthens. */
+ok('between 1 and 53 columns', s.columns >= 1 && s.columns <= 53, s.columns)
 ok('7 cells per column', s.perColumn.length === 1 && s.perColumn[0] === 7, JSON.stringify(s.perColumn))
-ok('371 cells', s.cells === 371, s.cells)
+ok('cells == columns x 7', s.cells === s.columns * 7, s.cells + ' for ' + s.columns + ' columns')
 ok('no <img> in the grid', s.imgs === 0, s.imgs)
 ok('no inline <svg> in the grid', s.svgs === 0, s.svgs)
 ok('future cells present and few', s.future > 0 && s.future < 7, s.future)
-ok('month labels rendered', s.monthLabels >= 12, s.monthLabels)
+/* At least one, never more than one per column. Was `>= 12`, which assumed
+   the fixed 53-week window — a two-column grid spans a single month and the
+   old assertion failed on a perfectly correct page. */
+ok(
+  'month labels rendered, at most one per column',
+  s.monthLabels >= 1 && s.monthLabels <= s.columns,
+  s.monthLabels + ' for ' + s.columns + ' columns'
+)
 ok('grid is one role=img', !!s.ariaLabel, s.ariaLabel)
-ok('aria-label summarises the window', /Tracked work over the last 12 months/.test(s.ariaLabel || ''), s.ariaLabel)
+ok('aria-label summarises the window', /^Tracked work since \w{3} \d{1,2} \w{3} \d{4}:/.test(s.ariaLabel || ''), s.ariaLabel)
 ok('cells hidden from a11y tree', s.cellsHidden, s.cellsHidden)
 
 const lums = results.ramp.map((r) => r.lum)
@@ -370,10 +404,23 @@ ok(
 ok('level 4 is the solid accent', /^rgb\(/.test(results.ramp[4].declared), results.ramp[4].declared)
 
 const r = results.ring
-ok('PR ring present', r.ringedTotal > 0, r.ringedTotal)
-ok('PR ring lands on an untracked day', r.ringedOnEmptyDay, r.ringedOnEmptyDay)
-ok('ring is two box-shadow rings', r.shadowRings === 2, r.shadowRings)
-ok('ringed cell titles its PR', /pull request/.test(r.title || ''), r.title)
+if (r.ringedTotal > 0) {
+  ok('PR ring present', r.ringedTotal > 0, r.ringedTotal)
+  ok('PR ring lands on an untracked day', r.ringedOnEmptyDay, r.ringedOnEmptyDay)
+  ok('ring is two box-shadow rings', r.shadowRings === 2, r.shadowRings)
+  ok('ringed cell titles its PR', /pull request/.test(r.title || ''), r.title)
+} else {
+  /* Dormant, not broken. The window opens at the first tracked day and every
+     upstream PR predates it, so there is no ringed cell to measure. The page
+     correspondingly drops the ring from the legend and from the intro
+     sentence — asserted below so the three stay in step. */
+  skip('PR ring checks (4)', 'no PR falls inside the window — nothing ringed')
+  ok(
+    'ring legend hidden when nothing is ringed',
+    results.structure.ringLegend === 0,
+    results.structure.ringLegend
+  )
+}
 
 const d = results.desktop
 ok('grid fits the 780px article measure', d.gridWidth <= 780, d.gridWidth + 'px')
@@ -430,25 +477,51 @@ ok(
 
 for (const [width, m] of Object.entries(results.mobile)) {
   ok(`${width}: emulation applied`, m.emulatedWidth === Number(width), m.emulatedWidth)
+  /* Unconditional. This is the guard that matters most and it holds whether or
+     not the graph is wide enough to scroll. */
   ok(`${width}: no page overflow`, m.docOverflow <= 0 && m.bodyOverflow <= 0, `doc ${m.docOverflow} body ${m.bodyOverflow}`)
-  ok(`${width}: graph scrolls inside itself`, m.scrollerScrolls, m.scrollerScrolls)
   ok(`${width}: scroller is overflow-x auto`, m.scrollerOverflowX === 'auto', m.scrollerOverflowX)
-  ok(`${width}: opens at the recent end`, m.atRecentEnd, `scrollLeft ${m.scrollLeft} of ${m.maxScroll}`)
   ok(`${width}: inner content is not mirrored`, m.innerDirection === 'ltr', m.innerDirection)
   ok(`${width}: cells stay square`, m.cellsStaySquare, m.cellsStaySquare)
+
+  /* The scroll behaviour can only be tested while the graph is actually wider
+     than the viewport. With the window starting at the first tracked day the
+     grid is a couple of columns and fits a phone outright, so `scrollerScrolls`
+     is the PRECONDITION for the resting-position check rather than a result:
+     asserting "opens at the recent end" against a scroller with maxScroll 0
+     would pass for the wrong reason, which is this harness's recorded trap. */
+  if (m.scrollerScrolls) {
+    ok(`${width}: graph scrolls inside itself`, m.scrollerScrolls, m.maxScroll + 'px of scroll')
+    ok(`${width}: opens at the recent end`, m.atRecentEnd, `scrollLeft ${m.scrollLeft} of ${m.maxScroll}`)
+  } else {
+    skip(`${width}: scroll-position checks (2)`, `grid fits the viewport (maxScroll ${m.maxScroll})`)
+  }
 }
 
 const j = results.noJs
-ok('JS off: all 371 cells render', j.cells === 371, j.cells)
-ok('JS off: rings render', j.ringed > 0, j.ringed)
+ok('JS off: the whole grid renders', j.cells > 0 && j.cells % 7 === 0, j.cells)
+if (results.ring.ringedTotal > 0) {
+  ok('JS off: rings render', j.ringed > 0, j.ringed)
+} else {
+  skip('JS off: rings render', 'no PR falls inside the window')
+}
 ok('JS off: tooltips present', j.titled > 0, j.titled)
 ok('JS off: shipped section renders', j.shippedSection, j.shippedSection)
 ok('JS off: PR links are real anchors', j.prLinks > 0, j.prLinks)
 
 let failed = 0
+let skipped = 0
 for (const c of checks) {
-  if (!c.pass) failed += 1
-  console.log(`${c.pass ? 'ok  ' : 'FAIL'}  ${c.name}${c.detail !== undefined ? '  —  ' + c.detail : ''}`)
+  if (c.skip) skipped += 1
+  else if (!c.pass) failed += 1
+  const tag = c.skip ? 'SKIP' : c.pass ? 'ok  ' : 'FAIL'
+  console.log(`${tag}  ${c.name}${c.detail !== undefined ? '  —  ' + c.detail : ''}`)
 }
-console.log(`\n${checks.length - failed}/${checks.length} checks passed`)
+/* Skips are reported out of the denominator AND called out, so "50/50" can
+   never quietly mean "44 ran and 6 were unreachable". */
+const ran = checks.length - skipped
+console.log(
+  `\n${ran - failed}/${ran} checks passed` +
+    (skipped ? `, ${skipped} skipped — see the SKIP lines above` : '')
+)
 process.exit(failed ? 1 : 0)
