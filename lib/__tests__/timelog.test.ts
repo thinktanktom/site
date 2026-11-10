@@ -6,7 +6,7 @@ import {
   formatDuration,
   formatCellDate,
   MAX_WEEKS,
-  RECENT_PRS,
+  PR_FEED_DAYS,
   DAYS_PER_WEEK,
 } from '@lib/timelog'
 import type { PullRequest } from '@lib/github'
@@ -330,38 +330,84 @@ describe('all-time PR counts', () => {
    * to this site in one afternoon), so a 15-day cap rendered 52 rows. The last
    * day is never split, so the total can sit just over the cap.
    */
-  it('caps the rendered list on PRs, keeping the final day whole', () => {
-    const many = []
-    /* 10 days, 4 PRs each = 40 PRs. A day-based cap would render all 10 days. */
-    for (let d = 0; d < 10; d += 1) {
-      for (let n = 0; n < 4; n += 1) {
-        many.push(pr(d * 10 + n, `2026-10-${String(10 + d).padStart(2, '0')}T06:00:00Z`, 'open'))
-      }
-    }
-    const g = buildGrid(NOW, bucketPRs(many, TZ), snap({ '2026-11-02': day(3600) }))
+  /*
+   * The feed is a ROLLING WINDOW of PR_FEED_DAYS, replacing a count cap of 15
+   * on 2026-11-10. NOW is Tue 2026-11-03, so the window is Wed 2026-10-28 to
+   * today inclusive — the boundary day is IN, the day before it is OUT.
+   */
+  it('shows only PRs inside the feed window, boundary included', () => {
+    const g = buildGrid(
+      NOW,
+      bucketPRs(
+        [
+          pr(1, '2026-11-03T06:00:00Z', 'open'), // today — in
+          pr(2, '2026-10-30T06:00:00Z', 'open'), // 4 days ago — in
+          pr(3, '2026-10-28T06:00:00Z', 'open'), // 6 days ago — in, the boundary
+          pr(4, '2026-10-27T06:00:00Z', 'open'), // 7 days ago — OUT
+          pr(5, '2026-05-13T06:00:00Z', 'open'), // months ago — OUT
+        ],
+        TZ
+      ),
+      snap({ '2026-11-02': day(3600) })
+    )
 
-    const rendered = g.prDaysAllTime.reduce((n, d) => n + d.prs.length, 0)
-    expect(rendered).toBeGreaterThanOrEqual(RECENT_PRS)
-    /* ...but not unboundedly: at most one whole extra day beyond the cap. */
-    expect(rendered).toBeLessThan(RECENT_PRS + 4)
-    /* every rendered day is intact — none is truncated mid-day */
-    for (const d of g.prDaysAllTime) expect(d.prs).toHaveLength(4)
+    expect(g.prFeed.map((d) => d.date)).toEqual(['2026-11-03', '2026-10-30', '2026-10-28'])
 
-    /* The COUNTS are not capped. Truncating before counting would make
-       "PRs opened" silently mean "PRs we happened to render". */
-    expect(g.totals.prsOpenedAllTime).toBe(40)
+    /* The COUNTS are NOT windowed — only the feed is. Windowing them would
+       make "PRs opened" silently mean "PRs opened this week", which is not
+       what the label says and not what sits beside it on the page. */
+    expect(g.totals.prsOpenedAllTime).toBe(5)
   })
 
+  /* An empty feed is the COMMON case on this data, not an edge case: the gap
+     before the three PRs of 2026-11-09 was eleven days. It must be an empty
+     array rather than anything the page has to special-case as missing. */
+  it('returns an empty feed when nothing was opened in the window', () => {
+    const g = buildGrid(
+      NOW,
+      bucketPRs([pr(1, '2026-05-13T06:00:00Z', 'open')], TZ),
+      snap({ '2026-11-02': day(3600) })
+    )
+    expect(g.prFeed).toEqual([])
+    /* ...while the lifetime count still reports the PR. */
+    expect(g.totals.prsOpenedAllTime).toBe(1)
+  })
+
+  /* The feed and the "Last 7 days" stat must share one boundary, or the page
+     would carry two different ideas of "recent" a few pixels apart. */
+  it('uses the same window boundary as the Last 7 days stat', () => {
+    const g = buildGrid(
+      NOW,
+      bucketPRs([pr(1, '2026-10-28T06:00:00Z', 'open')], TZ),
+      snap({ '2026-10-28': day(3600), '2026-10-27': day(3600) })
+    )
+    /* 2026-10-28 is inside both; 2026-10-27 is outside both. */
+    expect(g.prFeed.map((d) => d.date)).toEqual(['2026-10-28'])
+    expect(g.totals.last7Seconds).toBe(3600)
+  })
+
+  /* Grouping and ordering, inside the feed window. These dates used to be the
+     2026-02/03/05 ones, which the 7-day window introduced on 2026-11-10 now
+     excludes -- the assertion was about ordering, not about those dates. */
   it('lists the PR days newest first, grouped by day', () => {
-    expect(grid.prDaysAllTime.map((d) => d.date)).toEqual([
-      '2026-05-13',
-      '2026-03-30',
-      '2026-02-01',
-    ])
-    expect(grid.prDaysAllTime[2].prs).toHaveLength(2)
-    /* A PR day that predates the log carries no tracked time, and says so
+    const g = buildGrid(
+      NOW,
+      bucketPRs(
+        [
+          pr(1, '2026-11-03T06:00:00Z', 'open'),
+          pr(2, '2026-10-30T06:00:00Z', 'open'),
+          pr(3, '2026-10-30T09:00:00Z', 'open'),
+          pr(4, '2026-10-29T06:00:00Z', 'open'),
+        ],
+        TZ
+      ),
+      snap({ '2026-11-02': day(3600) })
+    )
+    expect(g.prFeed.map((d) => d.date)).toEqual(['2026-11-03', '2026-10-30', '2026-10-29'])
+    expect(g.prFeed[1].prs).toHaveLength(2)
+    /* A PR day with no logged hours carries no tracked time, and says so
        rather than inventing one. */
-    expect(grid.prDaysAllTime[0].seconds).toBe(0)
+    expect(g.prFeed[0].seconds).toBe(0)
   })
 })
 
@@ -421,9 +467,11 @@ describe('bucketPRs', () => {
     const cell = grid.columns.flat().find((c) => c.date === '2026-11-02')
     expect(cell?.prs).toHaveLength(1)
 
-    /* ...and both still appear in the all-time view. */
+    /* ...and both still appear in the all-time COUNT, which is not windowed.
+       The FEED is: 2026-10-20 is more than PR_FEED_DAYS back from NOW, so it
+       is counted but not listed. */
     expect(grid.totals.prsOpenedAllTime).toBe(2)
-    expect(grid.prDaysAllTime.map((d) => d.date)).toEqual(['2026-11-02', '2026-10-20'])
+    expect(grid.prFeed.map((d) => d.date)).toEqual(['2026-11-02'])
   })
 
   /* A ring on a day with no tracked hours was the COMMON case before the

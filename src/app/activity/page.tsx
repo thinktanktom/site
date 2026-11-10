@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { getActivityGrid, formatCellDate, formatDuration } from '@lib/timelog'
+import { getActivityGrid, formatCellDate, formatDuration, PR_FEED_DAYS } from '@lib/timelog'
 import ActivityGraph from '@components/ActivityGraph'
 
 /*
@@ -48,8 +48,12 @@ export default async function ActivityPage() {
      first tracked day (2026-11-02) and every upstream PR predates that, so
      reading the cells would empty this section entirely. Both still come from
      the same bucketing in the snapshot's timezone, so they remain consistent
-     where they overlap; the list simply is not clipped to the window. */
-  const prDays = grid.prDaysAllTime
+     where they overlap.
+
+     Since 2026-11-10 the feed carries only the last PR_FEED_DAYS, so it is
+     routinely EMPTY — the gap before the three PRs of 2026-11-09 was eleven
+     days. The section renders either way; see the empty branch below. */
+  const prDays = grid.prFeed
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -111,22 +115,35 @@ export default async function ActivityPage() {
 
         <ActivityGraph grid={grid} />
 
-        {prDays.length > 0 && (
-          <section className="mt-16 pt-8 border-t border-border">
-            <h2 className="font-mono text-xs uppercase tracking-widest text-accent mb-2">
-              Recent pull requests
-            </h2>
-            {/* Says "public" out loud. The query is `is:public`, so work in
-                private repositories is absent rather than redacted -- without
-                this line a reader would reasonably read the list as everything
-                Tom has shipped. It also quietly explains why a repo going
-                public later makes older PRs appear. */}
-            <p className="font-sans text-sm text-muted mb-6">
-              From public repositories, newest first.
+        {/* THE SECTION RENDERS UNCONDITIONALLY, even with nothing in it. It
+            used to be gated on `prDays.length > 0`, which was fine when the
+            feed was the most recent 15 PRs and therefore never empty. A
+            seven-day window empties routinely — the gap before 2026-11-09 was
+            eleven days — and a section that silently disappears leaves the
+            lifetime "PRs opened / closed" counts sitting above a hole, with no
+            way for the reader to tell whether it is a quiet week or a broken
+            page. Saying "nothing this week" answers that. */}
+        <section className="mt-16 pt-8 border-t border-border">
+          <h2 className="font-mono text-xs uppercase tracking-widest text-accent mb-2">
+            Recent pull requests
+          </h2>
+          {/* Names the WINDOW as well as the visibility. "Public" because the
+              query is `is:public`, so work in private repositories is absent
+              rather than redacted; "last 7 days" because otherwise a reader
+              who knows the lifetime count is 65 would read three rows as a
+              bug rather than as a week. */}
+          <p className="font-sans text-sm text-muted mb-6">
+            From public repositories, last {PR_FEED_DAYS} days.
+          </p>
+
+          {prDays.length === 0 ? (
+            <p className="font-sans text-sm text-muted">
+              Nothing opened in the last {PR_FEED_DAYS} days.
             </p>
-            {/* The real links. The grid's rings are aria-hidden decoration over
-                this list, which is the half a screen reader and a crawler both
-                actually get to use. */}
+          ) : (
+            /* The real links. The grid's rings are aria-hidden decoration over
+               this list, which is the half a screen reader and a crawler both
+               actually get to use. */
             <ol className="flex flex-col gap-6">
               {prDays.map((cell) => (
                 <li key={cell.date}>
@@ -155,8 +172,8 @@ export default async function ActivityPage() {
                 </li>
               ))}
             </ol>
-          </section>
-        )}
+          )}
+        </section>
       </div>
     </main>
   )

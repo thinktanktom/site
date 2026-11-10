@@ -96,11 +96,27 @@ async function searchPRs(query: string, perPage: number): Promise<PullRequest[]>
   try {
     const res = await fetch(
       `https://api.github.com/search/issues?q=${query}&sort=created&order=desc&per_page=${perPage}`,
-      // A rejected connection was already handled below, but nothing bounded a
-      // connection that is accepted and then never answered — that would hang
-      // the build indefinitely rather than degrading to an empty list. The
-      // typical call measures ~0.9s, so 8s is slack rather than a tight budget.
-      { headers, signal: AbortSignal.timeout(8000) }
+      {
+        headers,
+        // A rejected connection was already handled below, but nothing bounded a
+        // connection that is accepted and then never answered — that would hang
+        // the build indefinitely rather than degrading to an empty list. The
+        // typical call measures ~0.9s, so 8s is slack rather than a tight budget.
+        signal: AbortSignal.timeout(8000),
+        /*
+         * NO `cache: 'no-store'` HERE, and that is load-bearing. Next treats an
+         * uncached fetch as a signal that the route is dynamic, so adding it
+         * opts /work and /activity into server rendering — and this site is
+         * `output: 'export'`, which cannot express that. Tried on 2026-11-10:
+         * the build still reported "Compiled successfully", listed both routes
+         * as `ƒ (Dynamic)`, and simply **did not emit activity.html**. It also
+         * turned 2 logical requests into 8 real ones, which trips the
+         * unauthenticated 10/min search limit on its own.
+         *
+         * The staleness it was meant to fix is handled by the `prebuild`
+         * script instead — see package.json.
+         */
+      }
     )
 
     if (!res.ok) {

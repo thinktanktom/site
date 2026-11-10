@@ -50,16 +50,26 @@ export const MAX_WEEKS = 53
 export const DAYS_PER_WEEK = 7
 
 /*
- * How many PULL REQUESTS the "Recent pull requests" list renders. The query
- * returns up to 100 and the page is a showcase, not an archive -- 65 rows
- * would bury the graph above them and the totals beside it.
+ * The "Recent pull requests" feed shows a ROLLING WINDOW, not a fixed number
+ * of rows (changed 2026-11-10, Tom's call). Seven days ending today, matching
+ * the "Last 7 days" stat above it so the page has one idea of "recent" rather
+ * than two.
  *
- * Counted in PRs rather than in days: capping days was the first attempt and
- * it is unpredictable, because PRs cluster (several merged to this site on one
- * afternoon) -- 15 days rendered 52 rows. Only the list is capped, never the
- * counts, so "PRs opened" still means what it says.
+ * It replaced a count cap of 15. A count makes the feed a leaderboard of
+ * whatever happened to be last, with no sense of when -- 15 rows could span a
+ * week or a year and the reader cannot tell which. A window answers "what has
+ * he been shipping lately" directly, and goes honestly empty when the answer
+ * is "nothing", which is a real answer.
+ *
+ * THE EMPTY WEEK IS THE COMMON CASE, NOT AN EDGE CASE. The gap before the
+ * three PRs of 2026-11-09 was eleven days. The page therefore renders an
+ * explicit "nothing opened" line rather than dropping the section, which would
+ * leave the lifetime counts sitting above a hole.
+ *
+ * Only the FEED is windowed. The counts beside it stay all-time, so "PRs
+ * opened" still means what it says.
  */
-export const RECENT_PRS = 15
+export const PR_FEED_DAYS = 7
 
 /*
  * INTENSITY IS FIXED HOUR BANDS, NOT QUARTILES OF THE DATA. This is a
@@ -162,10 +172,10 @@ export interface ActivityGrid {
         is GitHub's own semantics and the natural pair for "opened". */
     prsClosedAllTime: number
   }
-  /** the most recent PR days, newest first, grouped by the day opened. Not
-      window-scoped, and capped at RECENT_PRS pull requests — see the note
-      there. The last day shown is whole, so this can slightly exceed the cap. */
-  prDaysAllTime: PRDay[]
+  /** the "Recent pull requests" feed: PR days inside the last PR_FEED_DAYS,
+      newest first. WINDOWED, unlike the counts above it — and legitimately
+      EMPTY on a quiet week, which the page renders explicitly. */
+  prFeed: PRDay[]
   /** every bucket in the window, largest first */
   buckets: Array<{ label: string; seconds: number }>
   meta: {
@@ -313,20 +323,17 @@ export function buildGrid(
   const allPRs = everyPRDay.flatMap((d) => d.prs)
 
   /*
-   * Capped on PULL REQUESTS, not on days — capping days was the first attempt
-   * and it is unpredictable: PRs cluster heavily (several merged to this site
-   * on one afternoon), so 15 days rendered 52 rows. Walking the days in order
-   * and stopping once RECENT_PRS have been taken keeps the list a knowable
-   * length whatever the clustering, and never splits a day across the
-   * boundary — the last day shown is whole.
+   * A ROLLING WINDOW, not a row count — see PR_FEED_DAYS. The boundary is the
+   * same `weekAgo` the "Last 7 days" stat uses, so the two cannot drift: one
+   * page, one definition of "recent".
+   *
+   * Compared on the DAY KEY rather than on a Date, because these keys are
+   * already resolved in the snapshot's zone (bucketPRs put them there) and
+   * re-parsing them into Dates only re-opens the timezone question this module
+   * exists to close. String comparison on "yyyy-mm-dd" is a date comparison.
    */
-  const prDaysAllTime: PRDay[] = []
-  let taken = 0
-  for (const prDay of everyPRDay) {
-    if (taken >= RECENT_PRS) break
-    prDaysAllTime.push(prDay)
-    taken += prDay.prs.length
-  }
+  const feedCutoff = dateKey(weekAgo)
+  const prFeed = everyPRDay.filter((d) => d.date >= feedCutoff)
 
   for (let w = 0; w < weeks; w += 1) {
     const column: ActivityCell[] = []
@@ -416,7 +423,7 @@ export function buildGrid(
       prsOpenedAllTime: allPRs.length,
       prsClosedAllTime: allPRs.filter((p) => p.status !== 'open').length,
     },
-    prDaysAllTime,
+    prFeed,
     /* Array.from, not a spread: tsconfig.json sets no `target`, so spreading a
        Map iterator needs downlevelIteration. Array.from needs neither. */
     buckets: Array.from(windowBuckets.entries())
