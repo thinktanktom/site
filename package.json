@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "prebuild": "rm -rf .next/cache/fetch-cache",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",

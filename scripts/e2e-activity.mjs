@@ -350,7 +350,11 @@ results.noJs = JSON.parse(await send('Runtime.evaluate', {
       cells: cells.length,
       ringed: document.querySelectorAll('.hm-pr').length,
       titled: [...cells].filter(c=>c.getAttribute('title')).length,
+      /* The heading renders unconditionally since 2026-11-10 -- the feed is a
+         7-day window and empties routinely, and a section that vanishes would
+         be indistinguishable from a broken page. */
       shippedSection: !!document.body.textContent.match(/Recent pull requests/),
+      emptyFeedLine: !!document.body.textContent.match(/Nothing opened in the last/),
       prLinks: document.querySelectorAll('a[href*="/pull/"]').length
     }})())`,
   returnByValue: true,
@@ -520,8 +524,17 @@ if (results.ring.ringedTotal > 0) {
   skip('JS off: rings render', 'no PR falls inside the window')
 }
 ok('JS off: tooltips present', j.titled > 0, j.titled)
-ok('JS off: shipped section renders', j.shippedSection, j.shippedSection)
-ok('JS off: PR links are real anchors', j.prLinks > 0, j.prLinks)
+ok('JS off: PR section renders', j.shippedSection, j.shippedSection)
+/* The feed is a rolling 7-day window, so it is EMPTY on a quiet week -- the
+   gap before 2026-11-09 was eleven days. Exactly one of the two states must
+   hold, and both are asserted rather than one being skipped: an empty feed
+   must say so in words, and a non-empty one must be real anchors. */
+if (j.prLinks > 0) {
+  ok('JS off: PR links are real anchors', j.prLinks > 0, j.prLinks)
+  ok('JS off: no empty-feed line when the feed has rows', !j.emptyFeedLine, j.emptyFeedLine)
+} else {
+  ok('JS off: empty feed says so in words', j.emptyFeedLine, j.emptyFeedLine)
+}
 
 let failed = 0
 let skipped = 0
