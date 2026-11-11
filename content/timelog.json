@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-10T06:28:06.420Z",
+  "generatedAt": "2026-11-11T06:08:25.690Z",
   "tzOffsetMinutes": 330,
   "openAtSync": true,
-  "intervalCount": 10,
-  "totalSeconds": 21978,
+  "intervalCount": 14,
+  "totalSeconds": 32201,
   "days": {
     "2026-11-02": {
       "seconds": 13299,
@@ -26,10 +26,17 @@
       }
     },
     "2026-11-10": {
-      "seconds": 1831,
+      "seconds": 7855,
       "buckets": {
-        "Upwork · feed work": 962,
-        "Other": 869
+        "Other": 3952,
+        "Upwork · feed work": 3903
+      }
+    },
+    "2026-11-11": {
+      "seconds": 4199,
+      "buckets": {
+        "Other": 2550,
+        "This site": 1649
       }
     }
   }

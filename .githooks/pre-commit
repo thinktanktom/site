@@ -3,11 +3,25 @@
 # Re-sync the timewarrior snapshot and stage it, so /activity is current in
 # every commit without anyone having to remember `npm run timelog`.
 #
-# Installed by pointing git at this directory rather than by copying into
-# .git/hooks, so the hook is tracked, reviewable and survives a fresh clone:
+# NOTHING IN THIS REPOSITORY INSTALLS THIS HOOK, as of 2026-11-11. It is found
+# and run by a machine-global dispatcher at ~/.config/git/hooks/pre-commit,
+# which looks for `<repo>/.githooks/pre-commit` in whatever repo is being
+# committed. So this file stays tracked and reviewable, while the repo carries
+# no `core.hooksPath` setting, no installer and no `npm prepare` step — all
+# three of which it used to have, and all three of which were machinery whose
+# only job was to point git at this file.
 #
-#     git config core.hooksPath .githooks        (scripts/install-hooks.mjs)
-#     git config --unset core.hooksPath          (to undo)
+# A consequence worth knowing: a fresh clone of this repo on a machine WITHOUT
+# that dispatcher gets no hook, and `content/timelog.json` simply goes stale
+# until someone runs `npm run timelog`. That is the accepted trade — the hook
+# is a convenience, never a gate.
+#
+# The dispatcher also declares the `merge.ours` driver globally, which
+# .gitattributes needs for `content/timelog.json merge=ours`. That used to be
+# the installer's job, and it had a real failure mode: the installer only ran
+# on `npm install`, so a line added to it afterwards stayed dormant. It was
+# found genuinely inert on 2026-11-11 — the attribute resolved, no driver was
+# declared, and git had been silently falling back to a text merge.
 #
 # THIS HOOK NEVER BLOCKS A COMMIT. Every path below ends in `exit 0`, including
 # the failure paths. It is a convenience, not a gate — if timewarrior is absent,
