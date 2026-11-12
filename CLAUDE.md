@@ -366,11 +366,25 @@ the page renders its own "snapshot taken" line rather than letting a heatmap imp
 sitemap uses `generatedAt` rather than `new Date()` for the same honesty.
 
 **A tracked pre-commit hook keeps it current** (`.githooks/pre-commit`, 2026-11-09), so the graph
-does not depend on remembering `npm run timelog`. It is installed by `core.hooksPath` rather than
-copied into `.git/hooks` — the hook is then a tracked, reviewable file that survives a reclone —
-and `scripts/install-hooks.mjs` sets that, run both by `npm run hooks:install` and automatically by
-the `prepare` script on `npm install` (the husky pattern, without the dependency). Undo with
-`git config --unset core.hooksPath`.
+does not depend on remembering `npm run timelog`.
+
+**NOTHING IN THIS REPOSITORY INSTALLS IT, as of 2026-11-11.** It is found and run by a
+machine-global dispatcher at `~/.config/git/hooks/pre-commit` (wired by a user-level
+`git config --global core.hooksPath`), which looks for `<repo>/.githooks/pre-commit` in whatever
+repo is being committed. The repo therefore carries **no `core.hooksPath` setting, no
+`scripts/install-hooks.mjs`, and no `prepare` script** — all three existed solely to point git at
+this one file, and all three were deleted. The hook itself stays tracked and reviewable, which was
+the only thing that machinery was protecting.
+
+**What prompted it:** the installer only ran on `npm install`, so anything added to it afterwards
+stayed dormant until someone happened to reinstall. That is not hypothetical — `merge.ours.driver`
+was found genuinely **inert** on 2026-11-11: `.gitattributes` resolved `merge=ours`, no driver was
+declared, and git had been silently falling back to a text merge the attribute exists to prevent.
+The dispatcher declares it globally instead, so it cannot drift out of step with a package script.
+
+**Accepted trade:** a fresh clone on a machine without that dispatcher gets no hook, and the
+snapshot goes stale until someone runs `npm run timelog`. The hook is a convenience, never a gate —
+`no-mistakes` is the gate.
 
 **The hook can never block a commit.** Every path ends `exit 0`, the failures included. It is a
 convenience; `no-mistakes` is the gate. Four refusals, each deliberate:
@@ -413,17 +427,23 @@ two branches reliably collide on the same day's `seconds` — producing a textua
 a file nobody typed, which you then resolve by hand because the hook is (correctly) inert
 mid-replay. `merge=ours` keeps one side and lets the next sync regenerate from the database, which
 is the only real source of truth. **The driver has to be declared or git silently ignores the
-attribute**; `scripts/install-hooks.mjs` sets `merge.ours.driver true` alongside `core.hooksPath`,
-before the early-return that skips an already-installed repo.
+attribute** — and it *was* ignored, undetected, until 2026-11-11. It is now declared once at user
+level (`git config --global merge.ours.driver true`) rather than by a package script, so it cannot
+fall out of step with an install step that only runs on `npm install`.
 
-Three things about the installer that are invisible when they bite: it **no-ops when `CI` is set**
-(any non-empty value — `CI= npm install` is the way to force it), it **changes nothing if
-`core.hooksPath` already points elsewhere**, and `core.hooksPath` **replaces `.git/hooks` wholesale**
-rather than adding to it, so anything later dropped in there is silently ignored — it now warns if
-that directory holds a non-sample hook. **Security, inherent rather than a defect:** a tracked hook
-plus `prepare` means checking out an untrusted branch and committing (or running `npm install`)
-executes that branch's code as you. The same exposure husky has; `--no-verify` and
-`git config --unset core.hooksPath` are the escapes.
+**The dispatcher replaces `.git/hooks` wholesale, which is why it delegates.** `core.hooksPath`
+does not add to `.git/hooks`, it supersedes it — so a global setting silently disables every
+per-repo hook on the machine unless something calls them. The dispatcher runs both
+`<repo>/.githooks/pre-commit` (tracked) and `<repo>/.git/hooks/pre-commit` (untracked), in that
+order, and propagates their exit codes so a repo can still reject a commit. Negative-controlled:
+with the delegation removed, a repo's own hook is ignored with no warning at all. It also runs a
+tracked hook that has lost its executable bit via `sh` rather than skipping it, which is what the
+deleted installer's `chmod` used to guarantee.
+
+**Security, inherent rather than a defect:** a tracked hook that a global dispatcher runs
+automatically means checking out an untrusted branch and committing executes that branch's
+`.githooks/pre-commit` as you. The same exposure husky has, now machine-wide rather than per-repo.
+`--no-verify` skips it; `git config --global --unset core.hooksPath` removes the dispatcher.
 
 **`--check` ignores the days a running session touches, and that is not laziness.** An open
 interval is clamped to the sync time, so its day's total grows every second the timer runs — which
@@ -635,7 +655,9 @@ the verification table. BankX going `completed` moved the harness's border-probe
 thinktanktom/
 ├── CLAUDE.md
 ├── .githooks/
-│   └── pre-commit              ← re-syncs + stages content/timelog.json
+│   └── pre-commit              ← re-syncs + stages content/timelog.json;
+│                                  run by a machine-global dispatcher, not
+│                                  installed by anything in this repo
 ├── public/
 │   ├── ttt_*_light-primary.svg ← the masks every logo role is stencilled by
 │   ├── ttt_*_dark-mono.svg     ← brand exports; the icon is also the static favicon

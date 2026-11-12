@@ -11,9 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "timelog": "node scripts/sync-timelog.mjs",
-    "timelog:check": "node scripts/sync-timelog.mjs --check",
-    "hooks:install": "node scripts/install-hooks.mjs",
-    "prepare": "node scripts/install-hooks.mjs"
+    "timelog:check": "node scripts/sync-timelog.mjs --check"
   },
   "dependencies": {
     "gray-matter": "^4.0.3",
